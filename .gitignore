@@ -1,0 +1,8 @@
+*~
+*.pyc
+*.rbc
+*.cache
+*.DS_Store
+misc/*
+tmp/*
+*/tmp/*

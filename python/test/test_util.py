@@ -13,7 +13,7 @@ from oktest import ok, not_ok
 import keight as k8
 
 
-class KeightUtilsTest(object):
+class K8UtilsTest(object):
 
     def test_unquote_plus(self):
         from keight import unquote_plus
@@ -27,12 +27,12 @@ class KeightUtilsTest(object):
             ok (unquote_plus('%Ff')) == v
             ok (unquote_plus('%fF')) == v
         if "'%' is appreared at the beginning/end of string then handled correctly":
-            ok ('%_') == '%_'
-            ok ('%5b%') == '[%'
-            ok ('%') == '%'
+            ok (unquote_plus('%_')) == '%_'
+            ok (unquote_plus('%5b%')) == '[%'
+            ok (unquote_plus('%')) == '%'
         if "'+' is included then converts it as ' '":
-            ok ('+') == ' '
+            ok (unquote_plus('+')) == ' '
 
 
 if __name__ == '__main__':
-    oktest.run(KeightUtilsTest)
+    oktest.run(K8UtilsTest)

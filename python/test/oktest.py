@@ -8,7 +8,7 @@
 ### $License: MIT License $
 ###
 
-__all__ = ('ok', 'not_ok', 'run', 'dummy_file', 'dummy_dir', 'chdir')
+__all__ = ('ok', 'not_ok', 'run', 'spec', 'dummy_file', 'dummy_dir', 'chdir')
 
 import sys, os, re, types, traceback
 
@@ -567,6 +567,22 @@ if os.environ.get('OKTEST_REPORTER'):
 ##
 ## helpers
 ##
+
+class Spec(object):
+
+    def __init__(self, desc):
+        self.desc = desc
+
+    def __enter__(self, *args):
+        pass
+
+    def __exit__(self, *args):
+        pass
+
+
+def spec(desc):
+    return Spec(desc)
+
 
 class _Context(object):
 

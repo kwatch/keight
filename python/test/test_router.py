@@ -4,7 +4,7 @@ from __future__ import with_statement
 import sys, re
 from oktest import ok, not_ok, run, spec
 import keight as k8
-from keight import Router, Handler, OnDemandLoader
+from keight import Router, Handler, OnDemandLoader, Http404NotFound, Http405MethodNotAllowed
 
 
 class OnDemandHandler(Handler):
@@ -23,15 +23,15 @@ sys.modules['my'] = mod1
 sys.modules['my.handlers'] = mod2
 
 
-class K8RouterTest(object):
+class RouterTest(object):
 
     def test_set_base_path(self):
-        with spec("set arg into self.base_path"):
+        with spec("set base_path into self.base_path"):
             r = Router()
             r.set_base_path("/hello")
             ok (r.base_path) == "/hello"
+        with spec("if base_path is a pattern then compile and save it"):
             ok (r._base_path_rexp) == None
-        with spec("self._base_path_rexp is set only when arg is pattern"):
             r = Router()
             r.set_base_path("/hello/(\d+)")
             ok (r.base_path) == "/hello/(\d+)"
@@ -85,42 +85,49 @@ class K8RouterTest(object):
             ok (r._mapping_list[0][2]) == None
             ok (r._mapping_list[0][3]) == OnDemandHandler
 
-    def tet__build_path_func(self):
-        r = Router()
-        with spec("returns path function with no argument"):
-            func = r._build_path_func('/books')
-            ok (func()) == '/books'
-        with spec("returns path function with 1 arg"):
-            func = r._build_path_func('/books/(\d+)')
-            ok (func(123)) == '/books/123'
-        with spec("retourns path function with 2 args"):
-            func = r._build_path_func('/books/(\d+)/comments(\d+)')
-            ok (func(123, 999)) == '/books/123/comments/999'
-
     def test_map(self):
         r = Router()
         def do_index(): pass
-        with spec("if path arg is not pattern then added to self._mapping_dict"):
-            ok (r._mapping_dict) == {}
+        with spec("if path arg is not a pattern then appends into self._mapping_dict"):
+            assert r._mapping_dict == {}
             r.map(r"/new", GET=do_index)
-            ok (r._mapping_dict) == {"/new": ({"GET": do_index}, None)}
-        with spec("if path arg is pattern then added to self._mapping_list"):
-            ok (r._mapping_list) == []
+            ok (r._mapping_dict) == {"/new": [{"GET": do_index}, None]}
+        with spec("if path arg is a pattern then appends into self._mapping_list"):
+            assert r._mapping_list == []
             r.map(r"/(\d+)", GET=do_index)
-            ok (r._mapping_list) == [(r"/(\d+)", re.compile(r"/(\d+)"), {'GET': do_index}, None)]
+            ok (r._mapping_list) == [[r"/(\d+)", re.compile(r"/(\d+)"), {'GET': do_index}, None]]
+        with spec("if path is '/' then prepares to redirect when empty path"):
+            assert r._mapping_dict.get('') == None
+            r.map(r"/", GET=do_index)
+            #ok (r.mappings[-1]) == ('', {"GET": 301}, None)
+            ok (r._mapping_dict['']) == [{"GET": 301}, None]
+        with spec("store path and kwargs"):
+            ok (r.mappings) == [(r'/new', {'GET': do_index}, None),
+                                (r'/(\d+)', {'GET': do_index}, None),
+                                (r'/', {'GET': do_index}, None)]
+        with spec("returns self"):
+            ret = r.map(r"/", GET=do_index)
+            ok (ret).is_(r)
 
     def test_mount(self):
         class CommentsHandler(Handler): pass
-        with spec("if path arg is not pattern then added to self._mapping_list"):
-            r = Router()
-            ok (r._mapping_list) == []
+        r = Router()
+        assert r._mapping_list == []
+        with spec("if path arg is not a pattern then appends None to self._mapping_list"):
             r.mount(r"/comments", CommentsHandler)
-            ok (r._mapping_list) == [(r"/comments", None, None, CommentsHandler)]
-        with spec("if path arg is pattern then added to self._mapping_list"):
-            r = Router()
-            ok (r._mapping_list) == []
+            ok (len(r._mapping_list)) == 1
+            ok (r._mapping_list) == [[r"/comments", None, None, CommentsHandler]]
+        with spec("if path arg is not a pattern then compile and appends to self._mapping_list"):
             r.mount(r"/books/(\d+)/commnts/(\d+)", CommentsHandler)
-            ok (r._mapping_list) == [(r"/books/(\d+)/commnts/(\d+)", re.compile(r"/books/(\d+)/commnts/(\d+)"), None, CommentsHandler)]
+            ok (len(r._mapping_list)) == 2
+            ok (r._mapping_list) == [[r"/comments", None, None, CommentsHandler],
+                                     [r"/books/(\d+)/commnts/(\d+)", re.compile(r"/books/(\d+)/commnts/(\d+)"), None, CommentsHandler]]
+        with spec("store path and handler_class"):
+            ok (r.mappings) == [(r"/comments", None, CommentsHandler),
+                                (r"/books/(\d+)/commnts/(\d+)", None, CommentsHandler)]
+        with spec("returns self"):
+            ret = r.mount("/", CommentsHandler)
+            ok (ret).is_(r)
 
     def test_route(self):
         def do_index(): pass
@@ -130,11 +137,13 @@ class K8RouterTest(object):
         def do_update(): pass
         def do_edit(): pass
         def do_delete(): pass
+        def do_something(): pass
         r = Router()
         r.map(r'', GET=do_index, POST=do_create)
         r.map(r'/new', GET=do_new)
         r.map(r'/(\d+)', GET=do_show, PUT=do_update, DELETE=do_delete)
         r.map(r'/(\d+)/edit', GET=do_edit)
+        r.map(r'/something', ALL=do_something)
         #
         class CommentsHandler(Handler):
             def do_show(): pass
@@ -144,7 +153,7 @@ class K8RouterTest(object):
         #
         r.mount(r'/(\d+)/lazy', 'my.handlers.OnDemandHandler')
         #
-        with spec("if base path is not set then raises ValueError"):
+        with spec("if base path is not set then raises error"):
             def f():
                 r.route('/books/new', 'GET')
             ok (f).raises(ValueError, "base path is not set to router object (do you forget to mount handler class?)")
@@ -160,10 +169,14 @@ class K8RouterTest(object):
             ok (r.route('/books/123', 'DELETE')) == (do_delete, ('123',))
         with spec("if matched handler class is found then returns it and args"):
             ok (r.route('/books/123/comments/999', 'GET')) == (CommentsHandler, ('123',))
-        with spec("if not matched to function nor class then returns None (means 404)"):
-            ok (r.route('/books/', 'GET')) == (None, '/')
-        with spec("if method is not allowed then returns False (means 405)"):
-            ok (r.route('/books/123', 'POST')) == (False, '/123')
+        #with spec("if not matched to function nor class then returns None (means 404)"):
+        #    ok (r.route('/books/', 'GET')) == (None, ())
+        with spec("if not matched to function nor class then raises Http404NotFound"):
+            ok (lambda: r.route('/books/', 'GET')).raises(Http404NotFound, "/books/: not found.")
+        #with spec("if method is not allowed then returns False (means 405)"):
+        #    ok (r.route('/books/123', 'POST')) == (False, ('123',))
+        with spec("if method is not allowed then raises Http405MethodNotAllowed"):
+            ok (lambda: r.route('/books/123', 'POST')).raises(Http405MethodNotAllowed, "POST: method not allowed.")
         with spec("if mapped object is OnDemandLoader then call load()"):
             ok (r._mapping_list[-1][0]) == r"/(\d+)/lazy"
             ok (r._mapping_list[-1][1]) == re.compile(r"/(\d+)/lazy")
@@ -172,21 +185,143 @@ class K8RouterTest(object):
             ok (r._mapping_list[-1][3].name) == "my.handlers.OnDemandHandler"
             ok (r.route("/books/123/lazy/999", 'PUT')) == (OnDemandHandler, ('123',))
             ok (r._mapping_list[-1][3]) == OnDemandHandler
+        with spec("if ALL is specified then returns matched function in any method"):
+            ok (r.route('/books/something', 'XXX')) == (do_something, ())
+
+    def test_FUNCTEST_route(self):
+        with spec("[F] if '/' is specified but '' is not then request to '' will be redirected"):
+            def do_foo1(): pass
+            r = Router()
+            r.map('/', GET=do_foo1)
+            r.set_base_path('/books')
+            ret = r.route('/books', 'GET')
+            ok (ret[0]) == 301
 
     def test__match_to_base_path(self):
-        with spec("returns rest_path and args in case path is not pattern"):
-            r = Router()
-            r.set_base_path('/books')
-            ok (r._match_to_base_path('/books')) == ('', ())
-            ok (r._match_to_base_path('/books/')) == ('/', ())
-            ok (r._match_to_base_path('/books/123')) == ('/123', ())
-        with spec("returns rest_path and args in case path is pattern"):
+        with spec("returns rest_path and args in case base_path is a pattern"):
             r = Router()
             r.set_base_path('/books/(\d+)/comments')
             ok (r._match_to_base_path('/books/123/comments')) == ('', ('123',))
             ok (r._match_to_base_path('/books/123/comments/')) == ('/', ('123',))
             ok (r._match_to_base_path('/books/123/comments/new')) == ('/new', ('123',))
+        with spec("returns rest_path and args in case base_path is not a pattern"):
+            r = Router()
+            r.set_base_path('/books')
+            ok (r._match_to_base_path('/books')) == ('', ())
+            ok (r._match_to_base_path('/books/')) == ('/', ())
+            ok (r._match_to_base_path('/books/123')) == ('/123', ())
+        with spec("if base_path is not set then raises error"):
+            r = Router()
+            def f(): r.route('/books/new', 'GET')
+            ok (f).raises(ValueError, "base path is not set to router object (do you forget to mount handler class?)")
+
+    def test__find_kwargs_or_handler_class(self):
+        def do_index(): pass
+        def do_create(): pass
+        def do_new(): pass
+        def do_show(): pass
+        def do_show123(): pass
+        def do_update(): pass
+        def do_edit(): pass
+        def do_delete(): pass
+        def do_something(): pass
+        r = Router()
+        r.map(r'/(\d+)', GET=do_show, PUT=do_update)
+        r.map(r'/123',   GET=do_show123)
+        assert r._mapping_dict == {'/123': [{'GET': do_show123}, None]}
+        assert r._mapping_list == [
+            ['/(\\d+)', re.compile(r'/(\d+)'), {'GET': do_show, 'PUT': do_update}, None],
+        ]
+        with spec("if rest_path is in self._mapping_dict then returns corresponding values"):
+            kwargs, handler_class, args = r._find_kwargs_or_handler_class('/123')
+            ok (kwargs) == {'GET': do_show123}
+            ok (handler_class) == None
+        with spec("if rest_path is not in self._mapping_dict then search self._mapping_list"):
+            kwargs, handler_class, args = r._find_kwargs_or_handler_class('/12')
+            ok (kwargs) == {'GET': do_show, 'PUT': do_update}
+            ok (handler_class) == None
+        with spec("if not matched then returns Nones"):
+            kwargs, handler_class, args = r._find_kwargs_or_handler_class('/')
+            ok (kwargs) == None
+            ok (handler_class) == None
+
+    def test__config_action_func(self):
+        F = k8.Router._config_action_func
+        with spec("sets request method"):
+            def do_delete(): pass
+            F(do_delete, '/books/(\d+)', 'DELETE')
+            ok (do_delete.method) == 'DELETE'
+        with spec("if path is specified then sets path() function"):
+            def do_index(): pass
+            F(do_index, '/books', 'GET')
+            ok (do_index.path()) == '/books'
+            def do_show(): pass
+            F(do_show, '/books/(\d+)', 'GET')
+            ok (do_show.path(123)) == '/books/123'
+            def do_comment(): pass
+            F(do_comment, '/books/(\d+)/comment/(\d+)', 'GET')
+            ok (do_comment.path(123, 999)) == '/books/123/comment/999'
+        with spec("if path is not specified then path() function is empty"):
+            def do_index(): pass
+            F(do_index, '', 'GET')
+            ok (do_index.path()) == ''
+            F(do_index, None, 'GET')
+            ok (do_index.path()) == None
+        with spec("sets hidden_tag() function which returns hidden tag only if request method is not GET nor POST"):
+            def do_delete(): pass
+            F(do_delete, '/', 'GET')
+            ok (do_delete.hidden_tag()) == ''
+            F(do_delete, '/', 'POST')
+            ok (do_delete.hidden_tag()) == ''
+            F(do_delete, '/', 'PUT')
+            ok (do_delete.hidden_tag()) == '<input type="hidden" name="_method" value="PUT" />'
+            F(do_delete, '/', 'DELETE')
+            ok (do_delete.hidden_tag()) == '<input type="hidden" name="_method" value="DELETE" />'
+
+
+class RootRouterTest(object):
+
+    def test_map(self):
+        with spec("configure each action functions"):
+            def do_hello(req, res): return ""
+            r = k8.RootRouter()
+            r.map("/hello", GET=do_hello)
+            ok (do_hello.method) == 'GET'
+            ok (do_hello.path()) == '/hello'
+
+    def test_mount(self):
+        with spec("if handler_class has router then set path as base_path of it"):
+            class Hello(k8.Handler):
+                def do_index(self): return ""
+                router = k8.Router().map("/", GET=do_index)
+            assert Hello.router.base_path is None
+            r = k8.RootRouter()
+            r.mount("/hello", Hello)
+            ok (Hello.router.base_path) == "/hello"
+
+    def test__match_to_base_path(self):
+        with spec("returns passed path and an empty tuple"):
+            ok (k8.RootRouter()._match_to_base_path('/foo')) == ('/foo', ())
+
+
+class OnDemandLoaderTest(object):
+
+    def test_load(self):
+        def callback(obj):
+            callback.obj = obj
+        callback.obj = None
+        loader = OnDemandLoader('xml.dom.minidom.Node', callback)
+        with spec("loads object with importing module"):
+            assert sys.modules.get('xml.dom.minidom') == None
+            ret = loader.load()
+            ok (sys.modules.get('xml.dom.minidom')) != None
+            mod = sys.modules.get('xml.dom.minidom')
+            ok (mod).is_a(type(sys))
+        with spec("if callback is specified then call it with loaded object"):
+            ok (callback.obj).is_(mod.Node)
+        with spec("returns loaded object (typically class object)"):
+            ok (ret).is_(mod.Node)
 
 
 if __name__ == '__main__':
-    run(K8RouterTest)
+    run()

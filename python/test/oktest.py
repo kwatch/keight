@@ -8,7 +8,8 @@
 ### $License: MIT License $
 ###
 
-__all__ = ('ok', 'not_ok', 'run', 'spec', 'dummy_file', 'dummy_dir', 'chdir')
+__all__ = ('ok', 'not_ok', 'run', 'chdir', 'spec', 'using',
+           'dummy_file', 'dummy_dir', 'dummy_values', 'dummy_attrs', 'dummy_environ_vars')
 
 import sys, os, re, types, traceback
 
@@ -29,6 +30,10 @@ if python3:
     def _func_firstlineno(func):
         return func.__code__.co_firstlineno
 
+def _get_location(depth=0):
+    frame = sys._getframe(depth+1)
+    return (frame.f_code.co_filename, frame.f_lineno)
+
 
 __unittest = True    # see unittest.TestResult._is_relevant_tb_level()
 
@@ -41,6 +46,14 @@ __unittest = True    # see unittest.TestResult._is_relevant_tb_level()
 #        self.line = line
 #        self.diff = diff
 #
+
+
+def ex2msg(ex):
+    #return ex.message   # deprecated since Python 2.6
+    #return str(ex)      # may be empty
+    #return ex.args[0]   # ex.args may be empty (ex. AssertionError)
+    #return (ex.args or ['(no error message)'])[0]
+    return str(ex) or '(no error message)'
 
 
 def _msg(target, op, other=None):
@@ -75,24 +88,43 @@ def _diff(target, other):
     return ''.join(unified_diff(expected, actual, 'expected', 'actual', n=2))
 
 
+def assertion_op(func):
+    def deco(self, *args):
+        self._tested = True
+        return func(self, *args)
+    if python2:
+        deco.func_name = func.func_name
+    deco.__name__ = func.__name__
+    deco.__doc__ = func.__doc__
+    return deco
+
+
 #def deprecated(f):
 #    return f
 
 
 class AssertionObject(object):
 
-    def __init__(self, value):
+    def __init__(self, value, _bool=True):
         self.value = value
-        self._bool = True
+        self._bool = _bool
+        self._tested = False
+        self._location = None
+
+    def __del__(self):
+        if self._tested is False:
+            msg = "%s() is called but not tested." % (self._bool and 'ok' or 'not_ok')
+            if self._location:
+                msg += " (file '%s', line %s)" % self._location
+            #import warnings; warnings.warn(msg)
+            sys.stderr.write("*** warning: oktest: %s\n" % msg)
 
     #def not_(self):
     #    self._bool = not self._bool
     #    return self
 
     def _failed(self, msg, postfix=' : failed.', depth=2):
-        frame = sys._getframe(depth)
-        file = frame.f_code.co_filename
-        line = frame.f_lineno
+        file, line = _get_location(depth + 1)
         diff = None
         if isinstance(msg, tuple):
             msg, diff = msg
@@ -108,30 +140,37 @@ class AssertionObject(object):
         ex.file = file;  ex.line = line;  ex.diff = diff
         return ex
 
+    @assertion_op
     def __eq__(self, other):
         if (self.value == other) == self._bool:  return True
         self._failed(_msg(self.value, '==', other))
 
+    @assertion_op
     def __ne__(self, other):
         if (self.value != other) == self._bool:  return True
         self._failed(_msg(self.value, '!=', other))
 
+    @assertion_op
     def __gt__(self, other):
         if (self.value > other) == self._bool:  return True
         self._failed(_msg(self.value, '>', other))
 
+    @assertion_op
     def __ge__(self, other):
         if (self.value >= other) == self._bool:  return True
         self._failed(_msg(self.value, '>=', other))
 
+    @assertion_op
     def __lt__(self, other):
         if (self.value < other) == self._bool:  return True
         self._failed(_msg(self.value, '<', other))
 
+    @assertion_op
     def __le__(self, other):
         if (self.value <= other) == self._bool:  return True
         self._failed(_msg(self.value, '<=', other))
 
+    @assertion_op
     def in_delta(self, other, delta):
         if (self.value <= other - delta) == self._bool:
             self._failed(_msg(self.value, '>', other - delta))
@@ -139,41 +178,56 @@ class AssertionObject(object):
             self._failed(_msg(self.value, '<', other + delta))
         return True
 
+#    @assertion_op
 #    def __contains__(self, other):
 #        if (self.value in other) == self._bool:  return True
 #        self._failed(_msg(self.value, 'in', other))
+    @assertion_op
     def in_(self, other):
         if (self.value in other) == self._bool:  return True
         self._failed(_msg(self.value, 'in', other))
 
+    @assertion_op
     def not_in(self, other):  # DEPRECATED
         if (self.value not in other) == self._bool:  return True
         self._failed(_msg(self.value, 'not in', other))
 
+    @assertion_op
     def contains(self, other):
         if (other in self.value) == self._bool:  return True
         self._failed(_msg(other, 'in', self.value))
 
+    @assertion_op
     def not_contain(self, other):  # DEPRECATED
         if (other in self.value) == self._bool:  return True
         self._failed(_msg(other, 'not in', self.value))
 
+    @assertion_op
     def is_(self, other):
         if (self.value is other) == self._bool:  return True
         self._failed(_msg(self.value, 'is', other))
 
+    @assertion_op
     def is_not(self, other):
         if (self.value is not other) == self._bool:  return True
         self._failed(_msg(self.value, 'is not', other))
 
+    @assertion_op
     def is_a(self, other):
         if (isinstance(self.value, other)) == self._bool:  return True
         self._failed("isinstance(%r, %s)" % (self.value, other.__name__))
 
+    @assertion_op
     def is_not_a(self, other):  # DEPRECATED
         if (not isinstance(self.value, other)) == self._bool:  return True
         self._failed("not isinstance(%r, %s)" % (self.value, other.__name__))
 
+    @assertion_op
+    def hasattr(self, name):
+        if hasattr(self.value, name) == self._bool:  return True
+        self._failed("hasattr(%r, %r)" % (self.value, name))
+
+    @assertion_op
     def matches(self, pattern):
         if isinstance(pattern, type(re.compile('x'))):
             if bool(pattern.search(self.value)) == self._bool:  return True
@@ -182,6 +236,7 @@ class AssertionObject(object):
             if bool(re.search(pattern, self.value)) == self._bool:  return True
             self._failed("re.search(%r, %r)" % (pattern, self.value))
 
+    @assertion_op
     def not_match(self, pattern):  # DEPRECATED
         if isinstance(pattern, type(re.compile('x'))):
             if (not pattern.search(self.value)) == self._bool:  return True
@@ -190,33 +245,41 @@ class AssertionObject(object):
             if (not re.search(pattern, self.value)) == self._bool:  return True
             self._failed("not re.search(%r, %r)" % (pattern, self.value))
 
+    @assertion_op
     def is_file(self):
         if (os.path.isfile(self.value)) == self._bool:  return True
         self._failed('os.path.isfile(%r)' % self.value)
 
+    @assertion_op
     def is_not_file(self):  # DEPRECATED
         if (not os.path.isfile(self.value)) == self._bool:  return True
         self._failed('not os.path.isfile(%r)' % self.value)
 
+    @assertion_op
     def is_dir(self):
         if (os.path.isdir(self.value)) == self._bool:  return True
         self._failed('os.path.isdir(%r)' % self.value)
 
+    @assertion_op
     def is_not_dir(self):  # DEPRECATED
         if (not os.path.isdir(self.value)) == self._bool:  return True
         self._failed('not os.path.isdir(%r)' % self.value)
 
+    @assertion_op
     def exists(self):
         if (os.path.exists(self.value)) == self._bool:  return True
         self._failed('os.path.exists(%r)' % self.value)
 
+    @assertion_op
     def not_exist(self):  # DEPRECATED
         if (not os.path.exists(self.value)) == self._bool:  return True
         self._failed('not os.path.exists(%r)' % self.value)
 
+    @assertion_op
     def raises(self, exception_class, errmsg=None):
         return self._raise_or_not(exception_class, errmsg, self._bool)
 
+    @assertion_op
     def not_raise(self, exception_class=Exception):  # DEPRECATED
         return self._raise_or_not(exception_class, None, not self._bool)
 
@@ -230,10 +293,10 @@ class AssertionObject(object):
                 if not isinstance(ex, exception_class):
                     self._failed('%s%r is kind of %s' % (ex.__class__.__name__, ex.args, exception_class.__name__), depth=3)
                     #raise
-                if errmsg is None or str(ex) == errmsg:
+                if errmsg is None or str(ex) == errmsg:  # don't use ex2msg(ex)!
                     return
-                #self._failed("expected %r but got %r" % (errmsg, ex.message))
-                self._failed("%r == %r" % (str(ex), errmsg), depth=3)
+                #self._failed("expected %r but got %r" % (errmsg, str(ex)))
+                self._failed("%r == %r" % (str(ex), errmsg), depth=3)   # don't use ex2msg(ex)!
             self._failed('%s should be raised' % exception_class.__name__, depth=3)
         else:
             try:
@@ -249,15 +312,17 @@ ASSERTION_OBJECT = AssertionObject
 
 
 def ok(value):
-    return ASSERTION_OBJECT(value)
+    obj = ASSERTION_OBJECT(value, True)
+    obj._location = _get_location(1)
+    return obj
 
 def not_ok(value):
-    v = ok(value)
-    v._bool = False
-    return v
+    obj = ASSERTION_OBJECT(value, False)
+    obj._location = _get_location(1)
+    return obj
 
 
-class TestClassRunner(object):
+class TestRunner(object):
 
     def __init__(self, klass, reporter=None):
         self.klass = klass
@@ -328,27 +393,32 @@ class TestClassRunner(object):
         return count
 
 
-TEST_CLASS_RUNNER = TestClassRunner
+TEST_RUNNER = TestRunner
 
 
-def run(*classes):
-    class_list = []
-    pat_type = type(re.compile('x'))
+TARGET_PATTERN = '.*Test(Case)?$'
+
+def run(*targets):
+    if len(targets) == 0:
+        targets = (TARGET_PATTERN, )
+    target_list = []
+    rexp_type = type(re.compile('x'))
     vars = None
-    for arg in classes:
-        if _is_string(arg) or isinstance(arg, pat_type):
-            pattern = isinstance(arg, pat_type) and arg or re.compile(arg)
-            if vars is None: vars = sys._getframe(1).f_locals
-            class_list.extend( vars[k] for k in vars if pattern.match(k) )
-        elif _is_class(arg):
+    for arg in targets:
+        if _is_class(arg):
             klass = arg
-            class_list.append(klass)
+            target_list.append(klass)
+        elif _is_string(arg) or isinstance(arg, rexp_type):
+            rexp = _is_string(arg) and re.compile(arg) or arg
+            if vars is None: vars = sys._getframe(1).f_locals
+            klasses = [ vars[k] for k in vars if rexp.search(k) and _is_class(vars[k]) ]
+            target_list.extend(klasses)
         else:
             raise Exception("%r: not a class nor pattern string." % arg)
     #
     count = 0
-    for klass in class_list:
-        runner = TEST_CLASS_RUNNER(klass, REPORTER())
+    for klass in target_list:
+        runner = TEST_RUNNER(klass, REPORTER())
         count += runner.run()
     return count
 
@@ -448,11 +518,7 @@ class SimpleReporter(BaseReporter):
     def print_failed(self, obj, ex):
         OUT.write("f"); OUT.flush()
         self._write("Failed: %s()\n" % self._test_ident(obj))
-        self._write("  %s\n" % (ex.args or ['(no error message)'])[0])
-        if not ex.args:
-            import traceback
-            s = ''.join(traceback.format_exception(*sys.exc_info()))
-            sys.stderr.write("\033[0;31m*** debug: s=%s\033[0m\n" % (s))
+        self._write("  %s\n" % ex2msg(ex))
         file, line, func, text = self._get_location(ex)
         if file:
             #self._write("   %s:%s:  %s\n" % (file, line, text))
@@ -463,7 +529,7 @@ class SimpleReporter(BaseReporter):
     def print_error(self, obj, ex):
         OUT.write('E'); OUT.flush()
         self._write("ERROR: %s()\n" % self._test_ident(obj))
-        self._write("  %s: %s\n" % (ex.__class__.__name__, str(ex)))
+        self._write("  %s: %s\n" % (ex.__class__.__name__, ex2msg(ex)))
         #traceback.print_exc(file=sys.stdout)
         tb = traceback.extract_tb(sys.exc_info()[2])
         iter = tb.__iter__()
@@ -495,7 +561,7 @@ class OldStyleReporter(BaseReporter):
         OUT.write("[ok]\n")
 
     def print_failed(self, obj, ex):
-        OUT.write("[NG] %s\n" % str(ex))
+        OUT.write("[NG] %s\n" % ex2msg(ex))
         file, line, func, text = self._get_location(ex)
         if file:
             OUT.write("   %s:%s: %s\n" % (file, line, text))
@@ -503,7 +569,7 @@ class OldStyleReporter(BaseReporter):
             OUT.write(ex.diff)
 
     def print_error(self, obj, ex):
-        OUT.write("[ERROR] %s: %s\n" % (ex.__class__.__name__, str(ex)))
+        OUT.write("[ERROR] %s: %s\n" % (ex.__class__.__name__, ex2msg(ex)))
         #traceback.print_exc(file=sys.stdout)
         tb = traceback.extract_tb(sys.exc_info()[2])
         iter = tb.__iter__()
@@ -533,7 +599,7 @@ class TapStyleReporter(BaseReporter):
 
     def print_failed(self, obj, ex):
         OUT.write("not ok # %s\n" % self._test_ident(obj))
-        OUT.write("   #  %s\n" % ex.args[0])
+        OUT.write("   #  %s\n" % ex2msg(ex))
         file, line, func, text = self._get_location(ex)
         if file:
             OUT.write("   #  %s:%s:  %s\n" % (file, line, text))
@@ -542,7 +608,7 @@ class TapStyleReporter(BaseReporter):
 
     def print_error(self, obj, ex):
         OUT.write("ERROR  # %s\n" % self._test_ident(obj))
-        OUT.write("   #  %s: %s\n" % (ex.__class__.__name__, str(ex)))
+        OUT.write("   #  %s: %s\n" % (ex.__class__.__name__, ex2msg(ex)))
         #traceback.print_exc(file=sys.stdout)
         tb = traceback.extract_tb(sys.exc_info()[2])
         iter = tb.__iter__()
@@ -568,29 +634,13 @@ if os.environ.get('OKTEST_REPORTER'):
 ## helpers
 ##
 
-class Spec(object):
-
-    def __init__(self, desc):
-        self.desc = desc
-
-    def __enter__(self, *args):
-        pass
-
-    def __exit__(self, *args):
-        pass
-
-
-def spec(desc):
-    return Spec(desc)
-
-
 class _Context(object):
 
     def __enter__(self, *args):
         return self
 
     def __exit__(self, *args):
-        return self
+        return None
 
     def __call__(self, func, *args):
         self.__enter__()
@@ -634,6 +684,33 @@ class DummyDir(_Context):
         shutil.rmtree(self.path)
 
 
+class DummyValues(_Context):
+
+    def __init__(self, dictionary, items_=None, **kwargs):
+        self.dict = dictionary
+        self.items = {}
+        if isinstance(items_, dict):
+            self.items.update(items_)
+        if kwargs:
+            self.items.update(kwargs)
+
+    def __enter__(self):
+        self.original = d = {}
+        for k in self.items:
+            if k in self.dict:
+                d[k] = self.dict[k]
+        self.dict.update(self.items)
+        return self
+
+    def __exit__(self, *args):
+        for k in self.items:
+            if k in self.original:
+                self.dict[k] = self.original[k]
+            else:
+                del self.dict[k]
+        self.__dict__.clear()
+
+
 class Chdir(_Context):
 
     def __init__(self, dirname):
@@ -649,14 +726,61 @@ class Chdir(_Context):
         os.chdir(self.back_to)
 
 
+class Spec(_Context):
+
+    def __init__(self, desc):
+        self.desc = desc
+
+
+class Using(_Context):
+    """ex.
+         class MyTest(object):
+            pass
+         with oktest.Using(MyTest):
+            def test_1(self):
+              ok (1+1) == 2
+         if __name__ == '__main__':
+            oktest.run(MyTest)
+    """
+    def __init__(self, klass):
+        self.klass = klass
+
+    def __enter__(self):
+        self.locals = sys._getframe(1).f_locals
+        self.start_names = self.locals.keys()
+        if python3: self.start_names = list(self.start_names)
+        return self
+
+    def __exit__(self, *args):
+        curr_names = self.locals.keys()
+        diff_names = list(set(curr_names) - set(self.start_names))
+        for name in diff_names:
+            setattr(self.klass, name, self.locals[name])
+
+
 def dummy_file(filename, content):
     return DummyFile(filename, content)
 
 def dummy_dir(dirname):
     return DummyDir(dirname)
 
+def dummy_values(dictionary, items_=None, **kwargs):
+    return DummyValues(dictionary, items_, **kwargs)
+
+def dummy_attrs(object, items_=None, **kwargs):
+    return DummyValues(object.__dict__, items_, **kwargs)
+
+def dummy_environ_vars(**kwargs):
+    return DummyValues(os.environ, **kwargs)
+
 def chdir(path):
     return Chdir(path)
+
+def spec(desc):
+    return Spec(desc)
+
+def using(klass):
+    return Using(klass)
 
 
 if __name__ == '__main__':

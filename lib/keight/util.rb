@@ -23,14 +23,53 @@ module K8
     ESCAPE_HTML = {'&'=>'&amp;', '<'=>'&lt;', '>'=>'&gt;', '"'=>'&quot;', "'"=>'&039;'}
 
     def h(val)
-      val.to_s.gsub(/&<>"/) { ESCAPE_HTML[$&] }
+      val.to_s.gsub(/[&<>"]/) { ESCAPE_HTML[$&] }
     end
 
-    def quote_url
+    UNESCAPE_HTML = {'&amp;'=>'&amp', '&lt;'=>'<', '&gt;'=>'>', '&quot;'=>'"', '&039;'=>"'"}
+
+    def unescape_html(str)
+      str.to_s.gsub(/&(amp|lt|gt|quot|039);/) { UNESCAPE_HTML[$1] }
+    end
+
+    def quote_uri(str)
+      #str.gsub(/([^ a-zA-Z0-9_.-]+)/n) {
+      #  '%' + $1.unpack('H2' * $1.size).join('%').upcase
+      #}.tr(' ', '+')
+      str.gsub(/[^ a-zA-Z0-9_.-]+/n) {
+        '%' + $&.unpack('H2' * $&.size).join('%').upcase
+      }.tr(' ', '+')
+    end
+
+    def unquote_uri(str)
+      #str.tr('+', ' ').gsub(/((?:%[0-9a-fA-F]{2})+)/n) {
+      #  [$1.delete('%')].pack('H*')
+      #}
+      #str.tr('+', ' ').gsub(/((?:%[0-9a-fA-F][0-9a-fA-F])+)/n) {
+      #  [$1.delete('%')].pack('H*')
+      #}
+      str.tr('+', ' ').gsub(/(?:%[0-9a-fA-F][0-9a-fA-F])+/n) {
+        [$&.delete('%')].pack('H*')
+      }
+    end
+
+    def parse_query_string(query_string)
+      params = {}
+      (query_string || '').split(/[&;]/n).each do |s|
+        k, v = s.split(/=/, 2)
+        k = unquote_uri(k) unless k =~ /\A[-\.\w]+\z/
+        v = unquote_uri(v) unless k =~ /\A[-\.\w]+\z/
+        if k =~ /\[\]\z/
+          (params[k] ||= []) << v
+        else
+          params[k] = v
+        end
+      end
+      params
     end
 
     def hash2qs(hash)
-      hash.collect {|k, v| "#{quote_url(k.to_s)}=#{quote_url(v.to_s)}" }.join('&')
+      hash.collect {|k, v| "#{quote_uri(k.to_s)}=#{quote_uri(v.to_s)}" }.join('&')
     end
 
     def options2hash(options)

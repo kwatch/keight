@@ -179,44 +179,67 @@ module K8
   end
 
 
+  module ControllerAnnotations
+
+    protected
+
+    def GET(path, *options)
+      @_metadata = ActionMetadata.new(self, :GET, path, options)
+    end
+
+    def POST(path, *options)
+      @_metadata = ActionMetadata.new(self, :POST, path, options)
+    end
+
+    def PUT(path, *options)
+      @_metadata = ActionMetadata.new(self, :PUT, path, options)
+    end
+
+    def DELETE(path, *options)
+      @_metadata = ActionMetadata.new(self, :DELETE, path, options)
+    end
+
+    def HEAD(path, *options)
+      @_metadata = ActionMetadata.new(self, :HEAD, path, options)
+    end
+
+    def OPTIONS(path, *options)
+      @_metadata = ActionMetadata.new(self, :OPTIONS, path, options)
+    end
+
+    def TRACE(path, *options)
+      @_metadata = ActionMetadata.new(self, :TRACE, path, options)
+    end
+
+    def ALL(path, *options)
+      @_metadata = ActionMetadata.new(self, :ALL, path, options)
+    end
+
+    private
+
+    def method_added(method_name)
+      #: if @_metadata is not set then do nothing.
+      #: if @_metadata is set...
+      if (md = @_metadata)
+        #: set action_method and action_name to metadata.
+        md.action_method = method_name
+        md.action_name   = method_name.to_s.sub(/\Ado_/, '').intern
+        #: register metadata into @_actions.
+        @_actions[md.action_name] = md
+        #: map path_pattern, request_method, and action_method to @_router.
+        @_router.map(md.path_pattern, md.request_method => method_name)
+        #: clear @_metadata.
+        @_metadata = nil
+      end
+    end
+
+  end
+
+
   class Controller < BaseController
 
     def actions
       self.class.actions
-    end
-
-    protected
-
-    def self.GET(path, *options)
-      @_metadata = ActionMetadata.new(self, :GET, path, options)
-    end
-
-    def self.POST(path, *options)
-      @_metadata = ActionMetadata.new(self, :POST, path, options)
-    end
-
-    def self.PUT(path, *options)
-      @_metadata = ActionMetadata.new(self, :PUT, path, options)
-    end
-
-    def self.DELETE(path, *options)
-      @_metadata = ActionMetadata.new(self, :DELETE, path, options)
-    end
-
-    def self.HEAD(path, *options)
-      @_metadata = ActionMetadata.new(self, :HEAD, path, options)
-    end
-
-    def self.OPTIONS(path, *options)
-      @_metadata = ActionMetadata.new(self, :OPTIONS, path, options)
-    end
-
-    def self.TRACE(path, *options)
-      @_metadata = ActionMetadata.new(self, :TRACE, path, options)
-    end
-
-    def self.ALL(path, *options)
-      @_metadata = ActionMetadata.new(self, :ALL, path, options)
     end
 
     private
@@ -237,22 +260,7 @@ module K8
       end
     end
 
-    def self.method_added(method_name)
-      #: if @_metadata is not set then do nothing.
-      #: if @_metadata is set...
-      if (md = @_metadata)
-        #: set action_method and action_name to metadata.
-        md.action_method = method_name
-        md.action_name   = method_name.to_s.sub(/\Ado_/, '').intern
-        #: register metadata into @_actions.
-        @_actions[md.action_name] = md
-        #: map path_pattern, request_method, and action_method to @_router.
-        @_router.map(md.path_pattern, md.request_method => method_name)
-        #: clear @_metadata.
-        @_metadata = nil
-      end
-    end
-
+    extend ControllerAnnotations
 
   end
 

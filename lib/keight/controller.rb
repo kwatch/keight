@@ -6,6 +6,8 @@
 ### $License: MIT License $
 ###
 
+require 'annotation'
+
 
 module K8
 
@@ -180,57 +182,53 @@ module K8
 
 
   module ControllerAnnotations
+    extend Annotation
 
-    protected
-
-    def GET(path, *options)
-      @_metadata = ActionMetadata.new(self, :GET, path, options)
+    def GET(method_name, path, *options)
+      _new_action_method(method_name, :GET, path, options)
     end
 
-    def POST(path, *options)
-      @_metadata = ActionMetadata.new(self, :POST, path, options)
+    def POST(method_name, path, *options)
+      _new_action_method(method_name, :POST, path, options)
     end
 
-    def PUT(path, *options)
-      @_metadata = ActionMetadata.new(self, :PUT, path, options)
+    def PUT(method_name, path, *options)
+      _new_action_method(method_name, :PUT, path, options)
     end
 
-    def DELETE(path, *options)
-      @_metadata = ActionMetadata.new(self, :DELETE, path, options)
+    def DELETE(method_name, path, *options)
+      _new_action_method(method_name, :DELETE, path, options)
     end
 
-    def HEAD(path, *options)
-      @_metadata = ActionMetadata.new(self, :HEAD, path, options)
+    def HEAD(method_name, path, *options)
+      _new_action_method(method_name, :HEAD, path, options)
     end
 
-    def OPTIONS(path, *options)
-      @_metadata = ActionMetadata.new(self, :OPTIONS, path, options)
+    def OPTIONS(method_name, path, *options)
+      _new_action_method(method_name, :OPTIONS, path, options)
     end
 
-    def TRACE(path, *options)
-      @_metadata = ActionMetadata.new(self, :TRACE, path, options)
+    def TRACE(method_name, path, *options)
+      _new_action_method(method_name, :TRACE, path, options)
     end
 
-    def ALL(path, *options)
-      @_metadata = ActionMetadata.new(self, :ALL, path, options)
+    def ALL(method_name, path, *options)
+      _new_action_method(method_name, :ALL, path, options)
     end
+
+    annotation :GET, :POST, :PUT, :DELETE, :HEAD, :OPTIONS, :TRACE, :ALL
 
     private
 
-    def method_added(method_name)
-      #: if @_metadata is not set then do nothing.
-      #: if @_metadata is set...
-      if (md = @_metadata)
-        #: set action_method and action_name to metadata.
-        md.action_method = method_name
-        md.action_name   = method_name.to_s.sub(/\Ado_/, '').intern
-        #: register metadata into @_actions.
-        @_actions[md.action_name] = md
-        #: map path_pattern, request_method, and action_method to @_router.
-        @_router.map(md.path_pattern, md.request_method => method_name)
-        #: clear @_metadata.
-        @_metadata = nil
-      end
+    def _new_action_method(method_name, req_method, path, options)
+      md = ActionMetadata.new(self, req_method, path, options)
+      #: set action_method and action_name to metadata.
+      md.action_method = method_name
+      md.action_name   = method_name.to_s.sub(/\Ado_/, '').intern
+      #: register metadata into @_actions.
+      @_actions[md.action_name] = md
+      #: map path_pattern, request_method, and action_method to @_router.
+      @_router.map(md.path_pattern, md.request_method => method_name)
     end
 
   end

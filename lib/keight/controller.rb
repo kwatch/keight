@@ -61,22 +61,12 @@ module K8
     def initialize(request=nil, response=nil)
       @_request = request
       @_response = response
-      @_context = {}
     end
 
     def request;  @_request;  end
     def response; @_response; end
     #def request=(obj);   @_request = obj;   end
     #def response=(obj);  @_response = obj;  end
-    def context;  @_context;  end
-
-    def [](name)
-      @_context[name]
-    end
-
-    def []=(name, value)
-      @_context[name] = value
-    end
 
     def handle
       before()

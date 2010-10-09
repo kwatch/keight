@@ -13,6 +13,9 @@ module K8
   module Debug
 
 
+    module_function
+
+
     def dummy_env(method='GET', path='/', kwargs={})
       require 'stringio' unless defined?(StringIO)
       #: if qs is dict then converts it into query string

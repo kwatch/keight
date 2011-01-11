@@ -35,11 +35,12 @@ module K8
       case @method
       when :GET, :HEAD
         @params, @files = parse_query_string()
-      when :POST, :PUT, :DELETE
-        @params, @files = parse_multipart()
       else
-        @params = {}
-        @files = {}
+        if @env['CONTENT_TYPE'] =~ /\Amultipart\/formdata\b/
+          @params, @files = parse_multipart()
+        else
+          @params, @files = parse_query_string()
+        end
       end
     end
 

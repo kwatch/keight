@@ -88,26 +88,7 @@ module K8
     end
 
     def handle_request
-      req = @_request
-      req_path = req.path
-      base_path = self.class.base_path
-      if base_path && ! base_path.empty?
-        req_path.start_with?(base_path)  or
-        req_path.start_with?(base_path)  or
-          raise "assertion: #{req_path.inspect}.start_with?(#{base_path.inspect}): failed."
-        req_path = req_path[base_path.length..-1]
-      end
-      mapped, args = self.class.router.route(req_path, req.method)
-      if ! mapped
-        mapped.nil? ? http_404_not_found() : http_405_method_not_allowed()
-      elsif mapped == '/'
-        qs = req.query_string
-        location = qs && ! qs.empty? ? "#{req.path}/?#{qs}" : "#{req.path}/"
-        redirect_permanently_to(location)
-      else
-        action_method = mapped
-        return __send__(action_method, *args)
-      end
+      raise NotImplementedError.new("#{self.class.name}#handle_request(): not implemented yet.")
     end
 
     def handle_http_exception(ex)
@@ -119,53 +100,7 @@ module K8
     def handle_error(ex)
       @_response.status_code = 500
       @_response.content_type = 'text/html'
-      buf = ""
-      buf << "<h2>#{STATUS_CODES[500]}</h2>\n"
-      buf << "<pre class=\"exception\">"
-      _print_exception(ex, buf)
-      buf << "</pre>\n"
-      return buf
-    end
-
-    def _print_exception(ex, buf="")   # :nodoc:
-      arr = ex.backtrace()
-      buf << "<b>" << K8::Util.h("#{arr[0]}: #{ex.message} (#{ex.class.name})") << "</b>\n"
-      block = proc {|s| buf << "        from #{K8::Util.h(s)}\n" }
-      max, n = 20, 10
-      if arr.length <= max
-        arr[1..-1].each(&block)
-      else
-        arr[1..(max-n)].each(&block)
-        buf << "           ...\n"
-        arr[-n..-1].each(&block)
-      end
-      return buf
-    end
-
-    def redirect_to(location)
-      @_response.add_header('Location', location)
-      raise HttpException.new(302, "redirect to #{location}")
-    end
-
-    def redirect_permanently_to(location)
-      @_response.add_header('Location', location)
-      raise HttpException.new(301, "redirect permanently to #{location}")
-    end
-
-    def http_403_forbidden(message=nil)
-      raise HttpException.new(403, message || "Forbiden.")
-    end
-
-    def http_404_not_found(url=nil)
-      raise HttpException.new(404, "#{url || @_request.path}: not found.")
-    end
-
-    def http_405_method_not_allowed(method=nil)
-      raise HttpException.new(405, "#{method || @_request.method}: method not allowed.")
-    end
-
-    def validation_failed
-      @_response.status_code = 422    # Unprocessable Entity
+      return "<h2>#{STATUS_CODES[500]}</h2>"
     end
 
   end
@@ -225,6 +160,75 @@ module K8
 
 
   class Controller < BaseController
+
+    def handle_request
+      req = @_request
+      req_path = req.path
+      base_path = self.class.base_path
+      if base_path && ! base_path.empty?
+        req_path.start_with?(base_path)  or
+          raise "assertion: #{req_path.inspect}.start_with?(#{base_path.inspect}): failed."
+        req_path = req_path[base_path.length..-1]
+      end
+      mapped, args = self.class.router.route(req_path, req.method)
+      if ! mapped
+        mapped.nil? ? http_404_not_found() : http_405_method_not_allowed()
+      elsif mapped == '/'
+        qs = req.query_string
+        location = qs && ! qs.empty? ? "#{req.path}/?#{qs}" : "#{req.path}/"
+        redirect_permanently_to(location)
+      else
+        action_method = mapped
+        return __send__(action_method, *args)
+      end
+    end
+
+    def handle_error(ex)
+      super
+      arr = ex.backtrace()
+      buf = ""
+      buf << "<h2>#{STATUS_CODES[500]}</h2>\n"
+      buf << "<pre class=\"exception\">"
+      buf << "<b>" << K8::Util.h("#{arr[0]}: #{ex.message} (#{ex.class.name})") << "</b>\n"
+      block = proc {|s| buf << "        from #{K8::Util.h(s)}\n" }
+      max, n = 20, 10
+      if arr.length <= max
+        arr[1..-1].each(&block)
+      else
+        arr[1..(max-n)].each(&block)
+        buf << "           ...\n"
+        arr[-n..-1].each(&block)
+      end
+      return buf
+      buf << "</pre>\n"
+      return buf
+    end
+
+    def redirect_to(location)
+      @_response.add_header('Location', location)
+      raise HttpException.new(302, "redirect to #{location}")
+    end
+
+    def redirect_permanently_to(location)
+      @_response.add_header('Location', location)
+      raise HttpException.new(301, "redirect permanently to #{location}")
+    end
+
+    def http_403_forbidden(message=nil)
+      raise HttpException.new(403, message || "Forbiden.")
+    end
+
+    def http_404_not_found(url=nil)
+      raise HttpException.new(404, "#{url || @_request.path}: not found.")
+    end
+
+    def http_405_method_not_allowed(method=nil)
+      raise HttpException.new(405, "#{method || @_request.method}: method not allowed.")
+    end
+
+    def validation_failed
+      @_response.status_code = 422    # Unprocessable Entity
+    end
 
     def actions
       self.class.actions

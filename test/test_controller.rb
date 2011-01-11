@@ -35,35 +35,35 @@ class ControllerTest
     end
   end
 
-  def test_self_method_added
-    spec "if @_metadata is not set then do nothing." do
-      Dummy1.class_eval do
-        def hello; return "Hello"; end
-      end
-      ok_(Dummy1.actions.instance_variables) == ['@controller_class']
-    end
-    spec "if @_metadata is set..." do
-      Dummy1.class_eval do
-        @_metadata = K8::ActionMetadata.new(Dummy1, :SOS, '/sos', [])
-        def do_hello2; return "Hello2"; end
-      end
-      spec "register metadata into @_actions." do
-        ok_(Dummy1.actions.instance_variables.sort) == ['@controller_class', '@hello2'].sort
-        ok_(Dummy1.actions.hello2).is_a?(K8::ActionMetadata)
-      end
-      spec "map path_pattern, request_method, and action_method to @_router." do
-        ok_(Dummy1.router.route('/sos', :SOS)) == [:do_hello2, []]
-      end
-      spec "set action_method and action_name to metadata." do
-        metadata = Dummy1.actions.hello2
-        ok_(metadata.action_method) == :do_hello2
-        ok_(metadata.action_name) == :hello2
-      end
-      spec "clear @_metadata." do
-        ok_(Dummy1.class_eval { @_metadata }) == nil
-      end
-    end
-  end
+#   def test_self_method_added
+#     spec "if @_metadata is not set then do nothing." do
+#       Dummy1.class_eval do
+#         def hello; return "Hello"; end
+#       end
+#       ok_(Dummy1.actions.instance_variables) == ['@controller_class']
+#     end
+#     spec "if @_metadata is set..." do
+#       Dummy1.class_eval do
+#         @_metadata = K8::ActionMetadata.new(Dummy1, :SOS, '/sos', [])
+#         def do_hello2; return "Hello2"; end
+#       end
+#       spec "register metadata into @_actions." do
+#         ok_(Dummy1.actions.instance_variables.sort) == ['@controller_class', '@hello2'].sort
+#         ok_(Dummy1.actions.hello2).is_a?(K8::ActionMetadata)
+#       end
+#       spec "map path_pattern, request_method, and action_method to @_router." do
+#         ok_(Dummy1.router.route('/sos', :SOS)) == [:do_hello2, []]
+#       end
+#       spec "set action_method and action_name to metadata." do
+#         metadata = Dummy1.actions.hello2
+#         ok_(metadata.action_method) == :do_hello2
+#         ok_(metadata.action_name) == :hello2
+#       end
+#       spec "clear @_metadata." do
+#         ok_(Dummy1.class_eval { @_metadata }) == nil
+#       end
+#     end
+#   end
 
 
   class Dummy2 < K8::Controller
@@ -116,7 +116,7 @@ class ControllerTest
   end
 
   def _c3(*args)
-    env = K8::Util::dummy_env(*args)
+    env = K8::Debug::dummy_env(*args)
     return Dummy3.new(K8::Request.new(env), K8::Response.new)
   end
 

@@ -6,6 +6,9 @@
 ### $License: MIT License $
 ###
 
+
+task :default => :test
+
 desc "do test"
 task :test do |t|
   for fname in Dir.glob('test/test_*.rb')

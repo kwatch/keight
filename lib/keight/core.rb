@@ -35,22 +35,31 @@ module K8
     def parse_request
       case @method
       when :GET, :HEAD
-        @params, @files = parse_query_string()
+        @params = parse_query_string(@query_string)
+        @files = {}
       else
+        stdin = @env['rack.input'] || $stdin
         if @env['CONTENT_TYPE'] =~ /\Amultipart\/formdata\b/
-          @params, @files = parse_multipart()
+          @params, @files = parse_multipart(stdin, @content_length)
         else
-          @params, @files = parse_query_string()
+          content = @content_length > 0 ? stdin.read(@content_length) : stdin.read()
+          @params = parse_query_string(content)
+          @files = {}
         end
       end
     end
 
-    def parse_query_string
-      return K8::Util::parse_query_string(@query_string || ''), {}
+    def parse_query_string(qs)
+      ret = K8::Util::parse_query_string(qs)
+      return ret
     end
 
     def parse_multipart
-      return K8::MultPart::parse(@input)
+      @env['CONTENT_TYPE'] =~ /boundary=(?:"([^";,]+?)"|([^;,\s]+))/  or
+        raise "Boundary not found for multipart data."
+      boundary = $1 || $2
+      content_length = Integer(@env['CONTENT_LENGTH'])
+      return K8::MultPart::parse(@input, boundary, content_length)
     end
 
   end

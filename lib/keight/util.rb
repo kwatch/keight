@@ -15,18 +15,17 @@ module K8
 
     module_function
 
-
     def escape_html(val)
-      val.to_s.gsub(/&/, '&amp;').gsub(/</, '&lt;').gsub(/>/, '&gt;').gsub(/"/, '&quot;')#.gsub(/'/, '&039;')
+      val.to_s.gsub(/&/, '&amp;').gsub(/</, '&lt;').gsub(/>/, '&gt;').gsub(/"/, '&quot;').gsub(/'/, '&#039;')
     end
 
-    ESCAPE_HTML = {'&'=>'&amp;', '<'=>'&lt;', '>'=>'&gt;', '"'=>'&quot;', "'"=>'&039;'}
+    ESCAPE_HTML = {'&'=>'&amp;', '<'=>'&lt;', '>'=>'&gt;', '"'=>'&quot;', "'"=>'&#039;'}
 
     def h(val)
       val.to_s.gsub(/[&<>"]/) { ESCAPE_HTML[$&] }
     end
 
-    UNESCAPE_HTML = {'&amp;'=>'&amp', '&lt;'=>'<', '&gt;'=>'>', '&quot;'=>'"', '&039;'=>"'"}
+    UNESCAPE_HTML = {'&amp;'=>'&amp', '&lt;'=>'<', '&gt;'=>'>', '&quot;'=>'"', '&#039;'=>"'"}
 
     def unescape_html(str)
       str.to_s.gsub(/&(amp|lt|gt|quot|039);/) { UNESCAPE_HTML[$1] }

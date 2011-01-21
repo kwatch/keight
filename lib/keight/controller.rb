@@ -94,7 +94,15 @@ module K8
     def handle_http_exception(ex)
       @_response.status_code = ex.status_code
       @_response.content_type = 'text/html'
-      return "<h2>#{STATUS_CODES[ex.status_code]}</h2>\n<p>#{K8::Util.h(ex.message)}</p>"
+      return <<END
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>#{STATUS_CODES[ex.status_code]}</title>
+</head><body>
+<h1>#{STATUS_CODES[ex.status_code]}</h1>
+<p>#{K8::Util.h(ex.message)}</p>
+</body></html>
+END
     end
 
     def handle_error(ex)

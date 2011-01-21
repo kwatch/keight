@@ -13,7 +13,7 @@ module K8
   class HttpException < Exception
 
     def initialize(status_code, message=nil)
-      super(message || "#{status_code}: #{'TODO'}")
+      super(message || STATUS_CODE[status_code])
       @status_code = status_code
     end
 

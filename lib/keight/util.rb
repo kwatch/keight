@@ -125,4 +125,48 @@ module K8
   end
 
 
+  class PrototypeObject
+
+    def initialize(prototype=nil)
+      @__proto__ = prototype
+    end
+
+    attr_accessor :__proto__
+
+    def method_missing(method_name, *args)
+      method_name.to_s =~ /([=!?])?\z/
+      name = $`
+      ch = $1
+      case ch
+      when nil, '?'
+        if instance_variable_defined?("@#{name}")
+          return instance_variable_get("@#{name}")
+        elsif @__proto__
+          return @__proto__.__send__(method_name, *args)
+        else
+          return super(method_name, *args)
+        end
+      when '='
+        instance_variable_set("@#{name}", args[0])
+        eval "class << self
+                def #{name}; @#{name}; end
+              end"
+      when '!'
+        if instance_variable_defined?("@#{name}")
+          return instance_variable_get("@#{name}")
+        else
+          begin
+            return @__proto__.__send__(method_name, *args)
+          rescue NameError
+            return nil
+          end
+        end
+      else
+        raise "assertion failed: ch=#{ch.inspect}"
+      end
+    end
+
+  end
+
+
 end

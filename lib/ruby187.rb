@@ -9,6 +9,10 @@ if RUBY_VERSION < '1.8.7'
       self
     end
 
+    def instance_variable_defined?(name)
+      instance_variables().include?(name.to_s)
+    end unless Object.new.respond_to?('instance_variable_defined?')
+
   end
 
 

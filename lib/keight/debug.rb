@@ -25,7 +25,6 @@ module K8
       body = kwargs[:body]
       body = hash2qs(body) if body.is_a?(Hash)
       #: sets keys and values automatically
-      require 'stringio'
       method = method.to_s
       env = {
         'REQUEST_METHOD'    => method,
@@ -40,7 +39,7 @@ module K8
         'SERVER_PROTOCOL'   => 'HTTP/1.0',
         'rack.input'        => StringIO.new(body || ''),
         'rack.errors'       => StringIO.new(),
-        'rack.version'      => [1, 0],
+        'rack.version'      => [1, 1],
         'rack.run_once'     => true,
         'rack.url_scheme'   => 'http',
         'rack.multithread'  => false,
@@ -52,7 +51,9 @@ module K8
       #: if POST and CONTENT_TYPE is already set then don't change it
       env['CONTENT_TYPE'] ||= 'application/x-www-form-urlencoded' if method == 'POST'
       #: if keyword args specified then adds them into env
-      env.update(kwargs)
+      kwargs.each_pair do |k, v|
+        env[k] = v if k.is_a?(String)
+      end
       #: returns dict object
       return env
     end

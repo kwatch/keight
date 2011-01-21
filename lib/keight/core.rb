@@ -21,12 +21,13 @@ module K8
       @method       = (s = env['REQUEST_METHOD']) ? s.intern : s
       @query_string = env['QUERY_STRING']
       @uri          = env['REQUEST_URI']
-      @path         = (@uri || '').sub(/\?.*/, '')
+      @path         = (@uri || '').split(/\?/, 2)[0]
+      @content_length = (env['CONTENT_LENGTH'] || 0).to_i
       #
       parse_request()
     end
 
-    attr_accessor :env, :method, :query_string, :uri, :path
+    attr_accessor :env, :method, :query_string, :uri, :path, :content_length
     attr_accessor :params, :files
 
     private

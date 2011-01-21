@@ -9,8 +9,11 @@
 
 require 'ruby187' if RUBY_VERSION < '1.8.7'
 
+require 'keight/assertion'
+require 'keight/config'
 require 'keight/core'
 require 'keight/http'
 require 'keight/router'
 require 'keight/controller'
 require 'keight/util'
+require 'keight/application'

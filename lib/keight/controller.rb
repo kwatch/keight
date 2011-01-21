@@ -179,7 +179,7 @@ END
         req_path = req_path[urlpath.length..-1]
       end
       mapped, args = self.class.router.route(req_path, req.method)
-      if ! mapped
+      if ! mapped    # nil means 404 not found, false means 405 not allowed
         mapped.nil? ? http_404_not_found() : http_405_method_not_allowed()
       elsif mapped == '/'
         qs = req.query_string
@@ -242,6 +242,18 @@ END
       self.class.actions
     end
 
+    def render(template_name, layout=true)
+      raise NotImplementedError.new("#{self.class.name}#render(): not implemented yet.")
+    end
+
+    def self.init(__file__)
+      @dirpath = File.expand_path(File.dirname(__file__))
+    end
+
+    class << self
+      attr_accessor :dirpath
+    end
+
     private
 
     def self.inherited(subclass)
@@ -252,15 +264,29 @@ END
         #: subclass will be set Actions object.
         @_actions = Actions.new(subclass)
         def self.actions;  @_actions;  end
-        #: subclass will be defined base_path() method.
-        @_base_path = nil
-        def self.base_path;  @_base_path;  end
-        def self.base_path=(path);  @_base_path = path;  end
-        def self.mount_to(path);    @_base_path = path;  end
+        #: subclass will be defined urlpath() method.
+        @_urlpath = nil
+        def self.urlpath;  @_urlpath;  end
+        def self.urlpath=(path);  @_urlpath = path;  end
+        def self.mount_to(path);  @_urlpath = path;  end
       end
     end
 
     extend ControllerAnnotations
+
+    def self.url_map(path_pattern, hash)
+      @_router.map(path_pattern, hash)
+    end
+
+    def dputs(message)
+      location = caller(1)[0]
+      (@_debug_messages ||= []) << [location, message]
+    end
+
+    def dp(obj)
+      location = caller(1)[0]
+      (@_debug_messages ||= []) << [location, obj.inspect]
+    end
 
   end
 

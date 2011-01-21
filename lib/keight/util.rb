@@ -7,6 +7,9 @@
 ###
 
 
+require 'keight/params'
+
+
 module K8
 
 
@@ -52,33 +55,65 @@ module K8
       }
     end
 
-    def parse_query_string(query_string)
-      params = {}
+    def parse_query_string(query_string, parse_dotted=false)
+      params = Params.new
       (query_string || '').split(/[&;]/n).each do |s|
-        k, v = s.split(/=/, 2)
-        k = unquote_uri(k) unless k =~ /\A[-\.\w]+\z/
-        v = unquote_uri(v) unless k =~ /\A[-\.\w]+\z/
-        if k =~ /\[\]\z/
-          (params[k] ||= []) << v
+        k, v = s.split(/\=/, 2)
+        #k = unquote_uri(k) unless k =~ /\A[-\.\w]+\z/
+        #v = unquote_uri(v) unless k =~ /\A[-\.\w]+\z/
+        k = unquote_uri(k) if k =~ /%|\+/
+        v = unquote_uri(v) if v =~ /%|\+/
+        if parse_dotted
+          normalize_dotted_params(params, k, v)
         else
-          params[k] = v
+          if k =~ /\[\]\z/
+            (params[k] ||= []) << v
+          else
+            params[k] = v
+          end
         end
       end
       params
     end
 
-    def hash2qs(hash)
-      hash.collect {|k, v| "#{quote_uri(k.to_s)}=#{quote_uri(v.to_s)}" }.join('&')
+    def normalize_dotted_params(params, k, v)
+      items = k.split(/\./)
+      d = params  # dictionary
+      items[0...-1].each do |item|
+        if d[item].is_a?(Hash)
+          d = d[item]
+        else
+          d = d[item] = {}
+        end
+      end
+      item = items[-1]
+      #if item.end_with?('[]')
+      if item =~ /\[\]\z/
+        #item = item[0...-2]
+        if d[item].is_a?(Array)
+          d[item] << v
+        else
+          d[item] = [v]
+        end
+      else
+        d[item] = v
+      end
     end
 
+    ## ex. hash2qs(:a=>1, :b=>2)  #=> "a=1&b=2")
+    def hash2qs(hash, sep='&')
+      hash.collect {|k, v| "#{quote_uri(k.to_s)}=#{quote_uri(v.to_s)}" }.join(sep)
+    end
+
+    ## ex. options2hash(:required, :type=>'str')  #=> {:required=>true, :type=>"str"}
     def options2hash(options)
       case options
       when Array
-        hash = {}
-        options.each {|v| v.is_a?(Hash) ? hash.update(v) : (hash[v] = true) }
+        hash = options[-1].is_a?(Hash) ? options.pop : {}
+        options.each {|k| hash[k] = true }
         return hash
       when Hash
-        return hash
+        return options
       when nil
         return {}
       else

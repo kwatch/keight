@@ -26,7 +26,7 @@ module K8
     alias method request_method
 
     def path(*args)
-      @path_format ||= "#{@controller_class.base_path}#{@path_pattern.gsub(/<.*?>/, '%s')}"
+      @path_format ||= "#{@controller_class.urlpath}#{@path_pattern.gsub(/<.*?>/, '%s')}"
       return @path_format % args
     end
 
@@ -172,11 +172,11 @@ END
     def handle_request
       req = @_request
       req_path = req.path
-      base_path = self.class.base_path
-      if base_path && ! base_path.empty?
-        req_path.start_with?(base_path)  or
-          raise "assertion: #{req_path.inspect}.start_with?(#{base_path.inspect}): failed."
-        req_path = req_path[base_path.length..-1]
+      urlpath = self.class.urlpath
+      if urlpath && ! urlpath.empty?
+        req_path.start_with?(urlpath)  or
+          raise "assertion: #{req_path.inspect}.start_with?(#{urlpath.inspect}): failed."
+        req_path = req_path[urlpath.length..-1]
       end
       mapped, args = self.class.router.route(req_path, req.method)
       if ! mapped

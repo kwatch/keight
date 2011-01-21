@@ -130,10 +130,26 @@ class ControllerTest
     ok_(_c3('GET', '/books/123/edit').handle)  == 'do_edit("123")'
     #
     c = _c3('GET', '/books/new1')
-    ok_(c.handle) == "<h2>404 Not Found</h2>\n<p>/books/new1: not found.</p>"
+    ok_(c.handle) == <<'END'
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>404 Not Found</title>
+</head><body>
+<h1>404 Not Found</h1>
+<p>/books/new1: not found.</p>
+</body></html>
+END
     ok_(c.response.status_code) == 404
     c = _c3('POST', '/books/123')
-    ok_(c.handle) == "<h2>405 Method Not Allowed</h2>\n<p>POST: method not allowed.</p>"
+    ok_(c.handle) == <<'END'
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>405 Method Not Allowed</title>
+</head><body>
+<h1>405 Method Not Allowed</h1>
+<p>POST: method not allowed.</p>
+</body></html>
+END
     ok_(c.response.status_code) == 405
     c = _c3('GET', '/books/raise_error')
     ok_(c.handle) =~ %r|^<h2>500 Internal Server Error</h2>$|

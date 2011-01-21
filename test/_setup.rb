@@ -12,3 +12,4 @@ $: << "#{File.dirname(File.dirname(__FILE__))}/lib"
 
 require 'oktest'
 require 'keight'
+require 'keight/debug'

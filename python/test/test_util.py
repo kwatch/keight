@@ -12,6 +12,7 @@ import sys, re
 
 import oktest
 from oktest import ok, not_ok, spec
+from oktest.helper import using
 import keight as k8
 
 
@@ -21,7 +22,7 @@ class UtilsTest(object):
     QUOTED1 = 'http%3A//example.com/%7Euser/%3Fx%5B%5D%3Db'
 
 
-with oktest.using(UtilsTest):
+with using(UtilsTest):
 
     def test_quote(self):
         with spec("converts symbols into '%XX'"):

@@ -11,6 +11,7 @@ from __future__ import with_statement
 import sys, re
 import oktest
 from oktest import ok, not_ok, spec
+from oktest.helper import using
 import keight as k8
 
 
@@ -18,7 +19,7 @@ class DebugTest(object):
     pass
 
 
-with oktest.using(DebugTest):
+with using(DebugTest):
 
     def test_dummy_env(self):
         env = k8.dummy_env('GET', '/hello', {'x':1})

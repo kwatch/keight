@@ -12,6 +12,7 @@ import sys, re
 
 import oktest
 from oktest import ok, not_ok, spec
+from oktest.helper import using
 import keight as k8
 
 
@@ -19,7 +20,7 @@ class CommonUtilsTest(object):
     pass
 
 
-with oktest.using(CommonUtilsTest):
+with using(CommonUtilsTest):
 
     def test_new_cycle(self):
         with spec("returns cycle object"):

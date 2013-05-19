@@ -16,6 +16,7 @@ except ImportError:
 
 import oktest
 from oktest import ok, not_ok, run, spec
+from oktest.helper import dummy_attrs
 import keight as k8
 
 
@@ -175,7 +176,7 @@ class FileStoreSessionTest(_SessionTest):
 
     def test___init__(self):
         with spec("if session file doesn't exist then session id is not restored from cookie and values is empty"):
-            with oktest.dummy_attrs(k8.config, logging=False):
+            with dummy_attrs(k8.config, logging=False):
                 not_ok (self.FPATH).is_file()
                 sess = self._sess(HTTP_COOKIE=self.HTTP_COOKIE)
                 ok (sess.id) != self.SID
@@ -199,7 +200,7 @@ class FileStoreSessionTest(_SessionTest):
 
     def test_save(self):
         with spec("[b] if k8.config.session_file_dir is not specified then raise ValueError"):
-            with oktest.dummy_attrs(k8.config, session_file_dir=''):
+            with dummy_attrs(k8.config, session_file_dir=''):
                 assert k8.config.session_file_dir == ''
                 sess = k8.FileStoreSession(*_r())
                 def f(): sess.save()
@@ -244,7 +245,7 @@ class FileStoreSessionTest(_SessionTest):
 
     def test__get_fpath(self):
         with spec("[p] if k8.config.session_file_dir is not specified then raise ValueError"):
-            with oktest.dummy_attrs(k8.config, session_file_dir=''):
+            with dummy_attrs(k8.config, session_file_dir=''):
                 assert k8.config.session_file_dir == ''
                 sess = k8.FileStoreSession(*_r())
                 def f(): sess._get_fpath('12345')

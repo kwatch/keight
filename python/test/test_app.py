@@ -2,7 +2,8 @@
 from __future__ import with_statement
 
 import sys, os, re
-from oktest import ok, not_ok, run, spec, dummy_environ_vars
+from oktest import ok, not_ok, run, spec
+from oktest.helper import dummy_environ_vars
 import keight as k8
 from keight import MainApplication, Handler, Router, dummy_env, Request, Response
 

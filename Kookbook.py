@@ -17,22 +17,22 @@ test_files = [
 
 
 def _check_test_files():
-    actual_test_files = [x.replace('test/', '') for x in glob2('test/test_*.py')]
+    actual_test_files = [ x.replace('tests/', '') for x in glob2('tests/test_*.py') ]
     set1 = set(test_files)
     set2 = set(actual_test_files)
     if set1 != set2:
         sys.stderr.write("\033[0;31m*** debug: set1-set2=%r\033[0m\n" % (set1-set2))
         sys.stderr.write("\033[0;31m*** debug: set2-set1=%r\033[0m\n" % (set2-set1))
-        raise Exception("You must update 'test_files' variable")
+        raise RuntimeException("You must update 'test_files' variable")
 
 
 @recipe
 def task_test(c, *args, **kwargs):
     _check_test_files()
     if args:
-        targets = [ "test/test_%s.py" % x for x in args ]
+        targets = [ "tests/test_%s.py" % x for x in args ]
     else:
-        targets = [ "test/%s" % x for x in test_files ]
+        targets = [ "tests/%s" % x for x in test_files ]
     #system("python " + ' '.join(targets))
     for t in targets:
         #system("%s %s" % (sys.executable, t))
@@ -43,8 +43,8 @@ def task_test(c, *args, **kwargs):
 def task_oktest(c):
     "create hard link of 'oktest.py'"
     fpath = os.path.expanduser('~/src/oktest/python/lib/oktest.py')
-    rm_f('test/oktest.py')
-    system(c%'ln $(fpath) test/oktest.py')
+    rm_f('tests/oktest.py')
+    system(c%'ln $(fpath) tests/oktest.py')
 
 
 EDITOR_KICKER = os.environ.get('EDITOR_KICKER')

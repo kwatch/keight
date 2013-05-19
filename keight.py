@@ -2133,7 +2133,7 @@ class ExceptionRenderer(object):
             if m:
                 file, line = m.groups()
                 rest = s[m.end():]
-                href = url(file, line)
+                href = url(os.path.abspath(file), line)
                 buf.append(format % (h(href), h(js), h(file), line, h(rest)))
             else:
                 buf.append(h(s))

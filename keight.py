@@ -47,6 +47,10 @@ class Config(object):
 config = Config()
 
 
+###
+### logger
+###
+
 logger = None
 def _get_logger():
     global logger
@@ -58,6 +62,79 @@ def _get_logger():
         else:
             logger = False
     return logger
+
+class SimpleLogger(object):
+
+    FATAL = 50
+    ERROR = 40
+    WARN  = 30
+    INFO  = 20
+    DEBUG = 10
+    TRACE =  0
+    _level_list = [ ('fatal', FATAL), ('error', ERROR), ('warn', WARN),
+                    ('info', INFO), ('debug', DEBUG), ('trace', TRACE), ]
+    _level_dict = dict(_level_list)
+
+    class ListWrapper(object):
+        def __init__(self, L=None):
+            if L is None: L = []
+            self.list = L
+        def write(self, arg):
+            self.list.append(arg)
+
+    def __init__(self, io=sys.stderr, level=None):
+        if isinstance(io, list): io = ListWrapper(io)
+        self.io = io
+        self.set_level(level or self.INFO)
+
+    def set_level(self, level):
+        #: if level is str but not found in level names then raise error
+        if isinstance(level, str):
+            if level not in self._level_dict:
+                raise ValueError('%r: invalid level.' % (level, ))
+            n = self._level_dict[level]
+        #: if level is int but not in correct range then raise error
+        elif isinstance(level, int):
+            if self.TRACE <= level <= self.FATAL:
+                n = level
+            else:
+                raise ValueError('%r: level is not in range.' % (level, ))
+        #: if level is invalid value then raise error
+        else:
+            raise TypeError('%r: invalid level value.' % (level, ))
+        #:
+        self.level = n
+        #: set dummy funcs for lower levels
+        d = self.__dict__
+        dummy = lambda format, *args: None
+        for name, x in self._level_list:
+            if x >= n:
+                d.pop(name, None)
+            else:
+                d[name] = dummy
+
+    #def f(name, prefix):
+    #    def func(self, format, *args):
+    #        msg = args and (format % args) or format
+    #        self.io.write('%s%s\n' % (prefix, msg))
+    #    func.func_name = fund.__name__ = name
+    #    return func
+    #
+    #fatal = f('fatal', '[FATAL] ')
+    #error = f('error', '[ERROR] ')
+    #warn  = f('warn',  '[warn] ')
+    #info  = f('info',  '[info] ')
+    #debug = f('debug', '[DEBUG] ')
+    #trace = f('trace', '[trace] ')
+    #
+    #del f
+
+    def fatal(self, fmt, *args):  self.io.write('[FATAL] %s\n' % (args and (fmt % args) or fmt))
+    def error(self, fmt, *args):  self.io.write('[ERROR] %s\n' % (args and (fmt % args) or fmt))
+    def warn (self, fmt, *args):  self.io.write('[WARN] %s\n'  % (args and (fmt % args) or fmt))
+    def info (self, fmt, *args):  self.io.write('[INFO] %s\n'  % (args and (fmt % args) or fmt))
+    def debug(self, fmt, *args):  self.io.write('[DEBUG] %s\n' % (args and (fmt % args) or fmt))
+    def trace(self, fmt, *args):  self.io.write('[TRACE] %s\n' % (args and (fmt % args) or fmt))
 
 
 ###

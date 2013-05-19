@@ -2246,19 +2246,30 @@ def dummy_env(method='GET', path='/', qs='', body='', **kwargs):
     if isinstance(body, dict):  body = d2qs(body)
     #:* sets keys and values automatically
     env = {
-        'REQUEST_METHOD': method,
-        'PATH_INFO':      path,
-        'QUERY_STRING':   qs,
-        'REQUEST_URI':    path + (qs and '?' + qs or ''),
-        'wsgi.input':     _StringIO(body),
-        'wsgi.errors':    _StringIO(),
+        'REQUEST_METHOD'    : method,
+        'PATH_INFO'         : path,
+        'QUERY_STRING'      : qs,
+        'REQUEST_URI'       : path + (qs and '?' + qs or ''),
+        'SCRIPT_NAME'       : '',
+        'CONTENT_TYPE'      : '',
+        'CONTENT_LENGTH'    : '',
+        'SERVER_NAME'       : 'localhost',
+        'SERVER_PORT'       : '80',
+        'SERVER_PROTOCOL'   : 'HTTP/1.0',
+        'wsgi.input'        : _StringIO(body),
+        'wsgi.errors'       : _StringIO(),
+        'wsgi.version'      : (1, 0),
+        'wsgi.run_once'     : True,
+        'wsgi.url_scheme'   : 'http',
+        'wsgi.multithread'  : False,
+        'wsgi.multiprocess' : False,
     }
     #:* if request body is specified then set CONTENT_LENGTH as string
     if body:
         env['CONTENT_LENGTH'] = str(len(body))
-    #:* if POST and CONTENT_TYPE is not set then set it automatically
-    #:* if POST and CONTENT_TYPE is already set then don't change it
-    if method == 'POST' and 'CONTENT_TYPE' not in env:
+    #:* if body is not empty and CONTENT_TYPE is not set then set it automatically
+    #:* if body is not empty and CONTENT_TYPE is already set then don't change it
+    if body:
         env['CONTENT_TYPE'] = 'application/x-www-form-urlencoded'
     #:* if keyword args specified then adds them into env
     env.update(kwargs)

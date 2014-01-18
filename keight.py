@@ -570,9 +570,11 @@ class Request(object):
             self.env = self.headers = env
             self.method = env.get('REQUEST_METHOD')
             self.uri    = env.get('REQUEST_URI') or ''
-            #self.path   = self.uri[0:-(len(env.get('QUERY_STRING', '')) + 2)]
-            self.path   = self.uri.split('?', 1)[0]
-            #self.path   = env.get('PATH_INFO')
+            if self.uri:
+                #self.path   = self.uri[0:-(len(env.get('QUERY_STRING', '')) + 2)]
+                self.path = self.uri.split('?', 1)[0]
+            else:
+                self.path = env.get('PATH_INFO')
             self.input  = env.get('wsgi.input') or sys.stdin
             self.errors = env.get('wsgi.errors') or sys.stdin
             #:* if request body is empty then content length is None
@@ -987,8 +989,8 @@ class MultiPart(object):
             return t[0], default
         for s in self._read(stdin, content_length):
             header, value = _split(s, "\r\n\r\n", '')
-            t = s.split("\r\n\r\n", 1)
-            header, value = len(t) == 2 and t or (t[0], '')
+            #t = s.split("\r\n\r\n", 1)
+            #header, value = len(t) == 2 and t or (t[0], '')
             headers = dict([ _split(x, ': ', '') for x in header.split("\r\n") ])
             disp = headers.get('Content-Disposition') or ''
             if not disp:

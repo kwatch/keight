@@ -123,12 +123,13 @@ def task_editorkicker(c, *args, **kwargs):
 ### form helper
 ###
 
-import sys, re, yaml
+import sys, re
 import keight as k8
 
 @recipe
 def task_form(c, *args, **kwargs):
     """generate form classes"""
+    import yaml
     for f_yaml in args:
         f_py = f_yaml.replace('.yaml', '.py')
         f = open(f_yaml)

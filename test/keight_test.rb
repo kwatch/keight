@@ -542,25 +542,6 @@ Oktest.scope do
     end
 
 
-    topic '#match()' do
-
-      spec "[!0ar5c] returns [actin_methods, urlpath_params] when matched." do
-        |mapping, methods1, methods2|
-        ok {mapping.match('/')}    == [methods1, []]
-        ok {mapping.match('/')}    == [methods1, []]
-        ok {mapping.match('/123')} == [methods2, [123]]
-        ok {mapping.match('/123')} == [methods2, [123]]
-      end
-
-      spec "[!yf96c] returns nil when urlpath not matched." do
-        |mapping|
-        ok {mapping.match('/xxx')}     == nil
-        ok {mapping.match('/123/456')} == nil
-      end
-
-    end
-
-
     topic '#each_urlpath_and_methods()' do
 
       spec "[!62y5q] yields each urlpath pattern and action methods." do

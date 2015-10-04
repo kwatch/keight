@@ -615,27 +615,6 @@ module K8
     end
     private :_normalize
 
-    ##
-    ## ex:
-    ##   match('/')     #=> [{:GET=>:do_index, :POST=>...}, []]
-    ##   match('/123')  #=> [{:GET=>:do_show, :PUT=>...}, [123]]
-    ##   match('/abc')  #=> nil
-    ##
-    def match(req_path)
-      #; [!0ar5c] returns [actin_methods, urlpath_params] when matched.
-      @mappings.each do |_, urlpath_rexp, param_names, action_methods|
-        m = urlpath_rexp.match(req_path)  # ex: m = /\A\/(\d+)\z/.match('/123')
-        if m
-          param_values = m.captures              # ex: ["123"]
-          urlpath_params = handle_urlpath_params(param_names, param_values)
-                                                 # ex: [123]
-          return action_methods, urlpath_params  # ex: [{:GET=>:do_show}, [123]]
-        end
-      end
-      #; [!yf96c] returns nil when urlpath not matched.
-      return nil
-    end
-
     def each_urlpath_and_methods
       #; [!62y5q] yields each urlpath pattern and action methods.
       @mappings.each do |urlpath_pattern, _, _, action_methods, _|

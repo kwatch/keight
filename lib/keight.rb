@@ -714,18 +714,6 @@ module K8
     end
     private :_each_mapping
 
-    def make_mapping_cache
-      #; [!l4jrd] builds mapping cache data.
-      cache = {}
-      each_mapping do |full_urlpath_pattern, action_class, action_methods|
-        #; [!9zn4a] don't cache urlpath containing placeholder.
-        next if full_urlpath_pattern =~ /\{.*?\}/
-        #
-        cache[full_urlpath_pattern] = [action_class, action_methods]
-      end
-      @mapping_cache = cache
-    end
-
     def find(req_path)
       compile_urlpath_patterns() unless @_mapping_rexp
       #; [!04n9f] finds cache data at first.
@@ -886,10 +874,6 @@ module K8
 
     def find(req_path)
       return @action_class_mapping.find(req_path)
-    end
-
-    def make_mapping_cache()
-      return @action_class_mapping.make_mapping_cache()
     end
 
     def compile_urlpath_patterns()

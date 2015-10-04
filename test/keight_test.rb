@@ -739,45 +739,6 @@ Oktest.scope do
     end
 
 
-    topic '#make_mapping_cache()' do
-
-      spec "[!l4jrd] builds mapping cache data." do
-        |mapping|
-        mapping.mount '/books', BooksAction
-        mapping.instance_exec(self) do |_|
-          _.ok {@mapping_cache} == {}
-          make_mapping_cache()
-          _.ok {@mapping_cache} == {
-            "/books/"    => [BooksAction, {:GET=>:do_index, :POST=>:do_create}],
-            "/books/new" => [BooksAction, {:GET=>:do_new}],
-          }
-        end
-      end
-
-      spec "[!9zn4a] don't cache urlpath containing placeholder." do
-        |mapping|
-        mapping.mount '/api', [
-          ['/books', BooksAction],
-        ]
-        mapping.mount '/api/v{:\d+}', [
-          ['/books', BooksAction],
-        ]
-        mapping.instance_exec(self) do |_|
-          _.ok {@mapping_cache} == {}
-          make_mapping_cache()
-          _.ok {@mapping_cache} == {
-            "/api/books/"    => [BooksAction, {:GET=>:do_index, :POST=>:do_create}],
-            "/api/books/new" => [BooksAction, {:GET=>:do_new}],
-          }
-          @mapping_cache.keys.each do |upath|
-            _.ok {upath} !~ /\{.*?\}/
-          end
-        end
-      end
-
-    end
-
-
     topic '#compile_urlpath_patterns()' do
 
       fixture :simple_mapping do

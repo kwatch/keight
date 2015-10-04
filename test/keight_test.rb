@@ -781,56 +781,56 @@ Oktest.scope do
         list = simple_mapping.instance_variable_get('@_mapping_list')
         ok {list} == [
           [
-            BooksAction,
-            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
             %r`\A/books/(\d+)\z`,
             ["id"],
+            BooksAction,
+            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
           ],
           [
-            BooksAction,
-            {:GET=>:do_edit},
             %r`\A/books/(\d+)/edit\z`,
             ["id"],
+            BooksAction,
+            {:GET=>:do_edit},
           ],
         ]
         #
         list = complex_mapping.instance_variable_get('@_mapping_list')
         ok {list} == [
           [
-            BooksAction,
-            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
             %r`\A/api/books/(\d+)\z`,
             ["id"],
+            BooksAction,
+            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
           ],
           [
-            BooksAction,
-            {:GET=>:do_edit},
             %r`\A/api/books/(\d+)/edit\z`,
             ["id"],
+            BooksAction,
+            {:GET=>:do_edit},
           ],
           [
-            BookCommentsAction,
-            {:GET=>:do_comments},
             %r`\A/api/books/(\d+)/comments\z`,
             ["id"],
+            BookCommentsAction,
+            {:GET=>:do_comments},
           ],
           [
-            BookCommentsAction,
-            {:GET=>:do_comment},
             %r`\A/api/books/(\d+)/comments/(\d+)\z`,
             ["id", "comment_id"],
+            BookCommentsAction,
+            {:GET=>:do_comment},
           ],
           [
-            AdminBooksAction,
-            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
             %r`\A/admin/books/(\d+)\z`,
             ["id"],
+            AdminBooksAction,
+            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
           ],
           [
-            AdminBooksAction,
-            {:GET=>:do_edit},
             %r`\A/admin/books/(\d+)/edit\z`,
             ["id"],
+            AdminBooksAction,
+            {:GET=>:do_edit},
           ],
         ]
       end

@@ -682,7 +682,7 @@ module K8
         #a = m.captures; i = 0; i += 1 until a[i]
         tuple = @_mapping_list[i]  or return nil
         #; [!6qoa3] concatenats all urlpath params in an array.
-        action_class, action_methods, full_urlpath_rexp, names = tuple
+        full_urlpath_rexp, names, action_class, action_methods = tuple
         values = full_urlpath_rexp.match(req_path).captures
         urlpath_param_values = handle_urlpath_params(names, values)
       end
@@ -730,18 +730,18 @@ module K8
       ##
       ## Example of @_mapping_list (variable urlpaths):
       ##     [                                          # ...(7)
-      ##       [ BooksAction,
-      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-      ##         %r'\A/api/books/(\d+)\z', ["id"], ],
-      ##       [ BooksAction,
-      ##         {:GET=>:do_edit},
-      ##         %r'\A/api/books/(\d+)/edit\z', ["id"], ],
-      ##       [ AuthorsAction,
-      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-      ##         %r'\A/api/authors/(\d+)\z', ["id"], ],
-      ##       [ AuthorsAction,
-      ##         {:GET=>:do_edit},
-      ##         %r'\A/api/authors/(\d+)/edit\z', ["id"], ],
+      ##       [ %r'\A/api/books/(\d+)\z', ["id"],
+      ##         BooksAction,
+      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete} ],
+      ##       [ %r'\A/api/books/(\d+)/edit\z', ["id"],
+      ##         BooksAction,
+      ##         {:GET=>:do_edit} ],
+      ##       [ %r'\A/api/authors/(\d+)\z', ["id"],
+      ##         AuthorsAction,
+      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete} ],
+      ##       [ %r'\A/api/authors/(\d+)/edit\z', ["id"],
+      ##         AuthorsAction,
+      ##         {:GET=>:do_edit} ],
       ##       ...
       ##     ]
       ##
@@ -752,8 +752,8 @@ module K8
         if has_params
           full_urlpath_rexp, urlpath_param_names = _compile2(full_urlpath_pat)
           #; [!cny8a] collects variable urlpath patterns as Array object.
-          list << [action_class, action_methods,
-                   full_urlpath_rexp, urlpath_param_names]  # ...(7)
+          list << [full_urlpath_rexp, urlpath_param_names,
+                   action_class, action_methods]    # ...(7)
         else
           #; [!7hkq6] collects fixed urlpath patterns as Hash object.
           dict[full_urlpath_pat] = [action_class, action_methods] # ...(6)

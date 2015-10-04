@@ -740,6 +740,7 @@ module K8
     def compile_urlpath_patterns
       ##
       ## Example of @_mapping_rexp:
+      ##     \A                                         # ...(0)
       ##     (:?                                        # ...(1)
       ##         /api                                   # ...(2)
       ##             (:?                                # ...(1)
@@ -788,7 +789,7 @@ module K8
       ##       ...
       ##     ]
       ##
-      buf  = '\A'
+      buf  = '\A'     # ...(0)
       dict = {}
       list = []
       _traverse(@mappings, "", buf) {|full_urlpath_pat, action_class, action_methods|
@@ -817,8 +818,7 @@ module K8
       buf << '(?:'        # ...(1)
       sep = ''
       mappings.each do |urlpath_pattern, action_class|
-        buf << sep        # ...(5)
-        sep = '|'
+        buf << sep; sep = '|'                       # ...(5)
         curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"
         if action_class.is_a?(Array)
           child_mappings = action_class

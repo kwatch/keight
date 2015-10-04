@@ -750,9 +750,11 @@ module K8
       buf = _traverse(@mappings, "") {|full_urlpath_pat, action_class, action_methods|
         has_params = full_urlpath_pat =~ /\{.*?\}/
         if has_params
-          full_urlpath_rexp, urlpath_param_names = _compile2(full_urlpath_pat)
+          full_urlpath_rexp_str, urlpath_param_names = \
+              _compile(full_urlpath_pat, '\A', '\z', true)
           #; [!cny8a] collects variable urlpath patterns as Array object.
-          list << [full_urlpath_rexp, urlpath_param_names,
+          list << [Regexp.compile(full_urlpath_rexp_str),
+                   urlpath_param_names,
                    action_class, action_methods]    # ...(7)
         else
           #; [!7hkq6] collects fixed urlpath patterns as Hash object.
@@ -781,7 +783,7 @@ module K8
         curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"
         if action_class.is_a?(Array)
           child_mappings = action_class
-          buf << _compile1(urlpath_pattern, '')     # ...(2)
+          buf << _compile(urlpath_pattern).first    # ...(2)
           buf << _traverse(child_mappings, curr_urlpath_pat, &block)
         else
           mapping = action_class._action_method_mapping
@@ -789,26 +791,16 @@ module K8
           mapping.each_urlpath_and_methods do |upath_pat, action_methods|
             full_urlpath_pat = "#{curr_urlpath_pat}#{upath_pat}"
             has_param = yield full_urlpath_pat, action_class, action_methods
-            arr << _compile1(upath_pat, '(\z)') if has_param
+            arr << _compile(upath_pat, '', '(\z)').first if has_param
           end
           unless arr.empty?
-            buf << _compile1(urlpath_pattern, '')   # ...(3)
+            buf << _compile(urlpath_pattern).first  # ...(3)
             buf << "(?:#{arr.join('|')})"           # ...(4)
           end
         end
       end
       buf << ')'
       return buf
-    end
-
-    def _compile1(urlpath_pat, end_pat='')
-      rexp_str, _ = _compile(urlpath_pat, '', end_pat, false)
-      return rexp_str
-    end
-
-    def _compile2(full_urlpath_pat)
-      rexp_str, names = _compile(full_urlpath_pat, '\A', '\z', true)
-      return Regexp.compile(rexp_str), names
     end
 
     def _compile(urlpath_pattern, start_pat='', end_pat='', grouping=false)

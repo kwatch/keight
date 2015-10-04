@@ -558,7 +558,6 @@ module K8
 
 
   class ActionMethodMapping
-    include ActionMappingHelper
 
     def initialize
       @mappings = []

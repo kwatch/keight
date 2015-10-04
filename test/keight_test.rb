@@ -706,10 +706,11 @@ Oktest.scope do
       spec "[!04n9f] finds cache data at first." do
         |mapping, methods1|
         mapping.instance_exec(self) do |_|
-          _.ok {@mapping_cache} == {}
-          @mapping_cache['/BOOKS'] = [BooksAction, methods1]
+          @_mapping_rexp = /\//   # dummy
+          _.ok {@_mapping_dict} == nil
+          @_mapping_dict = {'/BOOKS' => [BooksAction, methods1]}
           _.ok {find('/BOOKS')} != nil
-          _.ok {@mapping_cache} == {'/BOOKS'=>[BooksAction, methods1]}
+          _.ok {@_mapping_dict} == {'/BOOKS'=>[BooksAction, methods1]}
         end
       end
 

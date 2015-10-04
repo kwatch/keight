@@ -771,6 +771,31 @@ module K8
       @mapping_cache = cache
     end
 
+    def find(req_path)
+      compile_urlpath_patterns() unless @_mapping_rexp
+      #; [!04n9f] finds cache data at first.
+      action_class, action_methods = @_mapping_dict[req_path]
+      if action_class
+        urlpath_param_values = []
+      #; [!d5d5i] can handle nested array of urlpath mapping.
+      #; [!hbjar] finds next action recursively class when found but not matched.
+      #; [!wyb6j] finds next action class when action class found but not matched.
+      else
+        #; [!1ud98] returns nil when urlpath not found.
+        m = @_mapping_rexp.match(req_path)  or return nil
+        i = m.captures.find_index {|x| x }  or return nil
+        #a = m.captures; i = 0; i += 1 until a[i]
+        tuple = @_mapping_list[i]  or return nil
+        #; [!6qoa3] concatenats all urlpath params in an array.
+        action_class, action_methods, full_urlpath_rexp, names = tuple
+        values = full_urlpath_rexp.match(req_path).captures
+        urlpath_param_values = handle_urlpath_params(names, values)
+      end
+      #; [!yqedi] returns [action_class, action_methods, urlpath_params] when urlpath matches to action class.
+      # ex: [HelloAction, {:GET=>:do_show}, [123]]
+      return action_class, action_methods, urlpath_param_values
+    end
+
     def compile_urlpath_patterns
       buf  = '\A'
       dict = {}

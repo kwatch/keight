@@ -858,6 +858,42 @@ Oktest.scope do
     end
 
 
+    topic '#_compile_urlpath_pattern()' do
+
+      spec "[!izsbp] compiles urlpath pattern into regexp string and param names." do
+        |mapping|
+        _ = self
+        mapping.instance_eval do
+          ret = _compile_urlpath_pattern('/', '\A', '\z', true)
+          _.ok {ret} == ['\A/\z', []]
+          ret = _compile_urlpath_pattern('/books', '\A', '\z', true)
+          _.ok {ret} == ['\A/books\z', []]
+          ret = _compile_urlpath_pattern('/books/{id:\d*}', '\A', '\z', true)
+          _.ok {ret} == ['\A/books/(\d*)\z', ["id"]]
+          ret = _compile_urlpath_pattern('/books/{id}/authors/{name}', '\A', '\z', true)
+          _.ok {ret} == ['\A/books/(\d+)/authors/([^/]*?)\z', ["id", "name"]]
+        end
+      end
+
+      spec "[!2zil2] don't use grouping when 4th argument is false." do
+        |mapping|
+        _ = self
+        mapping.instance_eval do
+          ret = _compile_urlpath_pattern('/books/{id:\d*}', '\A', '\z', true)
+          _.ok {ret} == ['\A/books/(\d*)\z', ["id"]]
+          ret = _compile_urlpath_pattern('/books/{id}/authors/{name}', '\A', '\z', true)
+          _.ok {ret} == ['\A/books/(\d+)/authors/([^/]*?)\z', ["id", "name"]]
+          #
+          ret = _compile_urlpath_pattern('/books/{id:\d*}', '\A', '\z', false)
+          _.ok {ret} == ['\A/books/\d*\z', ["id"]]
+          ret = _compile_urlpath_pattern('/books/{id}/authors/{name}', '\A', '\z', false)
+          _.ok {ret} == ['\A/books/\d+/authors/[^/]*?\z', ["id", "name"]]
+        end
+      end
+
+    end
+
+
   end
 
 

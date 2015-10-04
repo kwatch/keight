@@ -837,6 +837,28 @@ module K8
       return Regexp.compile(rexp_str), names
     end
 
+    def _compile_urlpath_pattern(urlpath_pattern, start_pat, end_pat, grouping)
+      #; [!izsbp] compiles urlpath pattern into regexp string and param names.
+      #parse_rexp = /(.*?)<(\w*)(?::(.*?))?>/
+      #parse_rexp = /(.*?)\{(\w*)(?::(.*?))?\}/
+      parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
+      #parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+      param_names = []
+      s = ""
+      s << start_pat
+      urlpath_pattern.scan(parse_rexp) do |text, name, pat|
+        param_names << name unless name.empty?
+        pat ||= default_pattern_of_urlpath_parameter(name)
+        #; [!2zil2] don't use grouping when 4th argument is false.
+        pat = (name.empty? ? "(?:#{pat})" : "(#{pat})") if grouping
+        s << Regexp.escape(text) << pat
+      end
+      m = Regexp.last_match
+      rest = m ? m.post_match : urlpath_pattern
+      s << Regexp.escape(rest) << end_pat
+      return s, param_names
+    end
+
   end
 
 

@@ -689,51 +689,6 @@ module K8
     end
     private :_mount
 
-    def find(req_path)
-      #; [!04n9f] finds cache data at first.
-      cached = @mapping_cache[req_path]
-      if cached
-        action_class, action_methods = cached
-        urlpath_params = []
-        return action_class, action_methods, urlpath_params
-      else
-        # ex: [HelloAction, {:GET=>:do_show}, [123]]
-        return _find(@mappings, req_path)
-      end
-    end
-
-    def _find(mappings, req_path)
-      mappings.each do |_, urlpath_prefix, urlpath_rexp, param_names, action_class|
-        next unless req_path.start_with?(urlpath_prefix)
-        m = urlpath_rexp.match(req_path)  or next  # continue
-        rest_urlpath = m.post_match
-        #; [!d5d5i] can handle nested array of urlpath mapping.
-        if action_class.is_a?(Array)
-          child_mappings = action_class
-          #; [!hbjar] finds next action recursively class when found but not matched.
-          tuple = _find(child_mappings, rest_urlpath)  or next  # continue
-          return tuple
-        #; [!yqedi] returns [action_class, action_methods, urlpath_params] when urlpath matches to action class.
-        else
-          #; [!wyb6j] finds next action class when action class found but not matched.
-          mapping = action_class._action_method_mapping
-          pair = mapping.match(rest_urlpath)  or next  # continue
-          action_methods, urlpath_params = pair
-          #; [!6qoa3] concatenats all urlpath params in an array.
-          param_values = m.captures  # ex: ["123"]
-          unless param_values.empty?
-            param_values = handle_urlpath_params(param_names, param_values)
-                                     # ex: [123]
-            urlpath_params = param_values.concat(urlpath_params)
-          end
-          return action_class, action_methods, urlpath_params
-        end
-      end
-      #; [!1ud98] returns nil when urlpath not found.
-      return nil
-    end
-    private :_find
-
     def each_mapping(&block)
       _each_mapping(@mappings, "", &block)
       self

@@ -598,8 +598,7 @@ module K8
       action_methods = _normalize(action_methods)
       #; [!s7cs9] maps urlpath and methods.
       #; [!o6cxr] returns self.
-      urlpath_rexp, urlpath_param_names = compile_urlpath_pattern(urlpath_pattern, '\z')
-      @mappings << [urlpath_pattern, urlpath_rexp, urlpath_param_names, action_methods]
+      @mappings << [urlpath_pattern, action_methods]
       return self
     end
 
@@ -617,7 +616,7 @@ module K8
 
     def each_urlpath_and_methods
       #; [!62y5q] yields each urlpath pattern and action methods.
-      @mappings.each do |urlpath_pattern, _, _, action_methods, _|
+      @mappings.each do |urlpath_pattern, action_methods|
         yield urlpath_pattern, action_methods
       end
       self

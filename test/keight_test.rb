@@ -530,8 +530,8 @@ Oktest.scope do
         arr = mapping.instance_variable_get('@mappings')
         ok {arr}.is_a?(Array)
         ok {arr.length} == 2
-        ok {arr[0]} == ['/',         %r'\A/\z',      [],     {:GET=>:do_index, :POST=>:do_create}]
-        ok {arr[1]} == ['/{id:\d+}', %r'\A/(\d+)\z', ["id"], {:GET=>:do_show, :PUT=>:do_update}]
+        ok {arr[0]} == ['/',         {:GET=>:do_index, :POST=>:do_create}]
+        ok {arr[1]} == ['/{id:\d+}', {:GET=>:do_show, :PUT=>:do_update}]
       end
 
       spec "[!o6cxr] returns self." do

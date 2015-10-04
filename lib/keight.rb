@@ -757,8 +757,8 @@ module K8
       ##             )
       ##     )
       ##
-      ## Example of @_mapping_dict:                     # ...(6)
-      ##     {
+      ## Example of @_mapping_dict (fixed urlpaths):
+      ##     {                                          # ...(6)
       ##       "/api/books"
       ##           => [BooksAction,   {:GET=>:do_index, :POST=>:do_create}],
       ##       "/api/books/new"
@@ -772,8 +772,8 @@ module K8
       ##       ...
       ##     }
       ##
-      ## Example of @_mapping_list:                     # ...(7)
-      ##     [
+      ## Example of @_mapping_list (variable urlpaths):
+      ##     [                                          # ...(7)
       ##       [ BooksAction,
       ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
       ##         %r'\A/api/books/(\d+)\z', ["id"], ],
@@ -789,8 +789,8 @@ module K8
       ##       ...
       ##     ]
       ##
-      dict = {}
-      list = []
+      @_mapping_dict = dict = {}   # fixed urlpaths (without urlpath params)
+      @_mapping_list = list = []   # variable urlpaths (with urlpath params)
       buf = _traverse(@mappings, "") {|full_urlpath_pat, action_class, action_methods|
         has_params = full_urlpath_pat =~ /\{.*?\}/
         if has_params
@@ -804,8 +804,6 @@ module K8
         end
         has_params
       }
-      @_mapping_dict = dict
-      @_mapping_list = list
       @_mapping_rexp = Regexp.compile('\A' + buf)   # ...(0)
       self
     end

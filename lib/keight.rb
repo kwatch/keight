@@ -738,21 +738,8 @@ module K8
     end
 
     def compile_urlpath_patterns
-      buf  = '\A'
-      dict = {}
-      list = []
-      _compile_urlpath_patterns(@mappings, "", buf, dict, list)
-      @_mapping_dict = dict
-      @_mapping_list = list
-      @_mapping_rexp = Regexp.compile(buf)
-      self
-    end
-
-    private
-
-    def _compile_urlpath_patterns(mappings, base_urlpath_pat, buf, dict, list)
       ##
-      ## Example of buf:
+      ## Example of @_mapping_rexp:
       ##     (:?                                        # ...(1)
       ##         /api                                   # ...(2)
       ##             (:?                                # ...(1)
@@ -769,7 +756,7 @@ module K8
       ##             )
       ##     )
       ##
-      ## Example of dict:                               # ...(6)
+      ## Example of @_mapping_dict:                     # ...(6)
       ##     {
       ##       "/api/books"
       ##           => [BooksAction,   {:GET=>:do_index, :POST=>:do_create}],
@@ -784,7 +771,7 @@ module K8
       ##       ...
       ##     }
       ##
-      ## Example of list:                               # ...(7)
+      ## Example of @_mapping_list:                     # ...(7)
       ##     [
       ##       [ BooksAction,
       ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
@@ -801,8 +788,10 @@ module K8
       ##       ...
       ##     ]
       ##
-      _traverse(mappings, base_urlpath_pat, buf) do
-        |full_urlpath_pat, action_class, action_methods|
+      buf  = '\A'
+      dict = {}
+      list = []
+      _traverse(@mappings, "", buf) {|full_urlpath_pat, action_class, action_methods|
         has_params = full_urlpath_pat =~ /\{.*?\}/
         if has_params
           full_urlpath_rexp, urlpath_param_names = _compile2(full_urlpath_pat)
@@ -814,8 +803,14 @@ module K8
           dict[full_urlpath_pat] = [action_class, action_methods] # ...(6)
         end
         has_params
-      end
+      }
+      @_mapping_dict = dict
+      @_mapping_list = list
+      @_mapping_rexp = Regexp.compile(buf)
+      self
     end
+
+    private
 
     def _traverse(mappings, base_urlpath_pat, buf, &block)
       #; [!3aspo] compiles urlpath patterns into a Regexp object.

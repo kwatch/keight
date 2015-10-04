@@ -802,16 +802,16 @@ module K8
     end
 
     def _compile1(urlpath_pat, end_pat='')
-      rexp_str, _ = _compile_urlpath_pattern(urlpath_pat, '', end_pat, false)
+      rexp_str, _ = _compile(urlpath_pat, '', end_pat, false)
       return rexp_str
     end
 
     def _compile2(full_urlpath_pat)
-      rexp_str, names = _compile_urlpath_pattern(full_urlpath_pat, '\A', '\z', true)
+      rexp_str, names = _compile(full_urlpath_pat, '\A', '\z', true)
       return Regexp.compile(rexp_str), names
     end
 
-    def _compile_urlpath_pattern(urlpath_pattern, start_pat, end_pat, grouping)
+    def _compile(urlpath_pattern, start_pat='', end_pat='', grouping=false)
       #; [!izsbp] compiles urlpath pattern into regexp string and param names.
       #parse_rexp = /(.*?)<(\w*)(?::(.*?))?>/
       #parse_rexp = /(.*?)\{(\w*)(?::(.*?))?\}/

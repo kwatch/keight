@@ -736,11 +736,12 @@ Oktest.scope do
     end
 
 
-    topic '#compile_urlpath_patterns()' do
+    topic '#make_mapping_data()' do
 
       fixture :simple_mapping do
         mapping = K8::ActionClassMapping.new
         mapping.mount '/books', BooksAction
+        mapping.__send__(:make_mapping_data)
         mapping
       end
 
@@ -753,12 +754,12 @@ Oktest.scope do
         mapping.mount '/admin', [
           ['/books',      AdminBooksAction],
         ]
+        mapping.__send__(:make_mapping_data)
         mapping
       end
 
       spec "[!3aspo] compiles urlpath patterns into a Regexp object." do
         |simple_mapping, complex_mapping|
-        simple_mapping.compile_urlpath_patterns()
         rexp = simple_mapping.instance_variable_get('@_mapping_rexp')
         ok {rexp} == Regexp.compile('
           \A
@@ -767,7 +768,6 @@ Oktest.scope do
           )
         '.gsub(/\s+/, ''))
         #
-        complex_mapping.compile_urlpath_patterns()
         rexp = complex_mapping.instance_variable_get('@_mapping_rexp')
         ok {rexp} == Regexp.compile('
           \A
@@ -787,14 +787,12 @@ Oktest.scope do
 
       spec "[!7hkq6] collects fixed urlpath patterns as Hash object." do
         |simple_mapping, complex_mapping|
-        simple_mapping.compile_urlpath_patterns()
         dict = simple_mapping.instance_variable_get('@_mapping_dict')
         ok {dict} == {
           "/books/"   =>[BooksAction, {:GET=>:do_index, :POST=>:do_create}],
           "/books/new"=>[BooksAction, {:GET=>:do_new}],
         }
         #
-        complex_mapping.compile_urlpath_patterns()
         dict = complex_mapping.instance_variable_get('@_mapping_dict')
         ok {dict} == {
           "/api/books/"     =>[BooksAction,      {:GET=>:do_index, :POST=>:do_create}],
@@ -806,7 +804,6 @@ Oktest.scope do
 
       spec "[!cny8a] collects variable urlpath patterns as Array object." do
         |simple_mapping, complex_mapping|
-        simple_mapping.compile_urlpath_patterns()
         list = simple_mapping.instance_variable_get('@_mapping_list')
         ok {list} == [
           [
@@ -823,7 +820,6 @@ Oktest.scope do
           ],
         ]
         #
-        complex_mapping.compile_urlpath_patterns()
         list = complex_mapping.instance_variable_get('@_mapping_list')
         ok {list} == [
           [

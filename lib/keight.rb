@@ -713,7 +713,7 @@ module K8
     private :_each_mapping
 
     def find(req_path)
-      compile_urlpath_patterns() unless @_mapping_rexp
+      make_mapping_data() unless @_mapping_rexp
       #; [!04n9f] finds cache data at first.
       action_class, action_methods = @_mapping_dict[req_path]
       if action_class
@@ -737,7 +737,9 @@ module K8
       return action_class, action_methods, urlpath_param_values
     end
 
-    def compile_urlpath_patterns
+    protected
+
+    def make_mapping_data
       ##
       ## Example of @_mapping_rexp:
       ##     \A                                         # ...(0)

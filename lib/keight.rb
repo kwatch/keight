@@ -652,7 +652,6 @@ module K8
 
     def initialize
       @mappings = []
-      @mapping_cache = {}  # ex: {'/hello'=>[HelloAction, {:GET=>:do_index}]}
     end
 
     ##

@@ -789,10 +789,9 @@ module K8
       ##       ...
       ##     ]
       ##
-      buf  = '\A'     # ...(0)
       dict = {}
       list = []
-      _traverse(@mappings, "", buf) {|full_urlpath_pat, action_class, action_methods|
+      buf = _traverse(@mappings, "") {|full_urlpath_pat, action_class, action_methods|
         has_params = full_urlpath_pat =~ /\{.*?\}/
         if has_params
           full_urlpath_rexp, urlpath_param_names = _compile2(full_urlpath_pat)
@@ -807,15 +806,15 @@ module K8
       }
       @_mapping_dict = dict
       @_mapping_list = list
-      @_mapping_rexp = Regexp.compile(buf)
+      @_mapping_rexp = Regexp.compile('\A' + buf)   # ...(0)
       self
     end
 
     private
 
-    def _traverse(mappings, base_urlpath_pat, buf, &block)
+    def _traverse(mappings, base_urlpath_pat, &block)
       #; [!3aspo] compiles urlpath patterns into a Regexp object.
-      buf << '(?:'        # ...(1)
+      buf = '(?:'                                   # ...(1)
       sep = ''
       mappings.each do |urlpath_pattern, action_class|
         buf << sep; sep = '|'                       # ...(5)
@@ -823,7 +822,7 @@ module K8
         if action_class.is_a?(Array)
           child_mappings = action_class
           buf << _compile1(urlpath_pattern, '')     # ...(2)
-          _traverse(child_mappings, curr_urlpath_pat, buf, &block)
+          buf << _traverse(child_mappings, curr_urlpath_pat, &block)
         else
           mapping = action_class._action_method_mapping
           arr = []
@@ -839,6 +838,7 @@ module K8
         end
       end
       buf << ')'
+      return buf
     end
 
     def _compile1(urlpath_pat, end_pat='')

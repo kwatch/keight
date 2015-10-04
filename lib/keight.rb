@@ -533,21 +533,27 @@ module K8
 
     def compile_urlpath_pattern(urlpath_pattern, end_pat="")
       #; [!nw9bk] returns Regexp object and array of param name.
+      s, param_names = _compile_urlpath_pattern(urlpath_pattern, '\A', end_pat, true)
+      return Regexp.compile(s), param_names
+    end
+
+    def _compile_urlpath_pattern(urlpath_pattern, start_pat, end_pat, grouping)
       #parse_rexp = /(.*?)<(\w*)(?::(.*?))?>/
       #parse_rexp = /(.*?)\{(\w*)(?::(.*?))?\}/
       parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
       #parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
       param_names = []
-      s = '\A'
+      s = start_pat
       urlpath_pattern.scan(parse_rexp) do |text, name, pat|
         param_names << name unless name.empty?
         pat ||= default_pattern_of_urlpath_parameter(name)
-        s << Regexp.escape(text) << (name.empty? ? "(?:#{pat})" : "(#{pat})")
+        pat = (name.empty? ? "(?:#{pat})" : "(#{pat})") if grouping
+        s << Regexp.escape(text) << pat
       end
       m = Regexp.last_match
       rest = m ? m.post_match : urlpath_pattern
       s << Regexp.escape(rest) << end_pat
-      return Regexp.compile(s), param_names
+      return s, param_names
     end
 
     def default_pattern_of_urlpath_parameter(name)
@@ -763,6 +769,116 @@ module K8
         cache[full_urlpath_pattern] = [action_class, action_methods]
       end
       @mapping_cache = cache
+    end
+
+    def compile_urlpath_patterns
+      buf  = '\A'
+      dict = {}
+      list = []
+      _compile_urlpath_patterns(@mappings, "", buf, dict, list)
+      @_mapping_dict = dict
+      @_mapping_list = list
+      @_mapping_rexp = Regexp.compile(buf)
+      self
+    end
+
+    private
+
+    def _compile_urlpath_patterns(mappings, base_urlpath_pat, buf, dict, list)
+      ##
+      ## Example of buf:
+      ##     (:?                                        # ...(1)
+      ##         /api                                   # ...(2)
+      ##             (:?                                # ...(1)
+      ##                 /books                         # ...(3)
+      ##                     (:?/\d+(\z)|/\d+/edit(\z)) # ...(4)
+      ##             |                                  # ...(5)
+      ##                 /authors                       # ...(3)
+      ##                     (:?/\d+(\z)|/\d+/edit(\z)) # ...(4)
+      ##             )
+      ##     |                                          # ...(4)
+      ##         /admin                                 # ...(2)
+      ##             (:?
+      ##                 ....
+      ##             )
+      ##     )
+      ##
+      ## Example of dict:                               # ...(6)
+      ##     {
+      ##       "/api/books"
+      ##           => [BooksAction,   {:GET=>:do_index, :POST=>:do_create}],
+      ##       "/api/books/new"
+      ##           => [BooksAction,   {:GET=>:do_new}],
+      ##       "/api/authors"
+      ##           => [AuthorsAction, {:GET=>:do_index, :POST=>:do_create}],
+      ##       "/api/authors/new"
+      ##           => [AuthorsAction, {:GET=>:do_new}],
+      ##       "/admin/books"
+      ##           => ...
+      ##       ...
+      ##     }
+      ##
+      ## Example of list:                               # ...(7)
+      ##     [
+      ##       [ BooksAction,
+      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+      ##         %r'\A/api/books/(\d+)\z', ["id"], ],
+      ##       [ BooksAction,
+      ##         {:GET=>:do_edit},
+      ##         %r'\A/api/books/(\d+)/edit\z', ["id"], ],
+      ##       [ AuthorsAction,
+      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+      ##         %r'\A/api/authors/(\d+)\z', ["id"], ],
+      ##       [ AuthorsAction,
+      ##         {:GET=>:do_edit},
+      ##         %r'\A/api/authors/(\d+)/edit\z', ["id"], ],
+      ##       ...
+      ##     ]
+      ##
+      #; [!3aspo] compiles urlpath patterns into a Regexp object.
+      buf << '(?:'        # ...(1)
+      sep = ''
+      mappings.each do |urlpath_pattern, _, _, _, action_class|
+        buf << sep        # ...(5)
+        sep = '|'
+        curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"
+        if action_class.is_a?(Array)
+          child_mappings = action_class
+          buf << _compile1(urlpath_pattern, '')     # ...(2)
+          _compile_urlpath_patterns(child_mappings, curr_urlpath_pat, buf, dict, list)
+        else
+          mapping = action_class._action_method_mapping
+          buf2 = []
+          mapping.each_urlpath_and_methods do |upath_pat, action_methods|
+            full_urlpath_pat = "#{curr_urlpath_pat}#{upath_pat}"
+            if full_urlpath_pat =~ /\{.*?\}/
+              buf2 << _compile1(upath_pat, '(\z)')
+              full_urlpath_rexp, urlpath_param_names = _compile2(full_urlpath_pat)
+              #; [!cny8a] collects variable urlpath patterns as Array object.
+              list << [action_class, action_methods,
+                       full_urlpath_rexp, urlpath_param_names]  # ...(7)
+            else
+              #; [!7hkq6] collects fixed urlpath patterns as Hash object.
+              dict[full_urlpath_pat] = [action_class, action_methods] # ...(6)
+            end
+          end
+          unless buf2.empty?
+            buf << _compile1(urlpath_pattern, '')   # ...(3)
+            buf << "(?:#{buf2.join('|')})"          # ...(4)
+          end
+        end
+      end
+      buf << ')'
+    end
+
+    def _compile1(urlpath_pat, end_pat='')
+      rexp_str, _ = _compile_urlpath_pattern(urlpath_pat, '', end_pat, false)
+      return rexp_str
+    end
+
+    def _compile2(full_urlpath_pat)
+      rexp_str, names = _compile_urlpath_pattern(full_urlpath_pat, '\A', '\z', true)
+      return Regexp.compile(rexp_str), names
     end
 
   end

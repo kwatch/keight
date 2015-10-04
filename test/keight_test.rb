@@ -32,6 +32,21 @@ class BookCommentsAction < K8::Action
 end
 
 
+class AdminBooksAction < K8::Action
+  mapping '/',      :GET=>:do_index, :POST=>:do_create
+  mapping '/new',   :GET=>:do_new
+  mapping '/{id}',  :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
+  mapping '/{id}/edit', :GET=>:do_edit
+  #
+  def do_index(); end
+  def do_create(); end
+  def do_show(id); end
+  def do_update(id); end
+  def do_delete(id); end
+  def do_edit(id); end
+end
+
+
 class TestBaseAction < K8::BaseAction
   def _called
     @_called ||= []
@@ -757,6 +772,138 @@ Oktest.scope do
             _.ok {upath} !~ /\{.*?\}/
           end
         end
+      end
+
+    end
+
+
+    topic '#compile_urlpath_patterns()' do
+
+      fixture :simple_mapping do
+        mapping = K8::ActionClassMapping.new
+        mapping.mount '/books', BooksAction
+        mapping
+      end
+
+      fixture :complex_mapping do
+        mapping = K8::ActionClassMapping.new
+        mapping.mount '/api', [
+          ['/books',      BooksAction],
+          ['/books/{id}', BookCommentsAction],
+        ]
+        mapping.mount '/admin', [
+          ['/books',      AdminBooksAction],
+        ]
+        mapping
+      end
+
+      spec "[!3aspo] compiles urlpath patterns into a Regexp object." do
+        |simple_mapping, complex_mapping|
+        simple_mapping.compile_urlpath_patterns()
+        rexp = simple_mapping.instance_variable_get('@_mapping_rexp')
+        ok {rexp} == Regexp.compile('
+          \A
+          (?:
+            /books(?:/\d+(\z)|/\d+/edit(\z))
+          )
+        '.gsub(/\s+/, ''))
+        #
+        complex_mapping.compile_urlpath_patterns()
+        rexp = complex_mapping.instance_variable_get('@_mapping_rexp')
+        ok {rexp} == Regexp.compile('
+          \A
+          (?:
+            /api
+              (?:
+                /books(?:/\d+(\z)|/\d+/edit(\z))
+              | /books/\d+(?:/comments(\z)|/comments/\d+(\z))
+              )
+          | /admin
+              (?:
+                /books(?:/\d+(\z)|/\d+/edit(\z))
+              )
+          )
+        '.gsub(/\s+/, ''))
+      end
+
+      spec "[!7hkq6] collects fixed urlpath patterns as Hash object." do
+        |simple_mapping, complex_mapping|
+        simple_mapping.compile_urlpath_patterns()
+        dict = simple_mapping.instance_variable_get('@_mapping_dict')
+        ok {dict} == {
+          "/books/"   =>[BooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          "/books/new"=>[BooksAction, {:GET=>:do_new}],
+        }
+        #
+        complex_mapping.compile_urlpath_patterns()
+        dict = complex_mapping.instance_variable_get('@_mapping_dict')
+        ok {dict} == {
+          "/api/books/"     =>[BooksAction,      {:GET=>:do_index, :POST=>:do_create}],
+          "/api/books/new"  =>[BooksAction,      {:GET=>:do_new}],
+          "/admin/books/"   =>[AdminBooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          "/admin/books/new"=>[AdminBooksAction, {:GET=>:do_new}],
+        }
+      end
+
+      spec "[!cny8a] collects variable urlpath patterns as Array object." do
+        |simple_mapping, complex_mapping|
+        simple_mapping.compile_urlpath_patterns()
+        list = simple_mapping.instance_variable_get('@_mapping_list')
+        ok {list} == [
+          [
+            BooksAction,
+            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+            %r`\A/books/(\d+)\z`,
+            ["id"],
+          ],
+          [
+            BooksAction,
+            {:GET=>:do_edit},
+            %r`\A/books/(\d+)/edit\z`,
+            ["id"],
+          ],
+        ]
+        #
+        complex_mapping.compile_urlpath_patterns()
+        list = complex_mapping.instance_variable_get('@_mapping_list')
+        ok {list} == [
+          [
+            BooksAction,
+            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+            %r`\A/api/books/(\d+)\z`,
+            ["id"],
+          ],
+          [
+            BooksAction,
+            {:GET=>:do_edit},
+            %r`\A/api/books/(\d+)/edit\z`,
+            ["id"],
+          ],
+          [
+            BookCommentsAction,
+            {:GET=>:do_comments},
+            %r`\A/api/books/(\d+)/comments\z`,
+            ["id"],
+          ],
+          [
+            BookCommentsAction,
+            {:GET=>:do_comment},
+            %r`\A/api/books/(\d+)/comments/(\d+)\z`,
+            ["id", "comment_id"],
+          ],
+          [
+            AdminBooksAction,
+            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+            %r`\A/admin/books/(\d+)\z`,
+            ["id"],
+          ],
+          [
+            AdminBooksAction,
+            {:GET=>:do_edit},
+            %r`\A/admin/books/(\d+)/edit\z`,
+            ["id"],
+          ],
+        ]
       end
 
     end

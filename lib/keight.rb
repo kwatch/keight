@@ -531,31 +531,6 @@ module K8
 
     protected
 
-    def compile_urlpath_pattern(urlpath_pattern, end_pat="")
-      #; [!nw9bk] returns Regexp object and array of param name.
-      s, param_names = _compile_urlpath_pattern(urlpath_pattern, '\A', end_pat, true)
-      return Regexp.compile(s), param_names
-    end
-
-    def _compile_urlpath_pattern(urlpath_pattern, start_pat, end_pat, grouping)
-      #parse_rexp = /(.*?)<(\w*)(?::(.*?))?>/
-      #parse_rexp = /(.*?)\{(\w*)(?::(.*?))?\}/
-      parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
-      #parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
-      param_names = []
-      s = start_pat
-      urlpath_pattern.scan(parse_rexp) do |text, name, pat|
-        param_names << name unless name.empty?
-        pat ||= default_pattern_of_urlpath_parameter(name)
-        pat = (name.empty? ? "(?:#{pat})" : "(#{pat})") if grouping
-        s << Regexp.escape(text) << pat
-      end
-      m = Regexp.last_match
-      rest = m ? m.post_match : urlpath_pattern
-      s << Regexp.escape(rest) << end_pat
-      return s, param_names
-    end
-
     def default_pattern_of_urlpath_parameter(name)
       #; [!adj99] returns '[^/]*?' when other name.
       for key, pat in DEFAULT_PATTERNS

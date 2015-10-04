@@ -412,26 +412,6 @@ Oktest.scope do
     end
 
 
-    topic '#compile_urlpath_pattern()' do
-
-      spec "[!nw9bk] returns Regexp object and array of param name." do
-        |mapping|
-        _ = self
-        mapping.instance_eval do
-          ret = compile_urlpath_pattern('/', '\z')
-          _.ok {ret} == [/\A\/\z/, []]
-          ret = compile_urlpath_pattern('/books', '\z')
-          _.ok {ret} == [/\A\/books\z/, []]
-          ret = compile_urlpath_pattern('/books/{id:\d*}', '\z')
-          _.ok {ret} == [/\A\/books\/(\d*)\z/, ["id"]]
-          ret = compile_urlpath_pattern('/books/{id}/authors/{name}', '\z')
-          _.ok {ret} == [/\A\/books\/(\d+)\/authors\/([^\/]*?)\z/, ["id", "name"]]
-        end
-      end
-
-    end
-
-
     topic 'default_pattern_of_urlpath_parameter()' do
 
       spec "[!hcnyx] returns '\d+' when name is 'id' or ends with '_id'." do

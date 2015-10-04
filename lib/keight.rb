@@ -826,15 +826,15 @@ module K8
           _traverse(child_mappings, curr_urlpath_pat, buf, &block)
         else
           mapping = action_class._action_method_mapping
-          buf2 = []
+          arr = []
           mapping.each_urlpath_and_methods do |upath_pat, action_methods|
             full_urlpath_pat = "#{curr_urlpath_pat}#{upath_pat}"
             has_param = yield full_urlpath_pat, action_class, action_methods
-            buf2 << _compile1(upath_pat, '(\z)') if has_param
+            arr << _compile1(upath_pat, '(\z)') if has_param
           end
-          unless buf2.empty?
+          unless arr.empty?
             buf << _compile1(urlpath_pattern, '')   # ...(3)
-            buf << "(?:#{buf2.join('|')})"          # ...(4)
+            buf << "(?:#{arr.join('|')})"           # ...(4)
           end
         end
       end

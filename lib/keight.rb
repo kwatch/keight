@@ -652,6 +652,7 @@ module K8
 
     def initialize
       @mappings = []
+      clear_mapping_data()
     end
 
     ##
@@ -664,8 +665,10 @@ module K8
     ##         ]
     ##
     def mount(urlpath_pattern, action_class)
-      #; [!w8mee] returns self.
       _mount(@mappings, urlpath_pattern, action_class)
+      #; [!dktxq] clears mapping data.
+      clear_mapping_data()
+      #; [!w8mee] returns self.
       return self
     end
 
@@ -807,6 +810,12 @@ module K8
       }
       @_mapping_rexp = Regexp.compile('\A' + buf)   # ...(0)
       self
+    end
+
+    def clear_mapping_data
+      @_mapping_rexp = nil
+      @_mapping_dict = nil
+      @_mapping_list = nil
     end
 
     private

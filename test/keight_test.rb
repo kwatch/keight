@@ -627,6 +627,19 @@ Oktest.scope do
         ok {ret}.same?(mapping)
       end
 
+      spec "[!dktxq] clears mapping data." do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          @_mapping_rexp = /_/
+          @_mapping_list = []
+          @_mapping_dict = {}
+          self.mount '/books', BooksAction
+          _.ok {@_mapping_rexp} == nil
+          _.ok {@_mapping_list} == nil
+          _.ok {@_mapping_dict} == nil
+        end
+      end
+
     end
 
 

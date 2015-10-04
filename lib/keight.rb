@@ -801,6 +801,23 @@ module K8
       ##       ...
       ##     ]
       ##
+      _traverse(mappings, base_urlpath_pat, buf) do
+        |full_urlpath_pat, action_class, action_methods|
+        has_params = full_urlpath_pat =~ /\{.*?\}/
+        if has_params
+          full_urlpath_rexp, urlpath_param_names = _compile2(full_urlpath_pat)
+          #; [!cny8a] collects variable urlpath patterns as Array object.
+          list << [action_class, action_methods,
+                   full_urlpath_rexp, urlpath_param_names]  # ...(7)
+        else
+          #; [!7hkq6] collects fixed urlpath patterns as Hash object.
+          dict[full_urlpath_pat] = [action_class, action_methods] # ...(6)
+        end
+        has_params
+      end
+    end
+
+    def _traverse(mappings, base_urlpath_pat, buf, &block)
       #; [!3aspo] compiles urlpath patterns into a Regexp object.
       buf << '(?:'        # ...(1)
       sep = ''
@@ -811,22 +828,14 @@ module K8
         if action_class.is_a?(Array)
           child_mappings = action_class
           buf << _compile1(urlpath_pattern, '')     # ...(2)
-          _compile_urlpath_patterns(child_mappings, curr_urlpath_pat, buf, dict, list)
+          _traverse(child_mappings, curr_urlpath_pat, buf, &block)
         else
           mapping = action_class._action_method_mapping
           buf2 = []
           mapping.each_urlpath_and_methods do |upath_pat, action_methods|
             full_urlpath_pat = "#{curr_urlpath_pat}#{upath_pat}"
-            if full_urlpath_pat =~ /\{.*?\}/
-              buf2 << _compile1(upath_pat, '(\z)')
-              full_urlpath_rexp, urlpath_param_names = _compile2(full_urlpath_pat)
-              #; [!cny8a] collects variable urlpath patterns as Array object.
-              list << [action_class, action_methods,
-                       full_urlpath_rexp, urlpath_param_names]  # ...(7)
-            else
-              #; [!7hkq6] collects fixed urlpath patterns as Hash object.
-              dict[full_urlpath_pat] = [action_class, action_methods] # ...(6)
-            end
+            has_param = yield full_urlpath_pat, action_class, action_methods
+            buf2 << _compile1(upath_pat, '(\z)') if has_param
           end
           unless buf2.empty?
             buf << _compile1(urlpath_pattern, '')   # ...(3)

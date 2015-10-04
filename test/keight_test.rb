@@ -597,12 +597,9 @@ Oktest.scope do
         ok {arr}.is_a?(Array)
         ok {arr.length} == 1
         ok {arr[0]}.is_a?(Array)
-        ok {arr[0].length} == 5
+        ok {arr[0].length} == 2
         ok {arr[0][0]} == '/books'
-        ok {arr[0][1]} == '/books'
-        ok {arr[0][2]} == Regexp.compile('\A/books(?=/|\.|\z)')
-        ok {arr[0][3]} == []
-        ok {arr[0][4]} == BooksAction
+        ok {arr[0][1]} == BooksAction
       end
 
       spec "[!4l8xl] can accept array of pairs of urlpath and action class." do
@@ -612,8 +609,8 @@ Oktest.scope do
         ]
         arr = mapping.instance_variable_get('@mappings')
         ok {arr} == [
-          ['/api', '/api', %r'\A/api(?=/|\.|\z)', [], [
-              ['/books', '/books', %r'\A/books(?=/|\.|\z)', [], BooksAction],
+          ['/api', [
+              ['/books', BooksAction],
             ]],
         ]
       end

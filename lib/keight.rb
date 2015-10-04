@@ -683,9 +683,7 @@ module K8
           raise ArgumentError.new("mount('#{urlpath_pattern}'): Action class expected but got: #{action_class.inspect}")
       end
       #; [!flb11] mounts action class to urlpath.
-      urlpath_prefix = urlpath_pattern.split(/\{/, 2).first
-      urlpath_rexp, param_names = compile_urlpath_pattern(urlpath_pattern, '(?=/|\.|\z)')
-      mappings << [urlpath_pattern, urlpath_prefix, urlpath_rexp, param_names, action_class]
+      mappings << [urlpath_pattern, action_class]
     end
     private :_mount
 
@@ -696,7 +694,7 @@ module K8
 
     def _each_mapping(mappings, base_urlpath_pat, &block)
       #; [!joje0] yields each full urlpath pattern, action class and action methods.
-      mappings.each do |urlpath_pattern, _, _, _, action_class|
+      mappings.each do |urlpath_pattern, action_class|
         curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"
         if action_class.is_a?(Array)
           child_mappings = action_class
@@ -806,7 +804,7 @@ module K8
       #; [!3aspo] compiles urlpath patterns into a Regexp object.
       buf << '(?:'        # ...(1)
       sep = ''
-      mappings.each do |urlpath_pattern, _, _, _, action_class|
+      mappings.each do |urlpath_pattern, action_class|
         buf << sep        # ...(5)
         sep = '|'
         curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"

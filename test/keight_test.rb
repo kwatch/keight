@@ -886,6 +886,14 @@ Oktest.scope do
         end
       end
 
+      spec "[!olps9] allows '{}' in regular expression." do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          ret = _compile('/log/{date:\d{4}-\d{2}-\d{2}}', '', '', true)
+          _.ok {ret} == ['/log/(\d{4}-\d{2}-\d{2})', ["date"], [nil]]
+        end
+      end
+
       spec "[!2zil2] don't use grouping when 4th argument is false." do
         |mapping, proc_obj1|
         _ = self

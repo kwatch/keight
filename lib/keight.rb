@@ -794,10 +794,11 @@ module K8
 
     def _compile(urlpath_pattern, start_pat='', end_pat='', grouping=false)
       #; [!izsbp] compiles urlpath pattern into regexp string and param names.
+      #; [!olps9] allows '{}' in regular expression.
       #parse_rexp = /(.*?)<(\w*)(?::(.*?))?>/
       #parse_rexp = /(.*?)\{(\w*)(?::(.*?))?\}/
-      parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
-      #parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+      #parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
+      parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
       param_names = []
       converters  = []
       s = ""

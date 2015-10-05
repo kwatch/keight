@@ -496,37 +496,6 @@ module K8
   end
 
 
-  DEFAULT_PATTERNS = [
-    #; [!hcnyx] returns '\d+' when name is 'id' or ends with '_id'.
-    ["id",      '\d+'],
-    [/_id\z/,   '\d+'],
-    #; [!gada5] returns '\d\d\d\d-\d\d-\d\d' when name is 'date' or ends with '_date'.
-    ["date",    '\d\d\d\d-\d\d-\d\d'],
-    [/_date\z/, '\d\d\d\d-\d\d-\d\d'],
-  ]
-
-
-  proc_str2date = proc {|value|
-    if value =~ /\A(\d\d\d\d)-(\d\d)-(\d\d)\z/
-      #; [!2rlse] raises HTTP 404 error when invalid date (such as 2000-02-30).
-      Date.new($1.to_i, $2.to_i, $3.to_i)  rescue
-        raise HttpException.new(404, "#{value}: invalid date.")
-    else
-      value
-    end
-  }
-
-  URLPATH_PARAM_CONVERTERS = [
-    #; [!67ztb] returns Integer value when name is 'id' or ends with '_id'.
-    ["id",       proc {|value| value.to_i }],
-    [/_id\z/,    proc {|value| value.to_i }],
-    #; [!0htit] returns Date value when name is 'date' or ends with '_date'.
-    ["date",     proc_str2date],
-    [/_date\z/,  proc_str2date],
-  ]
-  proc_str2date = nil
-
-
   class DefaultPatterns
 
     def initialize
@@ -576,36 +545,6 @@ module K8
   end
 
 
-  module ActionMappingHelper
-
-    protected
-
-    def default_pattern_of_urlpath_parameter(name)
-      #; [!adj99] returns '[^/]*?' when other name.
-      for key, pat in DEFAULT_PATTERNS
-        return pat if key === name
-      end
-      return '[^/]*?'
-    end
-
-    def convert_urlpath_param_value(name, value)
-      for key, proc_obj in URLPATH_PARAM_CONVERTERS
-        return proc_obj.call(value) if key === name
-      end
-      #; [!y0c2r] returns String value when other name.
-      return value
-    end
-
-    def handle_urlpath_params(names, values)
-      return values if values.empty?
-      return names.zip(values).map {|name, value|
-        convert_urlpath_param_value(name, value)
-      }
-    end
-
-  end
-
-
   class ActionMethodMapping
 
     def initialize
@@ -649,7 +588,6 @@ module K8
 
 
   class ActionClassMapping
-    include ActionMappingHelper
 
     def initialize
       @mappings = []

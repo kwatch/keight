@@ -589,8 +589,9 @@ module K8
 
   class ActionClassMapping
 
-    def initialize
+    def initialize(_=nil, default_patterns: DEFAULT_PATTERNS)
       @mappings = []
+      @default_patterns = default_patterns
       clear_mapping_data()
     end
 
@@ -803,7 +804,7 @@ module K8
       s << start_pat
       urlpath_pattern.scan(parse_rexp) do |text, name, pat|
         proc_ = nil
-        pat, proc_ = DEFAULT_PATTERNS.lookup(name) if pat.nil? || pat.empty?
+        pat, proc_ = @default_patterns.lookup(name) if pat.nil? || pat.empty?
         param_names << name unless name.empty?
         converters << proc_ unless name.empty?
         #; [!2zil2] don't use grouping when 4th argument is false.

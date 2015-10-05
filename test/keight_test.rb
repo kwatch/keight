@@ -468,6 +468,45 @@ Oktest.scope do
   end
 
 
+  topic K8::DEFAULT_PATTERNS_ do
+
+    fixture :default_patterns do
+      K8::DEFAULT_PATTERNS_
+    end
+
+    spec "[!6hh7o] default pattern of urlpath param name 'id' or 'xxx_id' is '\d+'." do
+      |default_patterns|
+      pat, proc_ = default_patterns.lookup('id')
+      ok {pat} == '\d+'
+      ok {proc_.call("123")} == 123
+      #
+      pat, proc_ = default_patterns.lookup('book_id')
+      ok {pat} == '\d+'
+      ok {proc_.call("123")} == 123
+    end
+
+    spec "[!jisj0] default pattern of urlpath param name 'date' or 'xxx_date' is '\\d\\d\\d\\d-\\d\\d-\\d\\d'." do
+      |default_patterns|
+      pat, proc_ = default_patterns.lookup('date')
+      ok {pat} == '\d\d\d\d-\d\d-\d\d'
+      ok {proc_.call("2014-12-24")} == Date.new(2014, 12, 24)
+      #
+      pat, proc_ = default_patterns.lookup('birth_date')
+      ok {pat} == '\d\d\d\d-\d\d-\d\d'
+      ok {proc_.call("2015-02-14")} == Date.new(2015, 2, 14)
+    end
+
+    spec "[!yv6i6] raises HTTP 404 error when invalid date (such as 2000-02-30)." do
+      |default_patterns|
+      pat, proc_ = default_patterns.lookup('date')
+      pr = proc { proc_.call("2014-02-30") }
+      ok {pr}.raise?(K8::HttpException, "2014-02-30: invalid date.")
+      ok {pr.exception.status_code} == 404
+    end
+
+  end
+
+
   topic K8::ActionMappingHelper do
 
     fixture :mapping do

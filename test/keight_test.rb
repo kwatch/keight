@@ -468,10 +468,10 @@ Oktest.scope do
   end
 
 
-  topic K8::DEFAULT_PATTERNS_ do
+  topic K8::DEFAULT_PATTERNS do
 
     fixture :default_patterns do
-      K8::DEFAULT_PATTERNS_
+      K8::DEFAULT_PATTERNS
     end
 
     spec "[!6hh7o] default pattern of urlpath param name 'id' or 'xxx_id' is '\d+'." do
@@ -571,12 +571,12 @@ Oktest.scope do
     end
 
     fixture :proc_obj1 do
-      _, proc_obj = K8::DEFAULT_PATTERNS_.lookup('id')
+      _, proc_obj = K8::DEFAULT_PATTERNS.lookup('id')
       proc_obj
     end
 
     fixture :proc_obj2 do
-      _, proc_obj = K8::DEFAULT_PATTERNS_.lookup('book_id')
+      _, proc_obj = K8::DEFAULT_PATTERNS.lookup('book_id')
       proc_obj
     end
 

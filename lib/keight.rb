@@ -525,8 +525,8 @@ module K8
 
   end
 
-  DEFAULT_PATTERNS_ = DefaultPatterns.new
-  DEFAULT_PATTERNS_.instance_eval do
+  DEFAULT_PATTERNS = DefaultPatterns.new
+  DEFAULT_PATTERNS.instance_eval do
     to_date = proc {|value|
       if value =~ /\A(\d\d\d\d)-(\d\d)-(\d\d)\z/
         #; [!yv6i6] raises HTTP 404 error when invalid date (such as 2000-02-30).
@@ -803,7 +803,7 @@ module K8
       s << start_pat
       urlpath_pattern.scan(parse_rexp) do |text, name, pat|
         proc_ = nil
-        pat, proc_ = DEFAULT_PATTERNS_.lookup(name) if pat.nil? || pat.empty?
+        pat, proc_ = DEFAULT_PATTERNS.lookup(name) if pat.nil? || pat.empty?
         param_names << name unless name.empty?
         converters << proc_ unless name.empty?
         #; [!2zil2] don't use grouping when 4th argument is false.

@@ -806,15 +806,16 @@ module K8
       urlpath_pattern.scan(parse_rexp) do |text, name, pat|
         proc_ = nil
         pat, proc_ = @default_patterns.lookup(name) if pat.nil? || pat.empty?
-        param_names << name unless name.empty?
-        converters << proc_ unless name.empty?
+        named = !name.empty?
+        param_names << name if named
+        converters << proc_ if named
         #; [!vey08] uses grouping when 4th argument is true.
         #; [!2zil2] don't use grouping when 4th argument is false.
         #; [!rda92] ex: '/{id:\d+}' -> '/(\d+)'
         #; [!jyz2g] ex: '/{:\d+}'   -> '/\d+'
         #; [!hy3y5] ex: '/{:xx|yy}' -> '/(?:xx|yy)'
         #; [!gunsm] ex: '/{id:xx|yy}' -> '/(xx|yy)'
-        if !name.empty? && grouping
+        if named && grouping
           pat = "(#{pat})"
         elsif pat =~ /\|/
           pat = "(?:#{pat})"

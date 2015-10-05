@@ -653,6 +653,15 @@ Oktest.scope do
       K8::ActionClassMapping.new
     end
 
+    fixture :proc_obj1 do
+      _, proc_obj = K8::DEFAULT_PATTERNS_.lookup('id')
+      proc_obj
+    end
+
+    fixture :proc_obj2 do
+      _, proc_obj = K8::DEFAULT_PATTERNS_.lookup('book_id')
+      proc_obj
+    end
 
     topic '#mount()' do
 
@@ -882,18 +891,18 @@ Oktest.scope do
       end
 
       spec "[!cny8a] collects variable urlpath patterns as Array object." do
-        |simple_mapping, complex_mapping|
+        |simple_mapping, complex_mapping, proc_obj1, proc_obj2|
         list = simple_mapping.instance_variable_get('@_mapping_list')
         ok {list} == [
           [
             %r`\A/books/(\d+)\z`,
-            ["id"],
+            ["id"], [proc_obj1],
             BooksAction,
             {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
           ],
           [
             %r`\A/books/(\d+)/edit\z`,
-            ["id"],
+            ["id"], [proc_obj1],
             BooksAction,
             {:GET=>:do_edit},
           ],
@@ -903,37 +912,37 @@ Oktest.scope do
         ok {list} == [
           [
             %r`\A/api/books/(\d+)\z`,
-            ["id"],
+            ["id"], [proc_obj1],
             BooksAction,
             {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
           ],
           [
             %r`\A/api/books/(\d+)/edit\z`,
-            ["id"],
+            ["id"], [proc_obj1],
             BooksAction,
             {:GET=>:do_edit},
           ],
           [
             %r`\A/api/books/(\d+)/comments\z`,
-            ["id"],
+            ["id"], [proc_obj1],
             BookCommentsAction,
             {:GET=>:do_comments},
           ],
           [
             %r`\A/api/books/(\d+)/comments/(\d+)\z`,
-            ["id", "comment_id"],
+            ["id", "comment_id"], [proc_obj1, proc_obj2],
             BookCommentsAction,
             {:GET=>:do_comment},
           ],
           [
             %r`\A/admin/books/(\d+)\z`,
-            ["id"],
+            ["id"], [proc_obj1],
             AdminBooksAction,
             {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
           ],
           [
             %r`\A/admin/books/(\d+)/edit\z`,
-            ["id"],
+            ["id"], [proc_obj1],
             AdminBooksAction,
             {:GET=>:do_edit},
           ],
@@ -946,33 +955,33 @@ Oktest.scope do
     topic '#_compile()' do
 
       spec "[!izsbp] compiles urlpath pattern into regexp string and param names." do
-        |mapping|
+        |mapping, proc_obj1|
         _ = self
         mapping.instance_eval do
           ret = _compile('/', '\A', '\z', true)
-          _.ok {ret} == ['\A/\z', []]
+          _.ok {ret} == ['\A/\z', [], []]
           ret = _compile('/books', '\A', '\z', true)
-          _.ok {ret} == ['\A/books\z', []]
+          _.ok {ret} == ['\A/books\z', [], []]
           ret = _compile('/books/{id:\d*}', '\A', '\z', true)
-          _.ok {ret} == ['\A/books/(\d*)\z', ["id"]]
+          _.ok {ret} == ['\A/books/(\d*)\z', ["id"], [nil]]
           ret = _compile('/books/{id}/authors/{name}', '\A', '\z', true)
-          _.ok {ret} == ['\A/books/(\d+)/authors/([^/]*?)\z', ["id", "name"]]
+          _.ok {ret} == ['\A/books/(\d+)/authors/([^/]+?)\z', ["id", "name"], [proc_obj1, nil]]
         end
       end
 
       spec "[!2zil2] don't use grouping when 4th argument is false." do
-        |mapping|
+        |mapping, proc_obj1|
         _ = self
         mapping.instance_eval do
           ret = _compile('/books/{id:\d*}', '\A', '\z', true)
-          _.ok {ret} == ['\A/books/(\d*)\z', ["id"]]
+          _.ok {ret} == ['\A/books/(\d*)\z', ["id"], [nil]]
           ret = _compile('/books/{id}/authors/{name}', '\A', '\z', true)
-          _.ok {ret} == ['\A/books/(\d+)/authors/([^/]*?)\z', ["id", "name"]]
+          _.ok {ret} == ['\A/books/(\d+)/authors/([^/]+?)\z', ["id", "name"], [proc_obj1, nil]]
           #
           ret = _compile('/books/{id:\d*}', '\A', '\z', false)
-          _.ok {ret} == ['\A/books/\d*\z', ["id"]]
+          _.ok {ret} == ['\A/books/\d*\z', ["id"], [nil]]
           ret = _compile('/books/{id}/authors/{name}', '\A', '\z', false)
-          _.ok {ret} == ['\A/books/\d+/authors/[^/]*?\z', ["id", "name"]]
+          _.ok {ret} == ['\A/books/\d+/authors/[^/]+?\z', ["id", "name"], [proc_obj1, nil]]
         end
       end
 

@@ -731,9 +731,10 @@ module K8
         #a = m.captures; i = 0; i += 1 until a[i]
         tuple = @_mapping_list[i]  or return nil
         #; [!6qoa3] concatenats all urlpath params in an array.
-        full_urlpath_rexp, names, action_class, action_methods = tuple
+        full_urlpath_rexp, param_names, conveters, action_class, action_methods = tuple
         values = full_urlpath_rexp.match(req_path).captures
-        urlpath_param_values = handle_urlpath_params(names, values)
+        urlpath_param_values = \
+            conveters.zip(values).map {|pr, val| pr ? pr.call(val) : val }
       end
       #; [!yqedi] returns [action_class, action_methods, urlpath_params] when urlpath matches to action class.
       # ex: [HelloAction, {:GET=>:do_show}, [123]]
@@ -779,18 +780,18 @@ module K8
       ##
       ## Example of @_mapping_list (variable urlpaths):
       ##     [                                          # ...(7)
-      ##       [ %r'\A/api/books/(\d+)\z', ["id"],
+      ##       [
+      ##         %r'\A/api/books/(\d+)\z',
+      ##         ["id"], [proc {|x| x.to_i }],
       ##         BooksAction,
-      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete} ],
-      ##       [ %r'\A/api/books/(\d+)/edit\z', ["id"],
+      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+      ##       ],
+      ##       [
+      ##         %r'\A/api/books/(\d+)/edit\z',
+      ##         ["id"], [proc {|x| x.to_i }],
       ##         BooksAction,
-      ##         {:GET=>:do_edit} ],
-      ##       [ %r'\A/api/authors/(\d+)\z', ["id"],
-      ##         AuthorsAction,
-      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete} ],
-      ##       [ %r'\A/api/authors/(\d+)/edit\z', ["id"],
-      ##         AuthorsAction,
-      ##         {:GET=>:do_edit} ],
+      ##         {:GET=>:do_edit},
+      ##       ],
       ##       ...
       ##     ]
       ##
@@ -799,11 +800,11 @@ module K8
       buf = _traverse(@mappings, "") {|full_urlpath_pat, action_class, action_methods|
         has_params = full_urlpath_pat =~ /\{.*?\}/
         if has_params
-          full_urlpath_rexp_str, urlpath_param_names = \
+          full_urlpath_rexp_str, urlpath_param_names, converters = \
               _compile(full_urlpath_pat, '\A', '\z', true)
           #; [!cny8a] collects variable urlpath patterns as Array object.
           list << [Regexp.compile(full_urlpath_rexp_str),
-                   urlpath_param_names,
+                   urlpath_param_names, converters,
                    action_class, action_methods]    # ...(7)
         else
           #; [!7hkq6] collects fixed urlpath patterns as Hash object.
@@ -859,11 +860,14 @@ module K8
       parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
       #parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
       param_names = []
+      converters  = []
       s = ""
       s << start_pat
       urlpath_pattern.scan(parse_rexp) do |text, name, pat|
+        proc_ = nil
+        pat, proc_ = DEFAULT_PATTERNS_.lookup(name) if pat.nil? || pat.empty?
         param_names << name unless name.empty?
-        pat ||= default_pattern_of_urlpath_parameter(name)
+        converters << proc_ unless name.empty?
         #; [!2zil2] don't use grouping when 4th argument is false.
         pat = (name.empty? ? "(?:#{pat})" : "(#{pat})") if grouping
         s << Regexp.escape(text) << pat
@@ -871,7 +875,7 @@ module K8
       m = Regexp.last_match
       rest = m ? m.post_match : urlpath_pattern
       s << Regexp.escape(rest) << end_pat
-      return s, param_names
+      return s, param_names, converters
     end
 
   end

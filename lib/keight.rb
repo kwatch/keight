@@ -808,6 +808,7 @@ module K8
         pat, proc_ = @default_patterns.lookup(name) if pat.nil? || pat.empty?
         param_names << name unless name.empty?
         converters << proc_ unless name.empty?
+        #; [!vey08] uses grouping when 4th argument is true.
         #; [!2zil2] don't use grouping when 4th argument is false.
         #; [!rda92] ex: '/{id:\d+}' -> '/(\d+)'
         #; [!jyz2g] ex: '/{:\d+}'   -> '/\d+'

@@ -893,14 +893,19 @@ Oktest.scope do
         end
       end
 
-      spec "[!2zil2] don't use grouping when 4th argument is false." do
+      spec "[!vey08] uses grouping when 4th argument is true." do
         |mapping, proc_obj1|
         mapping.instance_exec(self) do |_|
           ret = _compile('/books/{id:\d*}', '\A', '\z', true)
           _.ok {ret} == ['\A/books/(\d*)\z', ["id"], [nil]]
           ret = _compile('/books/{id}/authors/{name}', '\A', '\z', true)
           _.ok {ret} == ['\A/books/(\d+)/authors/([^/]+?)\z', ["id", "name"], [proc_obj1, nil]]
-          #
+        end
+      end
+
+      spec "[!2zil2] don't use grouping when 4th argument is false." do
+        |mapping, proc_obj1|
+        mapping.instance_exec(self) do |_|
           ret = _compile('/books/{id:\d*}', '\A', '\z', false)
           _.ok {ret} == ['\A/books/\d*\z', ["id"], [nil]]
           ret = _compile('/books/{id}/authors/{name}', '\A', '\z', false)

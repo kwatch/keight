@@ -873,8 +873,7 @@ Oktest.scope do
 
       spec "[!izsbp] compiles urlpath pattern into regexp string and param names." do
         |mapping, proc_obj1|
-        _ = self
-        mapping.instance_eval do
+        mapping.instance_exec(self) do |_|
           ret = _compile('/', '\A', '\z', true)
           _.ok {ret} == ['\A/\z', [], []]
           ret = _compile('/books', '\A', '\z', true)
@@ -896,8 +895,7 @@ Oktest.scope do
 
       spec "[!2zil2] don't use grouping when 4th argument is false." do
         |mapping, proc_obj1|
-        _ = self
-        mapping.instance_eval do
+        mapping.instance_exec(self) do |_|
           ret = _compile('/books/{id:\d*}', '\A', '\z', true)
           _.ok {ret} == ['\A/books/(\d*)\z', ["id"], [nil]]
           ret = _compile('/books/{id}/authors/{name}', '\A', '\z', true)

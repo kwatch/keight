@@ -809,7 +809,15 @@ module K8
         param_names << name unless name.empty?
         converters << proc_ unless name.empty?
         #; [!2zil2] don't use grouping when 4th argument is false.
-        pat = (name.empty? ? "(?:#{pat})" : "(#{pat})") if grouping
+        #; [!rda92] ex: '/{id:\d+}' -> '/(\d+)'
+        #; [!jyz2g] ex: '/{:\d+}'   -> '/\d+'
+        #; [!hy3y5] ex: '/{:xx|yy}' -> '/(?:xx|yy)'
+        #; [!gunsm] ex: '/{id:xx|yy}' -> '/(xx|yy)'
+        if !name.empty? && grouping
+          pat = "(#{pat})"
+        elsif pat =~ /\|/
+          pat = "(?:#{pat})"
+        end
         s << Regexp.escape(text) << pat
       end
       m = Regexp.last_match

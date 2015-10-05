@@ -910,6 +910,38 @@ Oktest.scope do
         end
       end
 
+      spec %q"[!rda92] ex: '/{id:\d+}' -> '/(\d+)'" do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          ret = _compile('/api/{ver:\d+}', '', '', true)
+          _.ok {ret} == ['/api/(\d+)', ["ver"], [nil]]
+        end
+      end
+
+      spec %q"[!jyz2g] ex: '/{:\d+}'   -> '/\d+'" do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          ret = _compile('/api/{:\d+}', '', '', true)
+          _.ok {ret} == ['/api/\d+', [], []]
+        end
+      end
+
+      spec %q"[!hy3y5] ex: '/{:xx|yy}' -> '/(?:xx|yy)'" do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          ret = _compile('/api/{:2014|2015}', '', '', true)
+          _.ok {ret} == ['/api/(?:2014|2015)', [], []]
+        end
+      end
+
+      spec %q"[!gunsm] ex: '/{id:xx|yy}' -> '/(xx|yy)'" do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          ret = _compile('/api/{year:2014|2015}', '', '', true)
+          _.ok {ret} == ['/api/(2014|2015)', ["year"], [nil]]
+        end
+      end
+
     end
 
 

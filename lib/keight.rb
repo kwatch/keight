@@ -527,6 +527,36 @@ module K8
   proc_str2date = nil
 
 
+  class DefaultPatterns
+
+    def initialize
+      @patterns = []
+    end
+
+    def register(urlpath_param_name, default_pattern='[^/]*?', &converter)
+      #; [!yfsom] registers urlpath param name, default pattern and converter block.
+      @patterns << [urlpath_param_name, default_pattern, converter]
+      self
+    end
+
+    def unregister(urlpath_param_name)
+      #; [!3gplv] deletes matched record.
+      @patterns.delete_if {|tuple| tuple[0] == urlpath_param_name }
+      self
+    end
+
+    def lookup(urlpath_param_name)
+      #; [!dvbqx] returns default pattern string and converter proc when matched.
+      #; [!6hblo] returns '[^/]+?' and nil as default pattern and converter proc when nothing matched.
+      for str_or_rexp, default_pat, converter in @patterns
+        return default_pat, converter if str_or_rexp === urlpath_param_name
+      end
+      return '[^/]+?', nil
+    end
+
+  end
+
+
   module ActionMappingHelper
 
     protected

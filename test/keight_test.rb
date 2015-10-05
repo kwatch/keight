@@ -402,6 +402,72 @@ Oktest.scope do
   end
 
 
+  topic K8::DefaultPatterns do
+
+
+    topic '#register()' do
+
+      spec "[!yfsom] registers urlpath param name, default pattern and converter block." do
+        K8::DefaultPatterns.new.instance_exec(self) do |_|
+          _.ok {@patterns.length} == 0
+          register(/_id\z/, '\d+') {|x| x.to_i }
+          _.ok {@patterns.length} == 1
+          _.ok {@patterns[0][0]} == /_id\z/
+          _.ok {@patterns[0][1]} == '\d+'
+          _.ok {@patterns[0][2]}.is_a?(Proc)
+          _.ok {@patterns[0][2].call("123")} == 123
+        end
+      end
+
+    end
+
+
+    topic '#unregister()' do
+
+      spec "[!3gplv] deletes matched record." do
+        K8::DefaultPatterns.new.instance_exec(self) do |_|
+          register("id",    '\d+') {|x| x.to_i }
+          register(/_id\z/, '\d+') {|x| x.to_i }
+          _.ok {@patterns.length} == 2
+          unregister(/_id\z/)
+          _.ok {@patterns.length} == 1
+          _.ok {@patterns[0][0]} == "id"
+        end
+      end
+
+    end
+
+
+    topic '#lookup()' do
+
+      spec "[!dvbqx] returns default pattern string and converter proc when matched." do
+        K8::DefaultPatterns.new.instance_exec(self) do |_|
+          register("id",    '\d+') {|x| x.to_i }
+          register(/_id\z/, '\d+') {|x| x.to_i }
+          _.ok {lookup("id")}.is_a?(Array).length(2)
+          _.ok {lookup("id")[0]} == '\d+'
+          _.ok {lookup("id")[1].call("123")} == 123
+          _.ok {lookup("book_id")[0]} == '\d+'
+          _.ok {lookup("book_id")[1]}.is_a?(Proc)
+          _.ok {lookup("book_id")[1].call("123")} == 123
+        end
+      end
+
+      spec "[!6hblo] returns '[^/]*?' and nil as default pattern and converter proc when nothing matched." do
+        K8::DefaultPatterns.new.instance_exec(self) do |_|
+          register("id",    '\d+') {|x| x.to_i }
+          register(/_id\z/, '\d+') {|x| x.to_i }
+          _.ok {lookup("code")}.is_a?(Array).length(2)
+          _.ok {lookup("code")[0]} == '[^/]+?'
+          _.ok {lookup("code")[1]} == nil
+        end
+      end
+
+    end
+
+  end
+
+
   topic K8::ActionMappingHelper do
 
     fixture :mapping do

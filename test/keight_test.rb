@@ -993,6 +993,254 @@ Oktest.scope do
   end
 
 
+  topic K8::ActionRouter do
+
+    fixture :router do
+      mapping = K8::ActionClassMapping.new
+      mapping.mount '/api', [
+        ['/books', BooksAction],
+        ['/books/{book_id}', BookCommentsAction],
+      ]
+      mapping.mount '/admin', [
+        ['/books', AdminBooksAction],
+      ]
+      router = K8::ActionRouter.new(mapping, K8::DEFAULT_PATTERNS)
+      router
+    end
+
+    fixture :proc_obj1 do
+      _, proc_obj = K8::DEFAULT_PATTERNS.lookup("id")
+      proc_obj
+    end
+
+    fixture :proc_obj2 do
+      _, proc_obj = K8::DEFAULT_PATTERNS.lookup("xxx_id")
+      proc_obj
+    end
+
+
+    topic '#initialize()' do
+
+      spec "[!dnu4q] calls '#_construct()'." do
+        |router|
+        ok {router.instance_variable_get('@rexp')} != nil
+        ok {router.instance_variable_get('@list')} != nil
+        ok {router.instance_variable_get('@dict')} != nil
+      end
+
+    end
+
+
+    topic '#_compile()' do
+
+      spec "[!izsbp] compiles urlpath pattern into regexp string and param names." do
+        |router, proc_obj1|
+        router.instance_exec(self) do |_|
+          ret = _compile('/', '\A', '\z', true)
+          _.ok {ret} == ['\A/\z', [], []]
+          ret = _compile('/books', '\A', '\z', true)
+          _.ok {ret} == ['\A/books\z', [], []]
+          ret = _compile('/books/{id:\d*}', '\A', '\z', true)
+          _.ok {ret} == ['\A/books/(\d*)\z', ["id"], [nil]]
+          ret = _compile('/books/{id}/authors/{name}', '\A', '\z', true)
+          _.ok {ret} == ['\A/books/(\d+)/authors/([^/]+?)\z', ["id", "name"], [proc_obj1, nil]]
+        end
+      end
+
+      spec "[!olps9] allows '{}' in regular expression." do
+        |router|
+        router.instance_exec(self) do |_|
+          ret = _compile('/log/{date:\d{4}-\d{2}-\d{2}}', '', '', true)
+          _.ok {ret} == ['/log/(\d{4}-\d{2}-\d{2})', ["date"], [nil]]
+        end
+      end
+
+      spec "[!vey08] uses grouping when 4th argument is true." do
+        |router, proc_obj1|
+        router.instance_exec(self) do |_|
+          ret = _compile('/books/{id:\d*}', '\A', '\z', true)
+          _.ok {ret} == ['\A/books/(\d*)\z', ["id"], [nil]]
+          ret = _compile('/books/{id}/authors/{name}', '\A', '\z', true)
+          _.ok {ret} == ['\A/books/(\d+)/authors/([^/]+?)\z', ["id", "name"], [proc_obj1, nil]]
+        end
+      end
+
+      spec "[!2zil2] don't use grouping when 4th argument is false." do
+        |router, proc_obj1|
+        router.instance_exec(self) do |_|
+          ret = _compile('/books/{id:\d*}', '\A', '\z', false)
+          _.ok {ret} == ['\A/books/\d*\z', ["id"], [nil]]
+          ret = _compile('/books/{id}/authors/{name}', '\A', '\z', false)
+          _.ok {ret} == ['\A/books/\d+/authors/[^/]+?\z', ["id", "name"], [proc_obj1, nil]]
+        end
+      end
+
+      spec %q"[!rda92] ex: '/{id:\d+}' -> '/(\d+)'" do
+        |router|
+        router.instance_exec(self) do |_|
+          ret = _compile('/api/{ver:\d+}', '', '', true)
+          _.ok {ret} == ['/api/(\d+)', ["ver"], [nil]]
+        end
+      end
+
+      spec %q"[!jyz2g] ex: '/{:\d+}'   -> '/\d+'" do
+        |router|
+        router.instance_exec(self) do |_|
+          ret = _compile('/api/{:\d+}', '', '', true)
+          _.ok {ret} == ['/api/\d+', [], []]
+        end
+      end
+
+      spec %q"[!hy3y5] ex: '/{:xx|yy}' -> '/(?:xx|yy)'" do
+        |router|
+        router.instance_exec(self) do |_|
+          ret = _compile('/api/{:2014|2015}', '', '', true)
+          _.ok {ret} == ['/api/(?:2014|2015)', [], []]
+        end
+      end
+
+      spec %q"[!gunsm] ex: '/{id:xx|yy}' -> '/(xx|yy)'" do
+        |router|
+        router.instance_exec(self) do |_|
+          ret = _compile('/api/{year:2014|2015}', '', '', true)
+          _.ok {ret} == ['/api/(2014|2015)', ["year"], [nil]]
+        end
+      end
+
+    end
+
+
+    topic '#_construct()' do
+
+      spec "[!956fi] builds regexp object for variable urlpaths (= containing urlpath params)." do
+        |router|
+        rexp = router.instance_variable_get('@rexp')
+        ok {rexp}.is_a?(Regexp)
+        ok {rexp.source} == '
+            \A
+            (?:
+                /api
+                    (?:
+                        /books
+                            (?: /\d+(\z) | /\d+/edit(\z) )
+                    |
+                        /books/\d+
+                            (?: /comments(\z) | /comments/\d+(\z) )
+                    )
+            |
+                /admin
+                    (?:
+                        /books
+                            (?: /\d+(\z) | /\d+/edit(\z) )
+                    )
+            )
+        '.gsub(/\s+/, '')
+      end
+
+      spec "[!6tgj5] builds dict of fixed urlpaths (= no urlpath params)." do
+        |router|
+        dict = router.instance_variable_get('@dict')
+        ok {dict} == {
+          '/api/books/'      => [BooksAction,      {:GET=>:do_index, :POST=>:do_create}],
+          '/api/books/new'   => [BooksAction,      {:GET=>:do_new}],
+          '/admin/books/'    => [AdminBooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          '/admin/books/new' => [AdminBooksAction, {:GET=>:do_new}],
+        }
+      end
+
+      spec "[!sl9em] builds list of variable urlpaths (= containing urlpath params)." do
+        |router, proc_obj1, proc_obj2|
+        list = router.instance_variable_get('@list')
+        ok {list}.is_a?(Array)
+        ok {list.length} == 6
+        ok {list[0]} == [
+          /\A\/api\/books\/(\d+)\z/,
+          ["id"], [proc_obj1],
+          BooksAction,
+          {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+        ]
+        ok {list[1]} == [
+          /\A\/api\/books\/(\d+)\/edit\z/,
+          ["id"], [proc_obj1],
+          BooksAction,
+          {:GET=>:do_edit},
+        ]
+        ok {list[2]} == [
+          /\A\/api\/books\/(\d+)\/comments\z/,
+          ["book_id"], [proc_obj2],
+          BookCommentsAction,
+          {:GET=>:do_comments},
+        ]
+        ok {list[3]} == [
+          /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
+          ["book_id", "comment_id"], [proc_obj2, proc_obj2],
+          BookCommentsAction,
+          {:GET=>:do_comment},
+        ]
+        ok {list[4]} == [
+          /\A\/admin\/books\/(\d+)\z/,
+          ["id"], [proc_obj1],
+          AdminBooksAction,
+          {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+        ]
+        ok {list[5]} == [
+          /\A\/admin\/books\/(\d+)\/edit\z/,
+          ["id"], [proc_obj1],
+          AdminBooksAction,
+          {:GET=>:do_edit},
+        ]
+        ok {list[6]} == nil
+      end
+
+    end
+
+
+    topic '#find()' do
+
+      spec "[!ndktw] returns action class, action methods, urlpath names and values." do
+        |router|
+        ok {router.find('/api/books/')} == [
+          BooksAction, {:GET=>:do_index, :POST=>:do_create}, [], [],
+        ]
+        ok {router.find('/api/books/123')} == [
+          BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, ["id"], [123],
+        ]
+      end
+
+      spec "[!p18w0] urlpath params are empty when matched to fixed urlpath pattern." do
+        |router|
+        ok {router.find('/admin/books/')} == [
+          AdminBooksAction, {:GET=>:do_index, :POST=>:do_create}, [], [],
+        ]
+      end
+
+      spec "[!t6yk0] urlpath params are not empty when matched to variable urlpath apttern." do
+        |router|
+        ok {router.find('/admin/books/123')} == [
+          AdminBooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, ["id"], [123],
+        ]
+        ok {router.find('/api/books/123/comments/999')} == [
+          BookCommentsAction, {:GET=>:do_comment}, ["book_id", "comment_id"], [123, 999],
+        ]
+      end
+
+      spec "[!0o3fe] converts urlpath param values according to default patterns." do
+        |router|
+        ok {router.find('/api/books/123')[-1]} == [123]
+        ok {router.find('/api/books/123/comments/999')[-1]} == [123, 999]
+      end
+
+      spec "[!ps5jm] returns nil when not matched to any urlpath patterns." do
+        |router|
+        ok {router.find('/admin/authors')} == nil
+      end
+
+    end
+
+
+  end
+
+
   topic K8::RackApplication do
 
     fixture :app do

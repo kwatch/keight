@@ -851,6 +851,196 @@ module K8
   end
 
 
+  class ActionRouter
+
+    def initialize(action_class_mapping, default_patterns=nil)
+      @default_patterns = default_patterns || K8::DefaultPatterns.new
+      #; [!dnu4q] calls '#_construct()'.
+      _construct(action_class_mapping)
+    end
+
+    private
+
+    def _construct(action_class_mapping)
+      ##
+      ## Example of @rexp:
+      ##     \A                                  # ...(0)
+      ##     (:?                                 # ...(1)
+      ##         /api                            # ...(2)
+      ##             (?:                         # ...(3)
+      ##                 /books                  # ...(2)
+      ##                     (?:                 # ...(3)
+      ##                         /\d+(\z)        # ...(4)
+      ##                     |                   # ...(5)
+      ##                         /\d+/edit(\z)   # ...(4)
+      ##                     )                   # ...(6)
+      ##             |                           # ...(7)
+      ##                 /authors                # ...(2)
+      ##                     (:?                 # ...(4)
+      ##                         /\d+(\z)        # ...(4)
+      ##                     |                   # ...(5)
+      ##                         /\d+/edit(\z)   # ...(4)
+      ##                     )                   # ...(6)
+      ##             )                           # ...(6)
+      ##     |                                   # ...(7)
+      ##         /admin                          # ...(2)
+      ##             (:?                         # ...(3)
+      ##                 ....
+      ##             )                           # ...(6)
+      ##     )                                   # ...(8)
+      ##
+      ## Example of @dict (fixed urlpaths):
+      ##     {
+      ##       "/api/books"                      # ...(9)
+      ##           => [BooksAction,   {:GET=>:do_index, :POST=>:do_create}],
+      ##       "/api/books/new"
+      ##           => [BooksAction,   {:GET=>:do_new}],
+      ##       "/api/authors"
+      ##           => [AuthorsAction, {:GET=>:do_index, :POST=>:do_create}],
+      ##       "/api/authors/new"
+      ##           => [AuthorsAction, {:GET=>:do_new}],
+      ##       "/admin/books"
+      ##           => ...
+      ##       ...
+      ##     }
+      ##
+      ## Example of @list (variable urlpaths):
+      ##     [
+      ##       [                                 # ...(10)
+      ##         %r'\A/api/books/(\d+)\z',
+      ##         ["id"], [proc {|x| x.to_i }],
+      ##         BooksAction,
+      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+      ##       ],
+      ##       [
+      ##         %r'\A/api/books/(\d+)/edit\z',
+      ##         ["id"], [proc {|x| x.to_i }],
+      ##         BooksAction,
+      ##         {:GET=>:do_edit},
+      ##       ],
+      ##       ...
+      ##     ]
+      ##
+      @dict = {}
+      @list = []
+      #; [!956fi] builds regexp object for variable urlpaths (= containing urlpath params).
+      buf = ['\A']                         # ...(0)
+      buf << '(?:'                         # ...(1)
+      action_class_mapping.traverse do
+        |event, base_urlpath_pat, urlpath_pat, action_class, action_methods|
+        first_p = buf[-1] == '(?:'
+        case event
+        when :map
+          full_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
+          if full_urlpath_pat =~ /\{.*?\}/
+            buf << '|' unless first_p      # ...(5)
+            buf << _compile(urlpath_pat, '', '(\z)').first  # ...(4)
+            full_urlpath_rexp_str, param_names, param_converters = \
+                _compile(full_urlpath_pat, '\A', '\z', true)
+            #; [!sl9em] builds list of variable urlpaths (= containing urlpath params).
+            @list << [Regexp.compile(full_urlpath_rexp_str),
+                      param_names, param_converters,
+                      action_class, action_methods]   # ...(9)
+          else
+            #; [!6tgj5] builds dict of fixed urlpaths (= no urlpath params).
+            @dict[full_urlpath_pat] = [action_class, action_methods] # ...(10)
+          end
+        when :enter
+          buf << '|' unless first_p        # ...(7)
+          buf << _compile(urlpath_pat, '', '').first  # ...(2)
+          buf << '(?:'                     # ...(3)
+        when :exit
+          if first_p
+            buf.pop()   # '(?:'
+            buf.pop()   # urlpath
+            buf.pop() if buf[-1] == '|'
+          else
+            buf << ')'                     # ...(6)
+          end
+        else
+          raise "** internal error: event=#{event.inspect}"
+        end
+      end
+      buf << ')'                           # ...(8)
+      @rexp = Regexp.compile(buf.join())
+      buf.clear()
+    end
+
+    def _compile(urlpath_pattern, start_pat='', end_pat='', grouping=false)
+      #; [!izsbp] compiles urlpath pattern into regexp string and param names.
+      #; [!olps9] allows '{}' in regular expression.
+      #parse_rexp = /(.*?)<(\w*)(?::(.*?))?>/
+      #parse_rexp = /(.*?)\{(\w*)(?::(.*?))?\}/
+      #parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
+      parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+      param_names = []
+      converters  = []
+      s = ""
+      s << start_pat
+      urlpath_pattern.scan(parse_rexp) do |text, name, pat|
+        proc_ = nil
+        pat, proc_ = @default_patterns.lookup(name) if pat.nil? || pat.empty?
+        named = !name.empty?
+        param_names << name if named
+        converters << proc_ if named
+        #; [!vey08] uses grouping when 4th argument is true.
+        #; [!2zil2] don't use grouping when 4th argument is false.
+        #; [!rda92] ex: '/{id:\d+}' -> '/(\d+)'
+        #; [!jyz2g] ex: '/{:\d+}'   -> '/\d+'
+        #; [!hy3y5] ex: '/{:xx|yy}' -> '/(?:xx|yy)'
+        #; [!gunsm] ex: '/{id:xx|yy}' -> '/(xx|yy)'
+        if named && grouping
+          pat = "(#{pat})"
+        elsif pat =~ /\|/
+          pat = "(?:#{pat})"
+        end
+        s << Regexp.escape(text) << pat
+      end
+      m = Regexp.last_match
+      rest = m ? m.post_match : urlpath_pattern
+      s << Regexp.escape(rest) << end_pat
+      ## ex: ['/api/books/(\d+)', ["id"], [proc {|x| x.to_i }]]
+      return s, param_names, converters
+    end
+
+    public
+
+    def find(req_path)
+      action_class, action_methods = @dict[req_path]
+      if action_class
+        #; [!p18w0] urlpath params are empty when matched to fixed urlpath pattern.
+        param_names  = []
+        param_values = []
+      else
+        #; [!ps5jm] returns nil when not matched to any urlpath patterns.
+        m = @rexp.match(req_path)      or return nil
+        i = m.captures.find_index('')  or return nil
+        #; [!t6yk0] urlpath params are not empty when matched to variable urlpath apttern.
+        (full_urlpath_rexp,   # ex: /\A\/api\/books\/(\d+)\z/
+         param_names,         # ex: ["id"]
+         param_converters,    # ex: [proc {|x| x.to_i }]
+         action_class,        # ex: BooksAction
+         action_methods,      # ex: {:GET=>:do_show, :PUT=>:do_edit, ...}
+        ) = @list[i]
+        #; [!0o3fe] converts urlpath param values according to default patterns.
+        values = full_urlpath_rexp.match(req_path).captures
+        procs = param_converters
+        #param_values = procs.zip(values).map {|pr, v| pr ? pr.call(v) : v }
+        param_values = \
+            case procs.length
+            when 1; [procs[0].call(values[0])]
+            when 2; [procs[0].call(values[0]), procs[1].call(values[1])]
+            else  ; procs.zip(values).map {|pr, v| pr ? pr.call(v) : v }
+            end    # ex: ["123"] -> [123]
+      end
+      #; [!ndktw] returns action class, action methods, urlpath names and values.
+      ## ex: [BooksAction, {:GET=>:do_show}, ["id"], [123]]
+      return action_class, action_methods, param_names, param_values
+    end
+
+  end
+
+
   class RackApplication
 
     def initialize

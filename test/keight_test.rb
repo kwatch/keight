@@ -544,12 +544,12 @@ Oktest.scope do
     end
 
 
-    topic '#each_urlpath_and_methods()' do
+    topic '#each()' do
 
       spec "[!62y5q] yields each urlpath pattern and action methods." do
         |mapping, methods1, methods2|
         arr = []
-        mapping.each_urlpath_and_methods do |urlpath_pat, action_methods|
+        mapping.each do |urlpath_pat, action_methods|
           arr << [urlpath_pat, action_methods]
         end
         ok {arr} == [

@@ -576,7 +576,7 @@ module K8
     end
     private :_normalize
 
-    def each_urlpath_and_methods
+    def each
       #; [!62y5q] yields each urlpath pattern and action methods.
       @mappings.each do |urlpath_pattern, action_methods|
         yield urlpath_pattern, action_methods
@@ -640,7 +640,7 @@ module K8
           _traverse(child_mappings, curr_urlpath_pat, &block)
         else
           action_method_mapping = action_class._action_method_mapping
-          action_method_mapping.each_urlpath_and_methods do |upath_pat, action_methods|
+          action_method_mapping.each do |upath_pat, action_methods|
             yield :map, curr_urlpath_pat, upath_pat, action_class, action_methods
           end
         end

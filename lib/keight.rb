@@ -858,7 +858,26 @@ module K8
     def initialize
       @action_class_mapping = ActionClassMapping.new
       @router = nil
+      @default_patterns = DefaultPatterns.new
+      init_default_param_patterns(@default_patterns)
     end
+
+    def init_default_param_patterns(default_patterns)
+      #; [!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/.
+      x = default_patterns
+      x.register('id',    '\d+') {|val| val.to_i }
+      x.register(/_id\z/, '\d+') {|val| val.to_i }
+      #; [!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/.
+      to_date = proc {|val|
+        #; [!wg9vl] raises 404 error when invalid date (such as 2012-02-30).
+        yr, mo, dy = val.split(/-/).map(&:to_i)
+        Date.new(yr, mo, dy)  rescue
+          raise HttpException.new(404, "#{val}: invalid date.")
+      }
+      x.register('date',    '\d\d\d\d-\d\d-\d\d', &to_date)
+      x.register(/_date\z/, '\d\d\d\d-\d\d-\d\d', &to_date)
+    end
+    protected :init_default_param_patterns
 
     ##
     ## ex:
@@ -878,7 +897,7 @@ module K8
 
     def find(req_path)
       #; [!vnxoo] creates router object from action class mapping if router is nil.
-      @router ||= ActionRouter.new(@action_class_mapping, DEFAULT_PATTERNS)
+      @router ||= ActionRouter.new(@action_class_mapping, @default_patterns)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
       return @router.find(req_path)
     end

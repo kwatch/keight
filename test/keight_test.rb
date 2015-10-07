@@ -1392,6 +1392,25 @@ Oktest.scope do
     end
 
 
+    topic '#each_mapping()' do
+
+      spec "[!cgjyv] yields full urlpath pattern, action class and action methods." do
+        |app|
+        arr = []
+        app.each_mapping do |*args|
+          arr << args
+        end
+        ok {arr} == [
+          ["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          ["/api/books/new", BooksAction, {:GET=>:do_new}],
+          ["/api/books/{id}", BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}],
+          ["/api/books/{id}/edit", BooksAction, {:GET=>:do_edit}],
+        ]
+      end
+
+    end
+
+
   end
 
 

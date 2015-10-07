@@ -635,6 +635,48 @@ Oktest.scope do
     end
 
 
+    topic '#traverse()' do
+
+      spec "[!ds0fp] yields with event (:enter, :map or :exit)." do
+        mapping = K8::ActionClassMapping.new
+        mapping.mount '/api', [
+          ['/books', BooksAction],
+          ['/books/{book_id}/comments', BookCommentsAction],
+        ]
+        mapping.mount '/admin', [
+          ['/books', AdminBooksAction],
+        ]
+        #
+        arr = []
+        mapping.traverse do |*args|
+          arr << args
+        end
+        ok {arr[0]} == [:enter, "", "/api", [["/books", BooksAction], ["/books/{book_id}/comments", BookCommentsAction]], nil]
+        ok {arr[1]} == [:enter, "/api", "/books", BooksAction, nil]
+        ok {arr[2]} == [:map,   "/api/books", "/", BooksAction, {:GET=>:do_index, :POST=>:do_create}]
+        ok {arr[3]} == [:map,   "/api/books", "/new", BooksAction, {:GET=>:do_new}]
+        ok {arr[4]} == [:map,   "/api/books", "/{id}", BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}]
+        ok {arr[5]}  == [:map,   "/api/books", "/{id}/edit", BooksAction, {:GET=>:do_edit}]
+        ok {arr[6]}  == [:exit,  "/api", "/books", BooksAction, nil]
+        ok {arr[7]}  == [:enter, "/api", "/books/{book_id}/comments", BookCommentsAction, nil]
+        ok {arr[8]}  == [:map,   "/api/books/{book_id}/comments", "/comments", BookCommentsAction, {:GET=>:do_comments}]
+        ok {arr[9]}  == [:map,   "/api/books/{book_id}/comments", "/comments/{comment_id}", BookCommentsAction, {:GET=>:do_comment}]
+        ok {arr[10]} == [:exit,  "/api", "/books/{book_id}/comments", BookCommentsAction, nil]
+        ok {arr[11]} == [:exit,  "", "/api", [["/books", BooksAction], ["/books/{book_id}/comments", BookCommentsAction]], nil]
+        ok {arr[12]} == [:enter, "", "/admin", [["/books", AdminBooksAction]], nil]
+        ok {arr[13]} == [:enter, "/admin", "/books", AdminBooksAction, nil]
+        ok {arr[14]} == [:map,   "/admin/books", "/", AdminBooksAction, {:GET=>:do_index, :POST=>:do_create}]
+        ok {arr[15]} == [:map,   "/admin/books", "/new", AdminBooksAction, {:GET=>:do_new}]
+        ok {arr[16]} == [:map,   "/admin/books", "/{id}", AdminBooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}]
+        ok {arr[17]} == [:map,   "/admin/books", "/{id}/edit", AdminBooksAction, {:GET=>:do_edit}]
+        ok {arr[18]} == [:exit,  "/admin", "/books", AdminBooksAction, nil]
+        ok {arr[19]} == [:exit,  "", "/admin", [["/books", AdminBooksAction]], nil]
+        ok {arr[20]} == nil
+      end
+
+    end
+
+
     topic '#find()' do
 
       fixture :methods1 do

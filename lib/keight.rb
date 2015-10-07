@@ -629,6 +629,26 @@ module K8
     end
     private :_mount
 
+    def traverse(mappings=nil, base_urlpath_pat="", &block)
+      #; [!ds0fp] yields with event (:enter, :map or :exit).
+      mappings ||= @mappings
+      mappings.each do |urlpath_pattern, action_class|
+        yield :enter, base_urlpath_pat, urlpath_pattern, action_class, nil
+        curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"
+        if action_class.is_a?(Array)
+          child_mappings = action_class
+          traverse(child_mappings, curr_urlpath_pat, &block)
+        else
+          action_method_mapping = action_class._action_method_mapping
+          action_method_mapping.each_urlpath_and_methods do |upath_pat, action_methods|
+            yield :map, curr_urlpath_pat, upath_pat, action_class, action_methods
+          end
+        end
+        yield :exit, base_urlpath_pat, urlpath_pattern, action_class, nil
+      end
+      self
+    end
+
     def each_mapping(&block)
       _each_mapping(@mappings, "", &block)
       self

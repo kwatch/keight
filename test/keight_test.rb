@@ -664,6 +664,41 @@ Oktest.scope do
     end
 
 
+    topic '#each_mapping()' do
+
+      spec "[!driqt] yields full urlpath pattern, action class and action methods." do
+        mapping = K8::ActionClassMapping.new
+        mapping.mount '/api', [
+          ['/books', BooksAction],
+          ['/books/{book_id}', BookCommentsAction],
+        ]
+        mapping.mount '/admin', [
+          ['/books', AdminBooksAction],
+        ]
+        #
+        arr = []
+        mapping.each_mapping do |*args|
+          arr << args
+        end
+        ok {arr} == [
+          ["/api/books/",          BooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          ["/api/books/new",       BooksAction, {:GET=>:do_new}],
+          ["/api/books/{id}",      BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}],
+          ["/api/books/{id}/edit", BooksAction, {:GET=>:do_edit}],
+          #
+          ["/api/books/{book_id}/comments",              BookCommentsAction, {:GET=>:do_comments}],
+          ["/api/books/{book_id}/comments/{comment_id}", BookCommentsAction, {:GET=>:do_comment}],
+          #
+          ["/admin/books/",          AdminBooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          ["/admin/books/new",       AdminBooksAction, {:GET=>:do_new}],
+          ["/admin/books/{id}",      AdminBooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}],
+          ["/admin/books/{id}/edit", AdminBooksAction, {:GET=>:do_edit}],
+        ]
+      end
+
+    end
+
+
   end
 
 

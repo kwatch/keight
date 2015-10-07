@@ -649,6 +649,17 @@ module K8
     end
     private :_traverse
 
+    def each_mapping
+      traverse() do
+        |event, base_urlpath_pat, urlpath_pat, action_class, action_methods|
+        next unless event == :map
+        full_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
+        #; [!driqt] yields full urlpath pattern, action class and action methods.
+        yield full_urlpath_pat, action_class, action_methods
+      end
+      self
+    end
+
   end
 
 
@@ -950,14 +961,9 @@ END
 
     public
 
-    def each_mapping
-      @action_class_mapping.traverse do
-        |event, base_urlpath_pat, urlpath_pat, action_class, action_methods|
-        next unless event == :map
-        full_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
-        #; [!cgjyv] yields full urlpath pattern, action class and action methods.
-        yield full_urlpath_pat, action_class, action_methods
-      end
+    def each_mapping(&block)
+      #; [!cgjyv] yields full urlpath pattern, action class and action methods.
+      @action_class_mapping.each_mapping(&block)
       self
     end
 

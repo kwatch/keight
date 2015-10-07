@@ -1165,11 +1165,10 @@ END
       req_methods = HTTP_REQUEST_METHODS.values() + [:ANY]
       s = ""
       each_mapping do |full_urlpath_pat, action_class, action_methods|
-        arr = []
-        req_methods.each do |req_meth|
-          action_method = action_methods[req_meth]  or next  # continue
-          arr << "#{req_meth}: #{action_method}"
-        end
+        arr = req_methods.collect {|req_meth|
+          action_method = action_methods[req_meth]
+          action_method ? "#{req_meth}: #{action_method}" : nil
+        }.compact()
         s << "- urlpath: #{full_urlpath_pat}\n"
         s << "  class:   #{action_class}\n"
         s << "  methods: {#{arr.join(', ')}}\n"

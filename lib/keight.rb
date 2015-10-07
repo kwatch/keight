@@ -1161,16 +1161,16 @@ END
     end
 
     def show_mappings()
+      #; [!u1g77] returns all mappings as YAML string.
       req_methods = HTTP_REQUEST_METHODS.values() + [:ANY]
       s = ""
-      @action_class_mapping.each_mapping do
-        |urlpath_pattern, action_class, action_methods|
+      each_mapping do |full_urlpath_pat, action_class, action_methods|
         arr = []
         req_methods.each do |req_meth|
           action_method = action_methods[req_meth]  or next  # continue
           arr << "#{req_meth}: #{action_method}"
         end
-        s << "- urlpath: #{urlpath_pattern}\n"
+        s << "- urlpath: #{full_urlpath_pat}\n"
         s << "  class:   #{action_class}\n"
         s << "  methods: {#{arr.join(', ')}}\n"
         s << "\n"

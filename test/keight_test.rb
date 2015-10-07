@@ -1411,6 +1411,33 @@ Oktest.scope do
     end
 
 
+    topic '#show_mappings()' do
+
+      spec "[!u1g77] returns all mappings as YAML string." do
+        |app|
+        ok {app.show_mappings()} == <<'END'
+- urlpath: /api/books/
+  class:   BooksAction
+  methods: {GET: do_index, POST: do_create}
+
+- urlpath: /api/books/new
+  class:   BooksAction
+  methods: {GET: do_new}
+
+- urlpath: /api/books/{id}
+  class:   BooksAction
+  methods: {GET: do_show, PUT: do_update, DELETE: do_delete}
+
+- urlpath: /api/books/{id}/edit
+  class:   BooksAction
+  methods: {GET: do_edit}
+
+END
+      end
+
+    end
+
+
   end
 
 

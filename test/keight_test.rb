@@ -1252,6 +1252,43 @@ Oktest.scope do
     end
 
 
+    topic '#mount()' do
+
+      spec "[!fm8mh] clears router object." do
+        |app|
+        app.instance_exec(self) do |_|
+          @router = true
+          mount '/admin', AdminBooksAction
+          _.ok {@router} == nil
+        end
+      end
+
+    end
+
+
+    topic '#find()' do
+
+      spec "[!vnxoo] creates router object from action class mapping if router is nil." do
+        |app|
+        app.instance_exec(self) do |_|
+          _.ok {@router} == nil
+          find('/')
+          _.ok {@router} != nil
+          _.ok {@router}.is_a?(K8::ActionRouter)
+        end
+      end
+
+      spec "[!o0rnr] returns action class, action methods, urlpath names and values." do
+        |app|
+        ret = app.find('/api/books/')
+        ok {ret} == [BooksAction, {:GET=>:do_index, :POST=>:do_create}, [], []]
+        ret = app.find('/api/books/123')
+        ok {ret} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, ["id"], [123]]
+      end
+
+    end
+
+
     topic '#call()' do
 
       spec "[!uvmxe] takes env object." do

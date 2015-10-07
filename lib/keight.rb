@@ -1045,6 +1045,7 @@ module K8
 
     def initialize
       @action_class_mapping = ActionClassMapping.new
+      @router = nil
     end
 
     ##
@@ -1058,15 +1059,16 @@ module K8
     ##
     def mount(urlpath_pattern, action_class_or_array)
       @action_class_mapping.mount(urlpath_pattern, action_class_or_array)
+      #; [!fm8mh] clears router object.
+      @router = nil
       return self
     end
 
     def find(req_path)
-      return @action_class_mapping.find(req_path)
-    end
-
-    def compile_urlpath_patterns()
-      return @action_class_mapping.compile_urlpath_patterns()
+      #; [!vnxoo] creates router object from action class mapping if router is nil.
+      @router ||= ActionRouter.new(@action_class_mapping, DEFAULT_PATTERNS)
+      #; [!o0rnr] returns action class, action methods, urlpath names and values.
+      return @router.find(req_path)
     end
 
     def call(env)
@@ -1085,13 +1087,13 @@ module K8
         #; [!rz13i] returns HTTP 404 when urlpath not found.
         tuple = find(req.path)  or
           raise HttpException.new(404)
-        action_class, action_methods, urlpath_params = tuple
+        action_class, action_methods, urlpath_param_names, urlpath_param_values = tuple
         #; [!rv3cf] returns HTTP 405 when urlpath found but request method not allowed.
         action_method = action_methods[req_meth_]  or
           raise HttpException.new(405)
         #; [!0fgbd] finds action class and invokes action method with urlpath params.
         action_obj = action_class.new(req, resp)
-        content = action_obj.handle_action(action_method, urlpath_params)
+        content = action_obj.handle_action(action_method, urlpath_param_values)
         tuple = [resp.status_code, resp.headers, content]
       rescue HttpException => ex
         tuple = handle_http(ex, req, resp)

@@ -589,10 +589,8 @@ module K8
 
   class ActionClassMapping
 
-    def initialize(_=nil, default_patterns: DEFAULT_PATTERNS)
+    def initialize
       @mappings = []
-      @default_patterns = default_patterns
-      clear_mapping_data()
     end
 
     ##
@@ -606,8 +604,6 @@ module K8
     ##
     def mount(urlpath_pattern, action_class)
       _mount(@mappings, urlpath_pattern, action_class)
-      #; [!dktxq] clears mapping data.
-      clear_mapping_data()
       #; [!w8mee] returns self.
       return self
     end
@@ -647,205 +643,6 @@ module K8
         yield :exit, base_urlpath_pat, urlpath_pattern, action_class, nil
       end
       self
-    end
-
-    def each_mapping(&block)
-      _each_mapping(@mappings, "", &block)
-      self
-    end
-
-    def _each_mapping(mappings, base_urlpath_pat, &block)
-      #; [!joje0] yields each full urlpath pattern, action class and action methods.
-      mappings.each do |urlpath_pattern, action_class|
-        curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"
-        if action_class.is_a?(Array)
-          child_mappings = action_class
-          _each_mapping(child_mappings, curr_urlpath_pat, &block)
-        else
-          action_class.is_a?(Class) && action_class < BaseAction  or
-            raise "** internal error: action_class=#{action_class.inspect}"
-          mapping = action_class._action_method_mapping
-          mapping.each_urlpath_and_methods do |urlpath_pat, action_methods|
-            full_urlpath_pat = "#{curr_urlpath_pat}#{urlpath_pat}"
-            yield full_urlpath_pat, action_class, action_methods
-          end
-        end
-      end
-    end
-    private :_each_mapping
-
-    def find(req_path)
-      make_mapping_data() unless @_mapping_rexp
-      #; [!04n9f] finds cache data at first.
-      action_class, action_methods = @_mapping_dict[req_path]
-      if action_class
-        urlpath_param_values = []
-      #; [!d5d5i] can handle nested array of urlpath mapping.
-      #; [!hbjar] finds next action recursively class when found but not matched.
-      #; [!wyb6j] finds next action class when action class found but not matched.
-      else
-        #; [!1ud98] returns nil when urlpath not found.
-        m = @_mapping_rexp.match(req_path)  or return nil
-        i = m.captures.find_index {|x| x }  or return nil
-        #a = m.captures; i = 0; i += 1 until a[i]
-        tuple = @_mapping_list[i]  or return nil
-        #; [!6qoa3] concatenats all urlpath params in an array.
-        full_urlpath_rexp, param_names, conveters, action_class, action_methods = tuple
-        values = full_urlpath_rexp.match(req_path).captures
-        urlpath_param_values = \
-            conveters.zip(values).map {|pr, val| pr ? pr.call(val) : val }
-      end
-      #; [!yqedi] returns [action_class, action_methods, urlpath_params] when urlpath matches to action class.
-      # ex: [HelloAction, {:GET=>:do_show}, [123]]
-      return action_class, action_methods, urlpath_param_values
-    end
-
-    protected
-
-    def make_mapping_data
-      ##
-      ## Example of @_mapping_rexp:
-      ##     \A                                         # ...(0)
-      ##     (:?                                        # ...(1)
-      ##         /api                                   # ...(2)
-      ##             (:?                                # ...(1)
-      ##                 /books                         # ...(3)
-      ##                     (:?/\d+(\z)|/\d+/edit(\z)) # ...(4)
-      ##             |                                  # ...(5)
-      ##                 /authors                       # ...(3)
-      ##                     (:?/\d+(\z)|/\d+/edit(\z)) # ...(4)
-      ##             )
-      ##     |                                          # ...(4)
-      ##         /admin                                 # ...(2)
-      ##             (:?
-      ##                 ....
-      ##             )
-      ##     )
-      ##
-      ## Example of @_mapping_dict (fixed urlpaths):
-      ##     {                                          # ...(6)
-      ##       "/api/books"
-      ##           => [BooksAction,   {:GET=>:do_index, :POST=>:do_create}],
-      ##       "/api/books/new"
-      ##           => [BooksAction,   {:GET=>:do_new}],
-      ##       "/api/authors"
-      ##           => [AuthorsAction, {:GET=>:do_index, :POST=>:do_create}],
-      ##       "/api/authors/new"
-      ##           => [AuthorsAction, {:GET=>:do_new}],
-      ##       "/admin/books"
-      ##           => ...
-      ##       ...
-      ##     }
-      ##
-      ## Example of @_mapping_list (variable urlpaths):
-      ##     [                                          # ...(7)
-      ##       [
-      ##         %r'\A/api/books/(\d+)\z',
-      ##         ["id"], [proc {|x| x.to_i }],
-      ##         BooksAction,
-      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-      ##       ],
-      ##       [
-      ##         %r'\A/api/books/(\d+)/edit\z',
-      ##         ["id"], [proc {|x| x.to_i }],
-      ##         BooksAction,
-      ##         {:GET=>:do_edit},
-      ##       ],
-      ##       ...
-      ##     ]
-      ##
-      @_mapping_dict = dict = {}   # fixed urlpaths (without urlpath params)
-      @_mapping_list = list = []   # variable urlpaths (with urlpath params)
-      buf = _traverse(@mappings, "") {|full_urlpath_pat, action_class, action_methods|
-        has_params = full_urlpath_pat =~ /\{.*?\}/
-        if has_params
-          full_urlpath_rexp_str, urlpath_param_names, converters = \
-              _compile(full_urlpath_pat, '\A', '\z', true)
-          #; [!cny8a] collects variable urlpath patterns as Array object.
-          list << [Regexp.compile(full_urlpath_rexp_str),
-                   urlpath_param_names, converters,
-                   action_class, action_methods]    # ...(7)
-        else
-          #; [!7hkq6] collects fixed urlpath patterns as Hash object.
-          dict[full_urlpath_pat] = [action_class, action_methods] # ...(6)
-        end
-        has_params
-      }
-      @_mapping_rexp = Regexp.compile('\A' + buf)   # ...(0)
-      self
-    end
-
-    def clear_mapping_data
-      @_mapping_rexp = nil
-      @_mapping_dict = nil
-      @_mapping_list = nil
-    end
-
-    private
-
-    def _traverse(mappings, base_urlpath_pat, &block)
-      #; [!3aspo] compiles urlpath patterns into a Regexp object.
-      buf = '(?:'                                   # ...(1)
-      sep = ''
-      mappings.each do |urlpath_pattern, action_class|
-        buf << sep; sep = '|'                       # ...(5)
-        curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"
-        if action_class.is_a?(Array)
-          child_mappings = action_class
-          buf << _compile(urlpath_pattern).first    # ...(2)
-          buf << _traverse(child_mappings, curr_urlpath_pat, &block)
-        else
-          mapping = action_class._action_method_mapping
-          arr = []
-          mapping.each_urlpath_and_methods do |upath_pat, action_methods|
-            full_urlpath_pat = "#{curr_urlpath_pat}#{upath_pat}"
-            has_param = yield full_urlpath_pat, action_class, action_methods
-            arr << _compile(upath_pat, '', '(\z)').first if has_param
-          end
-          unless arr.empty?
-            buf << _compile(urlpath_pattern).first  # ...(3)
-            buf << "(?:#{arr.join('|')})"           # ...(4)
-          end
-        end
-      end
-      buf << ')'
-      return buf
-    end
-
-    def _compile(urlpath_pattern, start_pat='', end_pat='', grouping=false)
-      #; [!izsbp] compiles urlpath pattern into regexp string and param names.
-      #; [!olps9] allows '{}' in regular expression.
-      #parse_rexp = /(.*?)<(\w*)(?::(.*?))?>/
-      #parse_rexp = /(.*?)\{(\w*)(?::(.*?))?\}/
-      #parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
-      parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
-      param_names = []
-      converters  = []
-      s = ""
-      s << start_pat
-      urlpath_pattern.scan(parse_rexp) do |text, name, pat|
-        proc_ = nil
-        pat, proc_ = @default_patterns.lookup(name) if pat.nil? || pat.empty?
-        named = !name.empty?
-        param_names << name if named
-        converters << proc_ if named
-        #; [!vey08] uses grouping when 4th argument is true.
-        #; [!2zil2] don't use grouping when 4th argument is false.
-        #; [!rda92] ex: '/{id:\d+}' -> '/(\d+)'
-        #; [!jyz2g] ex: '/{:\d+}'   -> '/\d+'
-        #; [!hy3y5] ex: '/{:xx|yy}' -> '/(?:xx|yy)'
-        #; [!gunsm] ex: '/{id:xx|yy}' -> '/(xx|yy)'
-        if named && grouping
-          pat = "(#{pat})"
-        elsif pat =~ /\|/
-          pat = "(?:#{pat})"
-        end
-        s << Regexp.escape(text) << pat
-      end
-      m = Regexp.last_match
-      rest = m ? m.post_match : urlpath_pattern
-      s << Regexp.escape(rest) << end_pat
-      return s, param_names, converters
     end
 
   end

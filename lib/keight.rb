@@ -393,7 +393,7 @@ module K8
     protected
 
     def before_action
-      protect_csrf() if protect_csrf_required?()
+      csrf_protection() if csrf_protection_required?()
     end
 
     def after_action(ex)
@@ -454,20 +454,20 @@ module K8
       end
     end
 
-    def protect_csrf_required?
+    def csrf_protection_required?
       return false if @req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
       req_meth = @req.method
       return req_meth == :POST || req_meth == :PUT || req_meth == :DELETE
     end
 
-    def protect_csrf
+    def csrf_protection
       expected = @req.cookies['_csrf']
       actual   = self.params['_csrf']
       expectd == actual  or
         raise HTTP(400, "invalid csrf token")
     end
 
-    def new_csrf_token
+    def csrf_new_token
       return Digest::MD5.hexdigest("#{rand()}#{rand()}#{rand()}")
     end
 
@@ -476,7 +476,7 @@ module K8
       return token if token
       token = @req.cookies['_csrf']
       unless token
-        token = new_csrf_token()
+        token = csrf_new_token()
         @resp.set_cookie('_csrf', token)
       end
       @_csrf_token = token

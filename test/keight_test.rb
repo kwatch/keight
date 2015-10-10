@@ -419,6 +419,41 @@ Oktest.scope do
 
     end
 
+
+    topic '#csrf_protection_required?' do
+
+      spec "[!8chgu] returns false when requested with 'XMLHttpRequest'." do
+        headers = {'X-Requested-With'=>'XMLHttpRequest'}
+        env = K8::Util.mock_env('GET', '/', headers: headers)
+        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action.instance_exec(self) do |_|
+          _.ok {csrf_protection_required?} == false
+        end
+      end
+
+      spec "[!vwrqv] returns true when request method is one of POST, PUT, or DELETE." do
+        ['POST', 'PUT', 'DELETE'].each do |meth|
+          env = K8::Util.mock_env(meth, '/')
+          action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+          action.instance_exec(self) do |_|
+            _.ok {csrf_protection_required?} == true
+          end
+        end
+      end
+
+      spec "[!jfhla] returns true when request method is GET or HEAD." do
+        ['GET', 'HEAD'].each do |meth|
+          env = K8::Util.mock_env(meth, '/')
+          action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+          action.instance_exec(self) do |_|
+            _.ok {csrf_protection_required?} == false
+          end
+        end
+      end
+
+    end
+
+
   end
 
 

@@ -455,7 +455,10 @@ module K8
     end
 
     def csrf_protection_required?
+      #; [!8chgu] returns false when requested with 'XMLHttpRequest'.
       return false if @req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
+      #; [!vwrqv] returns true when request method is one of POST, PUT, or DELETE.
+      #; [!jfhla] returns true when request method is GET or HEAD.
       req_meth = @req.method
       return req_meth == :POST || req_meth == :PUT || req_meth == :DELETE
     end

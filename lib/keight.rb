@@ -385,6 +385,11 @@ module K8
 
   class Action < BaseAction
 
+    #; [!siucz] request object is accessable with 'request' method as well as 'req'.
+    #; [!qnzp6] response object is accessable with 'response' method as well as 'resp'.
+    alias request  req    # just for compatibility with other frameworks; use 'req'!
+    alias response resp   # just for compatibility with other frameworks; use 'resp'!
+
     protected
 
     def before_action

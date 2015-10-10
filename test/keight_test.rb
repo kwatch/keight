@@ -249,6 +249,26 @@ Oktest.scope do
     end
 
 
+    topic '#request' do
+
+      spec "[!siucz] request object is accessable with 'request' method as well as 'req'." do
+        |action_obj|
+        ok {action_obj.request}.same?(action_obj.req)
+      end
+
+    end
+
+
+    topic '#response' do
+
+      spec "[!qnzp6] response object is accessable with 'response' method as well as 'resp'." do
+        |action_obj|
+        ok {action_obj.response}.same?(action_obj.resp)
+      end
+
+    end
+
+
     topic '#before_action()' do
     end
 

@@ -454,6 +454,33 @@ Oktest.scope do
     end
 
 
+    topic '#csrf_protection()' do
+
+      spec "[!h5tzb] raises nothing when csrf token matched." do
+        headers = {'Cookie'=>"_csrf=abc123"}
+        form    = {"_csrf"=>"abc123"}
+        env = K8::Util.mock_env('POST', '/', form: form, headers: headers)
+        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action.instance_exec(self) do |_|
+          pr = proc { csrf_protection() }
+          _.ok {pr}.NOT.raise?
+        end
+      end
+
+      spec "[!h0e0q] raises HTTP 400 when csrf token mismatched." do
+        headers = {'Cookie'=>"_csrf=abc123"}
+        form    = {"_csrf"=>"abc999"}
+        env = K8::Util.mock_env('POST', '/', form: form, headers: headers)
+        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action.instance_exec(self) do |_|
+          pr = proc { csrf_protection() }
+          _.ok {pr}.raise?(K8::HttpException, "invalid csrf token")
+        end
+      end
+
+    end
+
+
   end
 
 

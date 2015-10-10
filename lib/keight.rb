@@ -90,6 +90,8 @@ module K8
       d = {}
       return d if query_str.empty?
       #; [!fzt3w] parses query string and returns Hahs object.
+      equal    = '='
+      brackets = '[]'
       query_str.split(/[&;]/).each do |s|
         #kv = s.split('=', 2)
         #if kv.length == 2
@@ -97,12 +99,12 @@ module K8
         #else
         #  k = kv[0]; v = ""
         #end
-        k, v = s.split('=', 2)
+        k, v = s.split(equal, 2)
         v ||= ''
         k = URI.decode_www_form_component(k) unless k =~ /\A[-.\w]+\z/
         v = URI.decode_www_form_component(v) unless v =~ /\A[-.\w]+\z/
         #; [!t0w33] regards as array of string when param name ends with '[]'.
-        if k.end_with?('[]')
+        if k.end_with?(brackets)
           (d[k] ||= []) << v
         else
           d[k] = v

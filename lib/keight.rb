@@ -321,19 +321,19 @@ module K8
   end
 
 
-  REQUEST  = Request
-  RESPONSE = Response
+  REQUEST_CLASS  = Request
+  RESPONSE_CLASS = Response
 
-  def self.REQUEST=(klass)
+  def self.REQUEST_CLASS=(klass)
     #; [!7uqb4] changes default request class.
-    remove_const :REQUEST
-    const_set :REQUEST, klass
+    remove_const :REQUEST_CLASS
+    const_set :REQUEST_CLASS, klass
   end
 
-  def self.RESPONSE=(klass)
+  def self.RESPONSE_CLASS=(klass)
     #; [!c1bd0] changes default response class.
-    remove_const :RESPONSE
-    const_set :RESPONSE, klass
+    remove_const :RESPONSE_CLASS
+    const_set :RESPONSE_CLASS, klass
   end
 
 
@@ -886,7 +886,7 @@ module K8
     def call(env)
       #; [!uvmxe] takes env object.
       #; [!gpe4g] returns status, headers and content.
-      return handle_request(REQUEST.new(env), RESPONSE.new)
+      return handle_request(REQUEST_CLASS.new(env), RESPONSE_CLASS.new)
     end
 
     protected

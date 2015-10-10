@@ -152,30 +152,30 @@ Oktest.scope do
   end
 
 
-  topic 'K8::REQUEST=' do
+  topic 'K8::REQUEST_CLASS=' do
 
     spec "[!7uqb4] changes default request class." do
-      original = K8::REQUEST
+      original = K8::REQUEST_CLASS
       begin
-        K8.REQUEST = Array
-        ok {K8::REQUEST} == Array
+        K8.REQUEST_CLASS = Array
+        ok {K8::REQUEST_CLASS} == Array
       ensure
-        K8.REQUEST = original
+        K8.REQUEST_CLASS = original
       end
     end
 
   end
 
 
-  topic 'K8::RESPONSE=' do
+  topic 'K8::RESPONSE_CLASS=' do
 
     spec "[!c1bd0] changes default response class." do
-      original = K8::RESPONSE
+      original = K8::RESPONSE_CLASS
       begin
-        K8.RESPONSE = Hash
-        ok {K8::RESPONSE} == Hash
+        K8.RESPONSE_CLASS = Hash
+        ok {K8::RESPONSE_CLASS} == Hash
       ensure
-        K8.RESPONSE = original
+        K8.RESPONSE_CLASS = original
       end
     end
 

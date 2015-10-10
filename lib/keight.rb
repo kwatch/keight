@@ -274,7 +274,7 @@ module K8
     end
 
     def cookies
-      return {}
+      return @cookies ||= Util.parse_query_string(@env['HTTP_COOKIE'] || "")
     end
 
   end

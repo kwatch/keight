@@ -119,8 +119,8 @@ module K8
       when String ; return query
       when Hash, Array
         return query.collect {|k, v|
-          name  = Util.encode_www_form_component(k.to_s)
-          value = Util.encode_www_form_component(v.to_s)
+          name  = URI.encode_www_form_component(k.to_s)
+          value = URI.encode_www_form_component(v.to_s)
           "#{name}=#{value}"
         }.join('&')
       else

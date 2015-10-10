@@ -468,45 +468,6 @@ Oktest.scope do
   end
 
 
-  topic K8::DEFAULT_PATTERNS do
-
-    fixture :default_patterns do
-      K8::DEFAULT_PATTERNS
-    end
-
-    spec "[!6hh7o] default pattern of urlpath param name 'id' or 'xxx_id' is '\d+'." do
-      |default_patterns|
-      pat, proc_ = default_patterns.lookup('id')
-      ok {pat} == '\d+'
-      ok {proc_.call("123")} == 123
-      #
-      pat, proc_ = default_patterns.lookup('book_id')
-      ok {pat} == '\d+'
-      ok {proc_.call("123")} == 123
-    end
-
-    spec "[!jisj0] default pattern of urlpath param name 'date' or 'xxx_date' is '\\d\\d\\d\\d-\\d\\d-\\d\\d'." do
-      |default_patterns|
-      pat, proc_ = default_patterns.lookup('date')
-      ok {pat} == '\d\d\d\d-\d\d-\d\d'
-      ok {proc_.call("2014-12-24")} == Date.new(2014, 12, 24)
-      #
-      pat, proc_ = default_patterns.lookup('birth_date')
-      ok {pat} == '\d\d\d\d-\d\d-\d\d'
-      ok {proc_.call("2015-02-14")} == Date.new(2015, 2, 14)
-    end
-
-    spec "[!yv6i6] raises HTTP 404 error when invalid date (such as 2000-02-30)." do
-      |default_patterns|
-      pat, proc_ = default_patterns.lookup('date')
-      pr = proc { proc_.call("2014-02-30") }
-      ok {pr}.raise?(K8::HttpException, "2014-02-30: invalid date.")
-      ok {pr.exception.status_code} == 404
-    end
-
-  end
-
-
   topic K8::ActionMethodMapping do
 
     fixture :mapping do
@@ -704,7 +665,15 @@ Oktest.scope do
 
   topic K8::ActionRouter do
 
-    fixture :router do
+    fixture :proc_obj1 do
+      proc {|x| x.to_i }
+    end
+
+    fixture :proc_obj2 do
+      proc {|x| x.to_i }
+    end
+
+    fixture :router do |proc_obj1, proc_obj2|
       mapping = K8::ActionClassMapping.new
       mapping.mount '/api', [
         ['/books', BooksAction],
@@ -713,18 +682,11 @@ Oktest.scope do
       mapping.mount '/admin', [
         ['/books', AdminBooksAction],
       ]
-      router = K8::ActionRouter.new(mapping, K8::DEFAULT_PATTERNS)
+      default_patterns = K8::DefaultPatterns.new
+      default_patterns.register('id',    '\d+', &proc_obj1)
+      default_patterns.register(/_id\z/, '\d+', &proc_obj2)
+      router = K8::ActionRouter.new(mapping, default_patterns)
       router
-    end
-
-    fixture :proc_obj1 do
-      _, proc_obj = K8::DEFAULT_PATTERNS.lookup("id")
-      proc_obj
-    end
-
-    fixture :proc_obj2 do
-      _, proc_obj = K8::DEFAULT_PATTERNS.lookup("xxx_id")
-      proc_obj
     end
 
 

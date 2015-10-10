@@ -525,25 +525,6 @@ module K8
 
   end
 
-  DEFAULT_PATTERNS = DefaultPatterns.new
-  DEFAULT_PATTERNS.instance_eval do
-    to_date = proc {|value|
-      if value =~ /\A(\d\d\d\d)-(\d\d)-(\d\d)\z/
-        #; [!yv6i6] raises HTTP 404 error when invalid date (such as 2000-02-30).
-        Date.new($1.to_i, $2.to_i, $3.to_i)  rescue
-          raise HttpException.new(404, "#{value}: invalid date.")
-      else
-        value
-      end
-    }
-    #; [!6hh7o] default pattern of urlpath param name 'id' or 'xxx_id' is '\d+'.
-    register('id',      '\d+') {|x| x.to_i }
-    register(/_id\z/,   '\d+') {|x| x.to_i }
-    #; [!jisj0] default pattern of urlpath param name 'date' or 'xxx_date' is '\d\d\d\d-\d\d-\d\d'.
-    register('date',    '\d\d\d\d-\d\d-\d\d', &to_date)
-    register(/_date\z/, '\d\d\d\d-\d\d-\d\d', &to_date)
-  end
-
 
   class ActionMethodMapping
 

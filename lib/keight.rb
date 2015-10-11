@@ -381,11 +381,6 @@ module K8
       return content
     end
 
-  end
-
-
-  class Action < BaseAction
-
     ##
     ## ex:
     ##   mapping '/',     :GET=>:do_index, :POST=>:do_create
@@ -398,6 +393,11 @@ module K8
     def self._action_method_mapping
       return @action_method_mapping ||= ActionMethodMapping.new
     end
+
+  end
+
+
+  class Action < BaseAction
 
     #; [!siucz] request object is accessable with 'request' method as well as 'req'.
     #; [!qnzp6] response object is accessable with 'response' method as well as 'resp'.

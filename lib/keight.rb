@@ -98,13 +98,17 @@ module K8
     end
 
     def parse_query_string(query_str)
+      return _parse(query_str, /[&;]/)
+    end
+
+    def _parse(query_str, separator)
       #; [!engr6] returns empty Hash object when query string is empty.
       d = {}
       return d if query_str.empty?
       #; [!fzt3w] parses query string and returns Hahs object.
       equal    = '='
       brackets = '[]'
-      query_str.split(/[&;]/).each do |s|
+      query_str.split(separator).each do |s|
         #kv = s.split('=', 2)
         #if kv.length == 2
         #  k, v = kv

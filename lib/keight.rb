@@ -135,7 +135,7 @@ module K8
       end
     end
 
-    def mock_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
+    def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
@@ -143,7 +143,7 @@ module K8
       https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
       #; [!c779l] raises ArgumentError when both form and json are specified.
       ! form || ! json  or
-        raise ArgumentError.new("mock_env(): not allowed both 'form' and 'json' at a time.")
+        raise ArgumentError.new("new_env(): not allowed both 'form' and 'json' at a time.")
       #
       input = Util.build_query_string(form) if form
       input = json.is_a?(String) ? json : JSON.dump(json) if json

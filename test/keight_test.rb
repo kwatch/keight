@@ -130,11 +130,11 @@ Oktest.scope do
     end
 
 
-    topic '.mock_env()' do
+    topic '.new_env()' do
 
       spec "[!c779l] raises ArgumentError when both form and json are specified." do
-        pr = proc { K8::Util.mock_env(form: "x=1", json: {"y": 2}) }
-        ok {pr}.raise?(ArgumentError, "mock_env(): not allowed both 'form' and 'json' at a time.")
+        pr = proc { K8::Util.new_env(form: "x=1", json: {"y": 2}) }
+        ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
       end
 
     end
@@ -177,14 +177,14 @@ Oktest.scope do
 
       spec "[!6ezqw] parses QUERY_STRING and returns it as Hash object." do
         qstr = "x=1&y=2"
-        env = K8::Util.mock_env("GET", "/", env: {'QUERY_STRING'=>qstr})
+        env = K8::Util.new_env("GET", "/", env: {'QUERY_STRING'=>qstr})
         req = K8::Request.new(env)
         ok {req.params_query()} == {'x'=>'1', 'y'=>'2'}
       end
 
       spec "[!o0ws7] unquotes both keys and values." do
         qstr = "arr%5Bxxx%5D=%3C%3E+%26%3B"
-        env = K8::Util.mock_env("GET", "/", env: {'QUERY_STRING'=>qstr})
+        env = K8::Util.new_env("GET", "/", env: {'QUERY_STRING'=>qstr})
         req = K8::Request.new(env)
         ok {req.params_query()} == {'arr[xxx]'=>'<> &;'}
       end
@@ -196,7 +196,7 @@ Oktest.scope do
 
       spec "[!59ad2] parses form parameters and returns it as Hash object when form requested." do
         form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
-        env = K8::Util.mock_env("POST", "/", form: form)
+        env = K8::Util.new_env("POST", "/", form: form)
         req = K8::Request.new(env)
         ok {req.params_form} == {'x'=>'1', 'y'=>'2', 'arr[xxx]'=>'<> &;'}
       end
@@ -205,7 +205,7 @@ Oktest.scope do
 
       spec "[!4hh3k] returns empty hash object when form param is not sent." do
         form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
-        env = K8::Util.mock_env("GET", "/", query: form)
+        env = K8::Util.new_env("GET", "/", query: form)
         req = K8::Request.new(env)
         ok {req.params_form} == {}
       end
@@ -217,14 +217,14 @@ Oktest.scope do
 
       spec "[!ugik5] parses json data and returns it as hash object when json data is sent." do
         data = '{"x":1,"y":2,"arr":["a","b","c"]}'
-        env = K8::Util.mock_env("POST", "/", json: data)
+        env = K8::Util.new_env("POST", "/", json: data)
         req = K8::Request.new(env)
         ok {req.params_json} == {"x"=>1, "y"=>2, "arr"=>["a", "b", "c"]}
       end
 
       spec "[!xwsdn] returns empty hash object when json data is not sent." do
         data = '{"x":1,"y":2,"arr":["a","b","c"]}'
-        env = K8::Util.mock_env("POST", "/", form: data)
+        env = K8::Util.new_env("POST", "/", form: data)
         req = K8::Request.new(env)
         ok {req.params_json} == {}
       end
@@ -237,7 +237,7 @@ Oktest.scope do
       spec "[!erlc7] parses QUERY_STRING when request method is GET or HEAD." do
         qstr = "a=8&b=9"
         form = "x=1&y=2"
-        env = K8::Util.mock_env('GET', '/', query: qstr, form: form)
+        env = K8::Util.new_env('GET', '/', query: qstr, form: form)
         req = K8::Request.new(env)
         ok {req.params} == {"a"=>"8", "b"=>"9"}
       end
@@ -245,7 +245,7 @@ Oktest.scope do
       spec "[!cr0zj] parses JSON when content type is 'application/json'." do
         qstr = "a=8&b=9"
         json = '{"n":123}'
-        env = K8::Util.mock_env('POST', '/', query: qstr, json: json)
+        env = K8::Util.new_env('POST', '/', query: qstr, json: json)
         req = K8::Request.new(env)
         ok {req.params} == {"n"=>123}
       end
@@ -253,7 +253,7 @@ Oktest.scope do
       spec "[!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'." do
         qstr = "a=8&b=9"
         form = "x=1&y=2"
-        env = K8::Util.mock_env('POST', '/', query: qstr, form: form)
+        env = K8::Util.new_env('POST', '/', query: qstr, form: form)
         req = K8::Request.new(env)
         ok {req.params} == {"x"=>"1", "y"=>"2"}
       end
@@ -266,7 +266,7 @@ Oktest.scope do
     topic '#cookies' do
 
       spec "[!c9pwr] parses cookie data and returns it as hash object." do
-        env = K8::Util.mock_env('POST', '/', cookie: "aaa=homhom;bbb=madmad")
+        env = K8::Util.new_env('POST', '/', cookie: "aaa=homhom;bbb=madmad")
         req = K8::Request.new(env)
         ok {req.cookies} == {"aaa"=>"homhom", "bbb"=>"madmad"}
       end
@@ -573,13 +573,13 @@ Oktest.scope do
     topic '#csrf_protection_required?' do
 
       fixture :action_obj do
-        env = K8::Util.mock_env('GET', '/')
+        env = K8::Util.new_env('GET', '/')
         action = K8::Action.new(K8::Request.new(env), K8::Response.new)
       end
 
       spec "[!8chgu] returns false when requested with 'XMLHttpRequest'." do
         headers = {'X-Requested-With'=>'XMLHttpRequest'}
-        env = K8::Util.mock_env('GET', '/', headers: headers)
+        env = K8::Util.new_env('GET', '/', headers: headers)
         action = K8::Action.new(K8::Request.new(env), K8::Response.new)
         action.instance_exec(self) do |_|
           _.ok {csrf_protection_required?} == false
@@ -588,7 +588,7 @@ Oktest.scope do
 
       spec "[!vwrqv] returns true when request method is one of POST, PUT, or DELETE." do
         ['POST', 'PUT', 'DELETE'].each do |meth|
-          env = K8::Util.mock_env(meth, '/')
+          env = K8::Util.new_env(meth, '/')
           action = K8::Action.new(K8::Request.new(env), K8::Response.new)
           action.instance_exec(self) do |_|
             _.ok {csrf_protection_required?} == true
@@ -598,7 +598,7 @@ Oktest.scope do
 
       spec "[!jfhla] returns true when request method is GET or HEAD." do
         ['GET', 'HEAD'].each do |meth|
-          env = K8::Util.mock_env(meth, '/')
+          env = K8::Util.new_env(meth, '/')
           action = K8::Action.new(K8::Request.new(env), K8::Response.new)
           action.instance_exec(self) do |_|
             _.ok {csrf_protection_required?} == false
@@ -614,7 +614,7 @@ Oktest.scope do
       spec "[!h5tzb] raises nothing when csrf token matched." do
         headers = {'Cookie'=>"_csrf=abc123"}
         form    = {"_csrf"=>"abc123"}
-        env = K8::Util.mock_env('POST', '/', form: form, headers: headers)
+        env = K8::Util.new_env('POST', '/', form: form, headers: headers)
         action = K8::Action.new(K8::Request.new(env), K8::Response.new)
         action.instance_exec(self) do |_|
           pr = proc { csrf_protection() }
@@ -625,7 +625,7 @@ Oktest.scope do
       spec "[!h0e0q] raises HTTP 400 when csrf token mismatched." do
         headers = {'Cookie'=>"_csrf=abc123"}
         form    = {"_csrf"=>"abc999"}
-        env = K8::Util.mock_env('POST', '/', form: form, headers: headers)
+        env = K8::Util.new_env('POST', '/', form: form, headers: headers)
         action = K8::Action.new(K8::Request.new(env), K8::Response.new)
         action.instance_exec(self) do |_|
           pr = proc { csrf_protection() }
@@ -666,7 +666,7 @@ Oktest.scope do
     topic '#csrf_get_param()' do
 
       spec "[!pal33] returns csrf token in request parameter." do
-        env = K8::Util.mock_env("POST", "/", form: {"_csrf"=>"foobar999"})
+        env = K8::Util.new_env("POST", "/", form: {"_csrf"=>"foobar999"})
         action_obj = K8::Action.new(K8::Request.new(env), K8::Response.new)
         action_obj.instance_exec(self) do |_|
           _.ok {csrf_get_param()} == "foobar999"

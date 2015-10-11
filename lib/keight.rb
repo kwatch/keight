@@ -10,6 +10,7 @@ require 'json'
 require 'date'
 require 'uri'
 require 'digest/sha1'
+#require 'stringio'     # on-demand load
 
 
 module K8

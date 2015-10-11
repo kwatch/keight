@@ -189,11 +189,11 @@ module K8
         environ[name] = value
       end if env
       if cookie
-        arr = ! cookie.is_a?(Hash) ? [cookie] : cookie.map {|k, v|
+        s = ! cookie.is_a?(Hash) ? cookie.to_s : cookie.map {|k, v|
           "#{percent_encode(k)}=#{percent_encode(v)}"
-        }
-        arr.unshift(environ['HTTP_COOKIE']) if environ['HTTP_COOKIE']
-        environ['HTTP_COOKIE'] = arr.join('; ')
+        }.join('; ')
+        s = "#{environ['HTTP_COOKIE']}; #{s}" if environ['HTTP_COOKIE']
+        environ['HTTP_COOKIE'] = s
       end
       return environ
     end

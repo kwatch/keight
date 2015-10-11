@@ -467,8 +467,8 @@ module K8
     def csrf_protection
       #; [!h5tzb] raises nothing when csrf token matched.
       #; [!h0e0q] raises HTTP 400 when csrf token mismatched.
-      expected = @req.cookies['_csrf']
-      actual   = self.req.params['_csrf']
+      expected = csrf_get_token()
+      actual   = csrf_get_param()
       expected == actual  or
         raise HTTP(400, "invalid csrf token")     # TODO: logging
       nil

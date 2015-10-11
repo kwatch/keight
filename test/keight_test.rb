@@ -238,6 +238,27 @@ Oktest.scope do
 
     end
 
+
+    topic '.mapping()' do
+
+      spec "[!o148k] maps urlpath pattern and request methods." do
+        cls = Class.new(K8::BaseAction) do
+          mapping '',        :GET=>:do_index, :POST=>:do_create
+          mapping '/{code}', :GET=>:do_show, :PUT=>:do_update
+        end
+        args_list = []
+        cls._action_method_mapping.each do |*args|
+          args_list << args
+        end
+        ok {args_list} == [
+          ["",        {:GET=>:do_index, :POST=>:do_create}],
+          ["/{code}", {:GET=>:do_show,  :PUT=>:do_update}],
+        ]
+      end
+
+    end
+
+
   end
 
 

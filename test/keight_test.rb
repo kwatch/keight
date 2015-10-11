@@ -75,17 +75,8 @@ end
 
 Oktest.scope do
 
-  def new_env(meth="GET", path="/", headers={})
-    env = {
-      "REQUEST_METHOD" => meth,
-      "PATH_INFO"      => path,
-      "SCRIPT_NAME"    => "",
-      "QUERY_STRING"   => "",
-      "SERVER_NAME"    => "localhost",
-      "SERVER_PORT"    => "80",
-    }
-    env.update(headers)
-    return env
+  def new_env(meth="GET", path="/", opts={})
+    return K8::Util.new_env(meth, path, opts)
   end
 
 

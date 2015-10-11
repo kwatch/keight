@@ -86,6 +86,16 @@ module K8
 
     module_function
 
+    def percent_encode(str)
+      #; [!a96jo] encodes string into percent encoding format.
+      return URI.encode_www_form_component(str)
+    end
+
+    def percent_decode(str)
+      #; [!kl9sk] decodes percent encoded string.
+      return URI.decode_www_form_component(str)
+    end
+
     def parse_query_string(query_str)
       #; [!engr6] returns empty Hash object when query string is empty.
       d = {}

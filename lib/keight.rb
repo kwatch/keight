@@ -9,6 +9,7 @@
 require 'json'
 require 'date'
 require 'uri'
+require 'digest/sha1'
 
 
 module K8
@@ -119,8 +120,8 @@ module K8
       when String ; return query
       when Hash, Array
         return query.collect {|k, v|
-          name  = Util.encode_www_form_component(k.to_s)
-          value = Util.encode_www_form_component(v.to_s)
+          name  = URI.encode_www_form_component(k.to_s)
+          value = URI.encode_www_form_component(v.to_s)
           "#{name}=#{value}"
         }.join('&')
       else
@@ -274,7 +275,7 @@ module K8
     end
 
     def cookies
-      return {}
+      return @cookies ||= Util.parse_query_string(@env['HTTP_COOKIE'] || "")
     end
 
   end
@@ -385,6 +386,19 @@ module K8
 
   class Action < BaseAction
 
+    ##
+    ## ex:
+    ##   mapping '/',     :GET=>:do_index, :POST=>:do_create
+    ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
+    ##
+    def self.mapping(urlpath_pattern, methods={})
+      self._action_method_mapping.map(urlpath_pattern, methods)
+    end
+
+    def self._action_method_mapping
+      return @action_method_mapping ||= ActionMethodMapping.new
+    end
+
     #; [!siucz] request object is accessable with 'request' method as well as 'req'.
     #; [!qnzp6] response object is accessable with 'response' method as well as 'resp'.
     alias request  req    # just for compatibility with other frameworks; use 'req'!
@@ -393,7 +407,7 @@ module K8
     protected
 
     def before_action
-      protect_csrf() if protect_csrf_required?()
+      csrf_protection() if csrf_protection_required?()
     end
 
     def after_action(ex)
@@ -454,50 +468,62 @@ module K8
       end
     end
 
-    def protect_csrf_required?
-      return false if @req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
-      req_meth = @req.method
-      return req_meth == :POST || req_meth == :PUT || req_meth == :DELETE
-    end
-
-    def protect_csrf
-      expected = @req.cookies['_csrf']
-      actual   = self.params['_csrf']
-      expectd == actual  or
-        raise HTTP(400, "invalid csrf token")
-    end
-
-    def new_csrf_token
-      return Digest::MD5.hexdigest("#{rand()}#{rand()}#{rand()}")
-    end
-
-    def csrf_token
-      token = @_csrf_token
-      return token if token
-      token = @req.cookies['_csrf']
-      unless token
-        token = new_csrf_token()
-        @resp.set_cookie('_csrf', token)
-      end
-      @_csrf_token = token
-      return token
-    end
-
     def HTTP(status_code, message=nil, response_headers=nil)
       return HttpException.new(status_code, message, response_headers)
     end
 
     ##
-    ## ex:
-    ##   mapping '/',     :GET=>:do_index, :POST=>:do_create
-    ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
+    ## helpers for CSRF protection
     ##
-    def self.mapping(urlpath_pattern, methods={})
-      self._action_method_mapping.map(urlpath_pattern, methods)
+
+    protected
+
+    def csrf_protection_required?
+      #; [!8chgu] returns false when requested with 'XMLHttpRequest'.
+      return false if @req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
+      #; [!vwrqv] returns true when request method is one of POST, PUT, or DELETE.
+      #; [!jfhla] returns true when request method is GET or HEAD.
+      req_meth = @req.method
+      return req_meth == :POST || req_meth == :PUT || req_meth == :DELETE
     end
 
-    def self._action_method_mapping
-      return @action_method_mapping ||= ActionMethodMapping.new
+    def csrf_protection
+      #; [!h5tzb] raises nothing when csrf token matched.
+      #; [!h0e0q] raises HTTP 400 when csrf token mismatched.
+      expected = csrf_get_token()
+      actual   = csrf_get_param()
+      expected == actual  or
+        raise HTTP(400, "invalid csrf token")     # TODO: logging
+      nil
+    end
+
+    def csrf_get_token
+      #; [!mr6md] returns csrf cookie value.
+      @req.cookies['_csrf']
+    end
+
+    def csrf_set_token(token)
+      #; [!8hm2o] sets csrf cookie and returns token.
+      @resp.set_cookie('_csrf', token)
+      token
+    end
+
+    def csrf_get_param
+      #; [!pal33] returns csrf token in request parameter.
+      self.req.params['_csrf']
+    end
+
+    def csrf_new_token
+      #; [!zl6cl] returns new random token.
+      #; [!sfgfx] uses SHA1 + urlsafe BASE64.
+      binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
+      return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
+    end
+
+    def csrf_token
+      #; [!7gibo] returns current csrf token.
+      #; [!6vtqd] creates new csrf token and set it to cookie when csrf token is blank.
+      return @_csrf_token ||= (csrf_get_token() || csrf_set_token(csrf_new_token()))
     end
 
   end

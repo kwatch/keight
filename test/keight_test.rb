@@ -419,6 +419,162 @@ Oktest.scope do
 
     end
 
+
+    topic '#csrf_protection_required?' do
+
+      fixture :action_obj do
+        env = K8::Util.mock_env('GET', '/')
+        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+      end
+
+      spec "[!8chgu] returns false when requested with 'XMLHttpRequest'." do
+        headers = {'X-Requested-With'=>'XMLHttpRequest'}
+        env = K8::Util.mock_env('GET', '/', headers: headers)
+        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action.instance_exec(self) do |_|
+          _.ok {csrf_protection_required?} == false
+        end
+      end
+
+      spec "[!vwrqv] returns true when request method is one of POST, PUT, or DELETE." do
+        ['POST', 'PUT', 'DELETE'].each do |meth|
+          env = K8::Util.mock_env(meth, '/')
+          action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+          action.instance_exec(self) do |_|
+            _.ok {csrf_protection_required?} == true
+          end
+        end
+      end
+
+      spec "[!jfhla] returns true when request method is GET or HEAD." do
+        ['GET', 'HEAD'].each do |meth|
+          env = K8::Util.mock_env(meth, '/')
+          action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+          action.instance_exec(self) do |_|
+            _.ok {csrf_protection_required?} == false
+          end
+        end
+      end
+
+    end
+
+
+    topic '#csrf_protection()' do
+
+      spec "[!h5tzb] raises nothing when csrf token matched." do
+        headers = {'Cookie'=>"_csrf=abc123"}
+        form    = {"_csrf"=>"abc123"}
+        env = K8::Util.mock_env('POST', '/', form: form, headers: headers)
+        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action.instance_exec(self) do |_|
+          pr = proc { csrf_protection() }
+          _.ok {pr}.NOT.raise?
+        end
+      end
+
+      spec "[!h0e0q] raises HTTP 400 when csrf token mismatched." do
+        headers = {'Cookie'=>"_csrf=abc123"}
+        form    = {"_csrf"=>"abc999"}
+        env = K8::Util.mock_env('POST', '/', form: form, headers: headers)
+        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action.instance_exec(self) do |_|
+          pr = proc { csrf_protection() }
+          _.ok {pr}.raise?(K8::HttpException, "invalid csrf token")
+        end
+      end
+
+    end
+
+
+    topic '#csrf_get_token()' do
+
+      spec "[!mr6md] returns csrf cookie value." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          @req.env['HTTP_COOKIE'] = "_csrf=abc123"
+          _.ok {csrf_get_token()} == "abc123"
+        end
+      end
+
+    end
+
+
+    topic '#csrf_set_token()' do
+
+      spec "[!8hm2o] sets csrf cookie and returns token." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          ret = csrf_set_token("abcdef123456")
+          _.ok {@resp.headers['Set-Cookie']} == "_csrf=abcdef123456"
+          _.ok {ret} == "abcdef123456"
+        end
+      end
+
+    end
+
+
+    topic '#csrf_get_param()' do
+
+      spec "[!pal33] returns csrf token in request parameter." do
+        env = K8::Util.mock_env("POST", "/", form: {"_csrf"=>"foobar999"})
+        action_obj = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action_obj.instance_exec(self) do |_|
+          _.ok {csrf_get_param()} == "foobar999"
+        end
+      end
+
+    end
+
+
+    topic '#csrf_new_token()' do
+
+      spec "[!zl6cl] returns new random token." do
+        |action_obj|
+        tokens = []
+        n = 1000
+        action_obj.instance_exec(self) do |_|
+          n.times { tokens << csrf_new_token() }
+        end
+        ok {tokens.sort.uniq.length} == n
+      end
+
+      spec "[!sfgfx] uses SHA1 + urlsafe BASE64." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          token = (1..5).each.map { csrf_new_token() }.find {|x| x =~ /[^a-fA-F0-9]/ }
+          _.ok {token} != nil
+          _.ok {token} =~ /\A[-_a-zA-Z0-9]+\z/   # uses urlsafe BASE64
+          _.ok {token.length} == 27              # == SHA1.length - "=".length
+        end
+      end
+
+    end
+
+
+    topic '#csrf_token()' do
+
+      spec "[!7gibo] returns current csrf token." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          token = csrf_token()
+          _.ok {token} =~ /\A[-_a-zA-Z0-9]{27}\z/
+          _.ok {csrf_token()} == token
+          _.ok {csrf_token()} == token
+        end
+      end
+
+      spec "[!6vtqd] creates new csrf token and set it to cookie when csrf token is blank." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          _.ok {@resp.headers['Set-Cookie']} == nil
+          token = csrf_token()
+          _.ok {@resp.headers['Set-Cookie']} == "_csrf=#{token}"
+        end
+      end
+
+    end
+
+
   end
 
 

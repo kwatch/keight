@@ -129,7 +129,7 @@ module K8
       end
     end
 
-    def mock_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, env: nil)
+    def mock_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"n
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
@@ -178,6 +178,13 @@ module K8
         end
         environ[name] = value
       end if env
+      if cookie
+        arr = ! cookie.is_a?(Hash) ? [cookie] : cookie.map {|k, v|
+          "#{URI.encode_www_form_component(k)}=#{URI.encode_www_form_component(v)}"
+        }
+        arr.unshift(environ['HTTP_COOKIE']) if environ['HTTP_COOKIE']
+        environ['HTTP_COOKIE'] = arr.join('; ')
+      end
       return environ
     end
 

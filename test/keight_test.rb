@@ -185,6 +185,56 @@ Oktest.scope do
     end
 
 
+    topic '#params_json' do
+
+      spec "[!ugik5] parses json data and returns it as hash object when json data is sent." do
+        data = '{"x":1,"y":2,"arr":["a","b","c"]}'
+        env = K8::Util.mock_env("POST", "/", json: data)
+        req = K8::Request.new(env)
+        ok {req.params_json} == {"x"=>1, "y"=>2, "arr"=>["a", "b", "c"]}
+      end
+
+      spec "[!xwsdn] returns empty hash object when json data is not sent." do
+        data = '{"x":1,"y":2,"arr":["a","b","c"]}'
+        env = K8::Util.mock_env("POST", "/", form: data)
+        req = K8::Request.new(env)
+        ok {req.params_json} == {}
+      end
+
+    end
+
+
+    topic '#params' do
+
+      spec "[!erlc7] parses QUERY_STRING when request method is GET or HEAD." do
+        qstr = "a=8&b=9"
+        form = "x=1&y=2"
+        env = K8::Util.mock_env('GET', '/', query: qstr, form: form)
+        req = K8::Request.new(env)
+        ok {req.params} == {"a"=>"8", "b"=>"9"}
+      end
+
+      spec "[!cr0zj] parses JSON when content type is 'application/json'." do
+        qstr = "a=8&b=9"
+        json = '{"n":123}'
+        env = K8::Util.mock_env('POST', '/', query: qstr, json: json)
+        req = K8::Request.new(env)
+        ok {req.params} == {"n"=>123}
+      end
+
+      spec "[!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'." do
+        qstr = "a=8&b=9"
+        form = "x=1&y=2"
+        env = K8::Util.mock_env('POST', '/', query: qstr, form: form)
+        req = K8::Request.new(env)
+        ok {req.params} == {"x"=>"1", "y"=>"2"}
+      end
+
+      spec "[!4rmn9] parses multipart when content type is 'multipart/form-data'."
+
+    end
+
+
   end
 
 

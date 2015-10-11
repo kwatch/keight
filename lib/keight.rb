@@ -261,9 +261,11 @@ module K8
       d = @params_json
       return d if d
       case @env['CONTENT_TYPE']
+      #; [!ugik5] parses json data and returns it as hash object when json data is sent.
       when /\Aapplication\/json\b/
         json_str = @env['rack.input'].read(10*1024*1024)   # TODO
         d = JSON.parse(json_str)
+      #; [!xwsdn] returns empty hash object when json data is not sent.
       else
         d = {}
       end
@@ -272,6 +274,10 @@ module K8
     end
 
     def params
+      #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
+      #; [!cr0zj] parses JSON when content type is 'application/json'.
+      #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
+      #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
       if @method == :GET || @method == :HEAD
         return self.params_query
       elsif @env['CONTENT_TYPE'] =~ /\Aapplication\/json\b/

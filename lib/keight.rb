@@ -386,6 +386,19 @@ module K8
 
   class Action < BaseAction
 
+    ##
+    ## ex:
+    ##   mapping '/',     :GET=>:do_index, :POST=>:do_create
+    ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
+    ##
+    def self.mapping(urlpath_pattern, methods={})
+      self._action_method_mapping.map(urlpath_pattern, methods)
+    end
+
+    def self._action_method_mapping
+      return @action_method_mapping ||= ActionMethodMapping.new
+    end
+
     #; [!siucz] request object is accessable with 'request' method as well as 'req'.
     #; [!qnzp6] response object is accessable with 'response' method as well as 'resp'.
     alias request  req    # just for compatibility with other frameworks; use 'req'!
@@ -457,19 +470,6 @@ module K8
 
     def HTTP(status_code, message=nil, response_headers=nil)
       return HttpException.new(status_code, message, response_headers)
-    end
-
-    ##
-    ## ex:
-    ##   mapping '/',     :GET=>:do_index, :POST=>:do_create
-    ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
-    ##
-    def self.mapping(urlpath_pattern, methods={})
-      self._action_method_mapping.map(urlpath_pattern, methods)
-    end
-
-    def self._action_method_mapping
-      return @action_method_mapping ||= ActionMethodMapping.new
     end
 
     ##

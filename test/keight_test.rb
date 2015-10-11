@@ -235,6 +235,17 @@ Oktest.scope do
     end
 
 
+    topic '#cookies' do
+
+      spec "[!c9pwr] parses cookie data and returns it as hash object." do
+        env = K8::Util.mock_env('POST', '/', cookie: "aaa=homhom;bbb=madmad")
+        req = K8::Request.new(env)
+        ok {req.cookies} == {"aaa"=>"homhom", "bbb"=>"madmad"}
+      end
+
+    end
+
+
   end
 
 

@@ -295,6 +295,7 @@ module K8
     end
 
     def cookies
+      #; [!c9pwr] parses cookie data and returns it as hash object.
       return @cookies ||= Util.parse_query_string(@env['HTTP_COOKIE'] || "")
     end
 

@@ -164,6 +164,27 @@ Oktest.scope do
     end
 
 
+    topic '#params_form' do
+
+      spec "[!59ad2] parses form parameters and returns it as Hash object when form requested." do
+        form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
+        env = K8::Util.mock_env("POST", "/", form: form)
+        req = K8::Request.new(env)
+        ok {req.params_form} == {'x'=>'1', 'y'=>'2', 'arr[xxx]'=>'<> &;'}
+      end
+
+      spec "[!y1jng] parses multipart when multipart form requested."
+
+      spec "[!4hh3k] returns empty hash object when form param is not sent." do
+        form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
+        env = K8::Util.mock_env("GET", "/", query: form)
+        req = K8::Request.new(env)
+        ok {req.params_form} == {}
+      end
+
+    end
+
+
   end
 
 

@@ -240,11 +240,14 @@ module K8
       d = @params_form
       return d if d
       case @env['CONTENT_TYPE']
+      #; [!59ad2] parses form parameters and returns it as Hash object when form requested.
       when 'application/x-www-form-urlencoded'
         qstr = @env['rack.input'].read(10*1024*1024)   # TODO
         d = Util.parse_query_string(qstr)
+      #; [!y1jng] parses multipart when multipart form requested.
       when /\Amultipart\/form-data;\s*boundary=(.*)/
         d = {}   # TODO
+      #; [!4hh3k] returns empty hash object when form param is not sent.
       else
         d = {}
       end

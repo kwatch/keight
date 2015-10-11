@@ -499,12 +499,8 @@ module K8
 
     def csrf_token
       #; [!7gibo] returns current csrf token.
-      token = @_csrf_token
-      return token if token
       #; [!6vtqd] creates new csrf token and set it to cookie when csrf token is blank.
-      token = csrf_get_token() || csrf_set_token(csrf_new_token())
-      @_csrf_token = token
-      return token
+      return @_csrf_token ||= (csrf_get_token() || csrf_set_token(csrf_new_token()))
     end
 
     def HTTP(status_code, message=nil, response_headers=nil)

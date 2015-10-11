@@ -92,6 +92,24 @@ Oktest.scope do
   topic K8::Util do
 
 
+    topic '.percent_encode()' do
+
+      spec "[!a96jo] encodes string into percent encoding format." do
+        ok {K8::Util.percent_encode('[xxx]')} == "%5Bxxx%5D"
+      end
+
+    end
+
+
+    topic '.percent_decode()' do
+
+      spec "[!kl9sk] decodes percent encoded string." do
+        ok {K8::Util.percent_decode('%5Bxxx%5D')} == "[xxx]"
+      end
+
+    end
+
+
     topic '.parse_query_string()' do
 
       spec "[!fzt3w] parses query string and returns Hahs object." do

@@ -86,6 +86,16 @@ module K8
 
     module_function
 
+    def percent_encode(str)
+      #; [!a96jo] encodes string into percent encoding format.
+      return URI.encode_www_form_component(str)
+    end
+
+    def percent_decode(str)
+      #; [!kl9sk] decodes percent encoded string.
+      return URI.decode_www_form_component(str)
+    end
+
     def parse_query_string(query_str)
       #; [!engr6] returns empty Hash object when query string is empty.
       d = {}
@@ -102,8 +112,8 @@ module K8
         #end
         k, v = s.split(equal, 2)
         v ||= ''
-        k = URI.decode_www_form_component(k) unless k =~ /\A[-.\w]+\z/
-        v = URI.decode_www_form_component(v) unless v =~ /\A[-.\w]+\z/
+        k = percent_decode(k) unless k =~ /\A[-.\w]+\z/
+        v = percent_decode(v) unless v =~ /\A[-.\w]+\z/
         #; [!t0w33] regards as array of string when param name ends with '[]'.
         if k.end_with?(brackets)
           (d[k] ||= []) << v
@@ -120,8 +130,8 @@ module K8
       when String ; return query
       when Hash, Array
         return query.collect {|k, v|
-          name  = URI.encode_www_form_component(k.to_s)
-          value = URI.encode_www_form_component(v.to_s)
+          name  = percent_decode(k.to_s)
+          value = percent_decode(v.to_s)
           "#{name}=#{value}"
         }.join('&')
       else
@@ -180,7 +190,7 @@ module K8
       end if env
       if cookie
         arr = ! cookie.is_a?(Hash) ? [cookie] : cookie.map {|k, v|
-          "#{URI.encode_www_form_component(k)}=#{URI.encode_www_form_component(v)}"
+          "#{percent_encode(k)}=#{percent_encode(v)}"
         }
         arr.unshift(environ['HTTP_COOKIE']) if environ['HTTP_COOKIE']
         environ['HTTP_COOKIE'] = arr.join('; ')

@@ -474,6 +474,22 @@ module K8
       nil
     end
 
+    def csrf_get_token
+      #; [!mr6md] returns csrf cookie value.
+      @req.cookies['_csrf']
+    end
+
+    def csrf_set_token(token)
+      #; [!8hm2o] sets csrf cookie and returns token.
+      @resp.set_cookie('_csrf', token)
+      token
+    end
+
+    def csrf_get_param
+      #; [!pal33] returns csrf token in request parameter.
+      self.req.params['_csrf']
+    end
+
     def csrf_new_token
       #; [!zl6cl] returns new random token.
       #; [!sfgfx] uses SHA1 + urlsafe BASE64.

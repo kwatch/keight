@@ -486,6 +486,46 @@ Oktest.scope do
     end
 
 
+    topic '#csrf_get_token()' do
+
+      spec "[!mr6md] returns csrf cookie value." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          @req.env['HTTP_COOKIE'] = "_csrf=abc123"
+          _.ok {csrf_get_token()} == "abc123"
+        end
+      end
+
+    end
+
+
+    topic '#csrf_set_token()' do
+
+      spec "[!8hm2o] sets csrf cookie and returns token." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          ret = csrf_set_token("abcdef123456")
+          _.ok {@resp.headers['Set-Cookie']} == "_csrf=abcdef123456"
+          _.ok {ret} == "abcdef123456"
+        end
+      end
+
+    end
+
+
+    topic '#csrf_get_param()' do
+
+      spec "[!pal33] returns csrf token in request parameter." do
+        env = K8::Util.mock_env("POST", "/", form: {"_csrf"=>"foobar999"})
+        action_obj = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action_obj.instance_exec(self) do |_|
+          _.ok {csrf_get_param()} == "foobar999"
+        end
+      end
+
+    end
+
+
     topic '#csrf_new_token()' do
 
       spec "[!zl6cl] returns new random token." do

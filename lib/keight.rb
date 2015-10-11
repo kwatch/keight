@@ -230,12 +230,12 @@ module K8
       return @env["HTTP_#{name.upcase.sub('-', '_')}"]
     end
 
-    def query_params
-      return @query_params ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
+    def params_query
+      return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
 
-    def form_params
-      d = @form_params
+    def params_form
+      d = @params_form
       return d if d
       case @env['CONTENT_TYPE']
       when 'application/x-www-form-urlencoded'
@@ -246,12 +246,12 @@ module K8
       else
         d = {}
       end
-      @form_params = d
+      @params_form = d
       return d
     end
 
-    def json_params
-      d = @json_params
+    def params_json
+      d = @params_json
       return d if d
       case @env['CONTENT_TYPE']
       when /\Aapplication\/json\b/
@@ -260,17 +260,17 @@ module K8
       else
         d = {}
       end
-      @json_params = d
+      @params_json = d
       return d
     end
 
     def params
       if @method == :GET || @method == :HEAD
-        return self.query_params
+        return self.params_query
       elsif @env['CONTENT_TYPE'] =~ /\Aapplication\/json\b/
-        return self.json_params
+        return self.params_json
       else
-        return self.form_params
+        return self.params_form
       end
     end
 

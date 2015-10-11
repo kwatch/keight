@@ -905,11 +905,11 @@ Oktest.scope do
         mapping.traverse do |*args|
           arr << args
         end
-        ok {arr[0]} == [:enter, "", "/api", [["/books", BooksAction], ["/books/{book_id}/comments", BookCommentsAction]], nil]
-        ok {arr[1]} == [:enter, "/api", "/books", BooksAction, nil]
-        ok {arr[2]} == [:map,   "/api/books", "/", BooksAction, {:GET=>:do_index, :POST=>:do_create}]
-        ok {arr[3]} == [:map,   "/api/books", "/new", BooksAction, {:GET=>:do_new}]
-        ok {arr[4]} == [:map,   "/api/books", "/{id}", BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}]
+        ok {arr[0]}  == [:enter, "", "/api", [["/books", BooksAction], ["/books/{book_id}/comments", BookCommentsAction]], nil]
+        ok {arr[1]}  == [:enter, "/api", "/books", BooksAction, nil]
+        ok {arr[2]}  == [:map,   "/api/books", "/", BooksAction, {:GET=>:do_index, :POST=>:do_create}]
+        ok {arr[3]}  == [:map,   "/api/books", "/new", BooksAction, {:GET=>:do_new}]
+        ok {arr[4]}  == [:map,   "/api/books", "/{id}", BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}]
         ok {arr[5]}  == [:map,   "/api/books", "/{id}/edit", BooksAction, {:GET=>:do_edit}]
         ok {arr[6]}  == [:exit,  "/api", "/books", BooksAction, nil]
         ok {arr[7]}  == [:enter, "/api", "/books/{book_id}/comments", BookCommentsAction, nil]

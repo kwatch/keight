@@ -502,11 +502,7 @@ module K8
       token = @_csrf_token
       return token if token
       #; [!6vtqd] creates new csrf token and set it to cookie when csrf token is blank.
-      token = @req.cookies['_csrf']
-      unless token
-        token = csrf_new_token()
-        @resp.set_cookie('_csrf', token)
-      end
+      token = csrf_get_token() || csrf_set_token(csrf_new_token())
       @_csrf_token = token
       return token
     end

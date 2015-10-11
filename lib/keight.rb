@@ -129,11 +129,7 @@ module K8
       when nil    ; return nil
       when String ; return query
       when Hash, Array
-        return query.collect {|k, v|
-          name  = percent_decode(k.to_s)
-          value = percent_decode(v.to_s)
-          "#{name}=#{value}"
-        }.join('&')
+        return query.collect {|k, v| "#{percent_decode(k.to_s)}=#{percent_decode(v.to_s)}" }.join('&')
       else
         raise ArgumentError.new("Hash or Array expected but got #{query.inspect}.")
       end

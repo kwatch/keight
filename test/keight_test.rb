@@ -422,6 +422,11 @@ Oktest.scope do
 
     topic '#csrf_protection_required?' do
 
+      fixture :action_obj do
+        env = K8::Util.mock_env('GET', '/')
+        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+      end
+
       spec "[!8chgu] returns false when requested with 'XMLHttpRequest'." do
         headers = {'X-Requested-With'=>'XMLHttpRequest'}
         env = K8::Util.mock_env('GET', '/', headers: headers)
@@ -475,6 +480,31 @@ Oktest.scope do
         action.instance_exec(self) do |_|
           pr = proc { csrf_protection() }
           _.ok {pr}.raise?(K8::HttpException, "invalid csrf token")
+        end
+      end
+
+    end
+
+
+    topic '#csrf_new_token()' do
+
+      spec "[!zl6cl] returns new random token." do
+        |action_obj|
+        tokens = []
+        n = 1000
+        action_obj.instance_exec(self) do |_|
+          n.times { tokens << csrf_new_token() }
+        end
+        ok {tokens.sort.uniq.length} == n
+      end
+
+      spec "[!sfgfx] uses SHA1 + urlsafe BASE64." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          token = (1..5).each.map { csrf_new_token() }.find {|x| x =~ /[^a-fA-F0-9]/ }
+          _.ok {token} != nil
+          _.ok {token} =~ /\A[-_a-zA-Z0-9]+\z/   # uses urlsafe BASE64
+          _.ok {token.length} == 27              # == SHA1.length - "=".length
         end
       end
 

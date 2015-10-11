@@ -9,6 +9,7 @@
 require 'json'
 require 'date'
 require 'uri'
+require 'digest/sha1'
 
 
 module K8
@@ -474,7 +475,10 @@ module K8
     end
 
     def csrf_new_token
-      return Digest::MD5.hexdigest("#{rand()}#{rand()}#{rand()}")
+      #; [!zl6cl] returns new random token.
+      #; [!sfgfx] uses SHA1 + urlsafe BASE64.
+      binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
+      return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
     end
 
     def csrf_token

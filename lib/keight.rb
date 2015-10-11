@@ -136,7 +136,7 @@ module K8
     end
 
     def mock_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
-      #uri = "http://localhost:80#{path}"n
+      #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
       require 'stringio' unless defined?(StringIO)

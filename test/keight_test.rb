@@ -145,6 +145,25 @@ Oktest.scope do
     end
 
 
+    topic '#params_query' do
+
+      spec "[!6ezqw] parses QUERY_STRING and returns it as Hash object." do
+        qstr = "x=1&y=2"
+        env = K8::Util.mock_env("GET", "/", env: {'QUERY_STRING'=>qstr})
+        req = K8::Request.new(env)
+        ok {req.params_query()} == {'x'=>'1', 'y'=>'2'}
+      end
+
+      spec "[!o0ws7] unquotes both keys and values." do
+        qstr = "arr%5Bxxx%5D=%3C%3E+%26%3B"
+        env = K8::Util.mock_env("GET", "/", env: {'QUERY_STRING'=>qstr})
+        req = K8::Request.new(env)
+        ok {req.params_query()} == {'arr[xxx]'=>'<> &;'}
+      end
+
+    end
+
+
   end
 
 

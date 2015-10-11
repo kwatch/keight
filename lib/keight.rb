@@ -231,6 +231,8 @@ module K8
     end
 
     def params_query
+      #; [!6ezqw] parses QUERY_STRING and returns it as Hash object.
+      #; [!o0ws7] unquotes both keys and values.
       return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
 

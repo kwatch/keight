@@ -387,6 +387,7 @@ module K8
     ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
     ##
     def self.mapping(urlpath_pattern, methods={})
+      #; [!o148k] maps urlpath pattern and request methods.
       self._action_method_mapping.map(urlpath_pattern, methods)
     end
 

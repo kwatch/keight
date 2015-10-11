@@ -101,6 +101,10 @@ module K8
       return _parse(query_str, /[&;]/)
     end
 
+    def parse_cookie_string(cookie_str)
+      return _parse(cookie_str, /;\s*/)
+    end
+
     def _parse(query_str, separator)
       #; [!engr6] returns empty Hash object when query string is empty.
       d = {}

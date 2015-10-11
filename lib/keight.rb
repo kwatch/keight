@@ -482,8 +482,10 @@ module K8
     end
 
     def csrf_token
+      #; [!7gibo] returns current csrf token.
       token = @_csrf_token
       return token if token
+      #; [!6vtqd] creates new csrf token and set it to cookie when csrf token is blank.
       token = @req.cookies['_csrf']
       unless token
         token = csrf_new_token()

@@ -511,6 +511,30 @@ Oktest.scope do
     end
 
 
+    topic '#csrf_token()' do
+
+      spec "[!7gibo] returns current csrf token." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          token = csrf_token()
+          _.ok {token} =~ /\A[-_a-zA-Z0-9]{27}\z/
+          _.ok {csrf_token()} == token
+          _.ok {csrf_token()} == token
+        end
+      end
+
+      spec "[!6vtqd] creates new csrf token and set it to cookie when csrf token is blank." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          _.ok {@resp.headers['Set-Cookie']} == nil
+          token = csrf_token()
+          _.ok {@resp.headers['Set-Cookie']} == "_csrf=#{token}"
+        end
+      end
+
+    end
+
+
   end
 
 

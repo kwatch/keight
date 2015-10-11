@@ -23,7 +23,7 @@ module K8
     "PATCH"   => :PATCH,
     "OPTIONS" => :OPTIONS,
     "TRACE"   => :TRACE,
-  }
+  }.each {|k, _| k.freeze }
 
   HTTP_RESPONSE_STATUS = {
     100 => "Continue",
@@ -79,7 +79,7 @@ module K8
     507 => "Insufficient Storage",
     508 => "Loop Detected",
     510 => "Not Extended",
-  }
+  }.each {|_, v| v.freeze }
 
 
   module Util

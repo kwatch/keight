@@ -145,6 +145,107 @@ Oktest.scope do
     end
 
 
+    topic '#params_query' do
+
+      spec "[!6ezqw] parses QUERY_STRING and returns it as Hash object." do
+        qstr = "x=1&y=2"
+        env = K8::Util.mock_env("GET", "/", env: {'QUERY_STRING'=>qstr})
+        req = K8::Request.new(env)
+        ok {req.params_query()} == {'x'=>'1', 'y'=>'2'}
+      end
+
+      spec "[!o0ws7] unquotes both keys and values." do
+        qstr = "arr%5Bxxx%5D=%3C%3E+%26%3B"
+        env = K8::Util.mock_env("GET", "/", env: {'QUERY_STRING'=>qstr})
+        req = K8::Request.new(env)
+        ok {req.params_query()} == {'arr[xxx]'=>'<> &;'}
+      end
+
+    end
+
+
+    topic '#params_form' do
+
+      spec "[!59ad2] parses form parameters and returns it as Hash object when form requested." do
+        form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
+        env = K8::Util.mock_env("POST", "/", form: form)
+        req = K8::Request.new(env)
+        ok {req.params_form} == {'x'=>'1', 'y'=>'2', 'arr[xxx]'=>'<> &;'}
+      end
+
+      spec "[!y1jng] parses multipart when multipart form requested."
+
+      spec "[!4hh3k] returns empty hash object when form param is not sent." do
+        form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
+        env = K8::Util.mock_env("GET", "/", query: form)
+        req = K8::Request.new(env)
+        ok {req.params_form} == {}
+      end
+
+    end
+
+
+    topic '#params_json' do
+
+      spec "[!ugik5] parses json data and returns it as hash object when json data is sent." do
+        data = '{"x":1,"y":2,"arr":["a","b","c"]}'
+        env = K8::Util.mock_env("POST", "/", json: data)
+        req = K8::Request.new(env)
+        ok {req.params_json} == {"x"=>1, "y"=>2, "arr"=>["a", "b", "c"]}
+      end
+
+      spec "[!xwsdn] returns empty hash object when json data is not sent." do
+        data = '{"x":1,"y":2,"arr":["a","b","c"]}'
+        env = K8::Util.mock_env("POST", "/", form: data)
+        req = K8::Request.new(env)
+        ok {req.params_json} == {}
+      end
+
+    end
+
+
+    topic '#params' do
+
+      spec "[!erlc7] parses QUERY_STRING when request method is GET or HEAD." do
+        qstr = "a=8&b=9"
+        form = "x=1&y=2"
+        env = K8::Util.mock_env('GET', '/', query: qstr, form: form)
+        req = K8::Request.new(env)
+        ok {req.params} == {"a"=>"8", "b"=>"9"}
+      end
+
+      spec "[!cr0zj] parses JSON when content type is 'application/json'." do
+        qstr = "a=8&b=9"
+        json = '{"n":123}'
+        env = K8::Util.mock_env('POST', '/', query: qstr, json: json)
+        req = K8::Request.new(env)
+        ok {req.params} == {"n"=>123}
+      end
+
+      spec "[!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'." do
+        qstr = "a=8&b=9"
+        form = "x=1&y=2"
+        env = K8::Util.mock_env('POST', '/', query: qstr, form: form)
+        req = K8::Request.new(env)
+        ok {req.params} == {"x"=>"1", "y"=>"2"}
+      end
+
+      spec "[!4rmn9] parses multipart when content type is 'multipart/form-data'."
+
+    end
+
+
+    topic '#cookies' do
+
+      spec "[!c9pwr] parses cookie data and returns it as hash object." do
+        env = K8::Util.mock_env('POST', '/', cookie: "aaa=homhom;bbb=madmad")
+        req = K8::Request.new(env)
+        ok {req.cookies} == {"aaa"=>"homhom", "bbb"=>"madmad"}
+      end
+
+    end
+
+
   end
 
 

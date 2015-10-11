@@ -129,13 +129,14 @@ module K8
       end
     end
 
-    def mock_env(meth="GET", path="/", query: nil, form: nil, input: nil, headers: nil, env: nil)
+    def mock_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"n
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
       require 'stringio' unless defined?(StringIO)
       https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
       input = Util.build_query_string(form) if form
+      input = json.is_a?(String) ? json : JSON.dump(json) if json
       environ = {
         "rack.version"      => [1, 3],
         "rack.input"        => StringIO.new(input || ""),
@@ -152,7 +153,8 @@ module K8
         "HTTPS"             => https ? "on" : "off",
         "SCRIPT_NAME"       => "",
         "CONTENT_LENGTH"    => (input ? input.bytesize.to_s : "0"),
-        "CONTENT_TYPE"      => (form ? "application/x-www-form-urlencoded" : nil)
+        "CONTENT_TYPE"      => (form ? "application/x-www-form-urlencoded" :
+                                json ? "application/json" : nil)
       }
       environ.delete("CONTENT_TYPE") if environ["CONTENT_TYPE"].nil?
       headers.each do |name, value|
@@ -176,6 +178,13 @@ module K8
         end
         environ[name] = value
       end if env
+      if cookie
+        arr = ! cookie.is_a?(Hash) ? [cookie] : cookie.map {|k, v|
+          "#{URI.encode_www_form_component(k)}=#{URI.encode_www_form_component(v)}"
+        }
+        arr.unshift(environ['HTTP_COOKIE']) if environ['HTTP_COOKIE']
+        environ['HTTP_COOKIE'] = arr.join('; ')
+      end
       return environ
     end
 
@@ -230,51 +239,63 @@ module K8
       return @env["HTTP_#{name.upcase.sub('-', '_')}"]
     end
 
-    def query_params
-      return @query_params ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
+    def params_query
+      #; [!6ezqw] parses QUERY_STRING and returns it as Hash object.
+      #; [!o0ws7] unquotes both keys and values.
+      return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
 
-    def form_params
-      d = @form_params
+    def params_form
+      d = @params_form
       return d if d
       case @env['CONTENT_TYPE']
+      #; [!59ad2] parses form parameters and returns it as Hash object when form requested.
       when 'application/x-www-form-urlencoded'
         qstr = @env['rack.input'].read(10*1024*1024)   # TODO
         d = Util.parse_query_string(qstr)
+      #; [!y1jng] parses multipart when multipart form requested.
       when /\Amultipart\/form-data;\s*boundary=(.*)/
         d = {}   # TODO
+      #; [!4hh3k] returns empty hash object when form param is not sent.
       else
         d = {}
       end
-      @form_params = d
+      @params_form = d
       return d
     end
 
-    def json_params
-      d = @json_params
+    def params_json
+      d = @params_json
       return d if d
       case @env['CONTENT_TYPE']
+      #; [!ugik5] parses json data and returns it as hash object when json data is sent.
       when /\Aapplication\/json\b/
         json_str = @env['rack.input'].read(10*1024*1024)   # TODO
         d = JSON.parse(json_str)
+      #; [!xwsdn] returns empty hash object when json data is not sent.
       else
         d = {}
       end
-      @json_params = d
+      @params_json = d
       return d
     end
 
     def params
+      #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
+      #; [!cr0zj] parses JSON when content type is 'application/json'.
+      #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
+      #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
       if @method == :GET || @method == :HEAD
-        return self.query_params
+        return self.params_query
       elsif @env['CONTENT_TYPE'] =~ /\Aapplication\/json\b/
-        return self.json_params
+        return self.params_json
       else
-        return self.form_params
+        return self.params_form
       end
     end
 
     def cookies
+      #; [!c9pwr] parses cookie data and returns it as hash object.
       return @cookies ||= Util.parse_query_string(@env['HTTP_COOKIE'] || "")
     end
 

@@ -455,6 +455,29 @@ module K8
       end
     end
 
+    def HTTP(status_code, message=nil, response_headers=nil)
+      return HttpException.new(status_code, message, response_headers)
+    end
+
+    ##
+    ## ex:
+    ##   mapping '/',     :GET=>:do_index, :POST=>:do_create
+    ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
+    ##
+    def self.mapping(urlpath_pattern, methods={})
+      self._action_method_mapping.map(urlpath_pattern, methods)
+    end
+
+    def self._action_method_mapping
+      return @action_method_mapping ||= ActionMethodMapping.new
+    end
+
+    ##
+    ## helpers for CSRF protection
+    ##
+
+    protected
+
     def csrf_protection_required?
       #; [!8chgu] returns false when requested with 'XMLHttpRequest'.
       return false if @req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
@@ -501,23 +524,6 @@ module K8
       #; [!7gibo] returns current csrf token.
       #; [!6vtqd] creates new csrf token and set it to cookie when csrf token is blank.
       return @_csrf_token ||= (csrf_get_token() || csrf_set_token(csrf_new_token()))
-    end
-
-    def HTTP(status_code, message=nil, response_headers=nil)
-      return HttpException.new(status_code, message, response_headers)
-    end
-
-    ##
-    ## ex:
-    ##   mapping '/',     :GET=>:do_index, :POST=>:do_create
-    ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
-    ##
-    def self.mapping(urlpath_pattern, methods={})
-      self._action_method_mapping.map(urlpath_pattern, methods)
-    end
-
-    def self._action_method_mapping
-      return @action_method_mapping ||= ActionMethodMapping.new
     end
 
   end

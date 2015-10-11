@@ -129,13 +129,14 @@ module K8
       end
     end
 
-    def mock_env(meth="GET", path="/", query: nil, form: nil, input: nil, headers: nil, env: nil)
+    def mock_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, env: nil)
       #uri = "http://localhost:80#{path}"n
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
       require 'stringio' unless defined?(StringIO)
       https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
       input = Util.build_query_string(form) if form
+      input = json.is_a?(String) ? json : JSON.dump(json) if json
       environ = {
         "rack.version"      => [1, 3],
         "rack.input"        => StringIO.new(input || ""),
@@ -152,7 +153,8 @@ module K8
         "HTTPS"             => https ? "on" : "off",
         "SCRIPT_NAME"       => "",
         "CONTENT_LENGTH"    => (input ? input.bytesize.to_s : "0"),
-        "CONTENT_TYPE"      => (form ? "application/x-www-form-urlencoded" : nil)
+        "CONTENT_TYPE"      => (form ? "application/x-www-form-urlencoded" :
+                                json ? "application/json" : nil)
       }
       environ.delete("CONTENT_TYPE") if environ["CONTENT_TYPE"].nil?
       headers.each do |name, value|

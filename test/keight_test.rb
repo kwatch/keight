@@ -130,6 +130,16 @@ Oktest.scope do
     end
 
 
+    topic '.mock_env()' do
+
+      spec "[!c779l] raises ArgumentError when both form and json are specified." do
+        pr = proc { K8::Util.mock_env(form: "x=1", json: {"y": 2}) }
+        ok {pr}.raise?(ArgumentError, "mock_env(): not allowed both 'form' and 'json' at a time.")
+      end
+
+    end
+
+
   end
 
 

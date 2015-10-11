@@ -141,6 +141,10 @@ module K8
       #env = Rack::MockRequest.env_for(uri, opts)
       require 'stringio' unless defined?(StringIO)
       https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
+      #; [!c779l] raises ArgumentError when both form and json are specified.
+      ! form || ! json  or
+        raise ArgumentError.new("mock_env(): not allowed both 'form' and 'json' at a time.")
+      #
       input = Util.build_query_string(form) if form
       input = json.is_a?(String) ? json : JSON.dump(json) if json
       environ = {

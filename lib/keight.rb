@@ -10,6 +10,7 @@ require 'json'
 require 'date'
 require 'uri'
 require 'digest/sha1'
+#require 'stringio'     # on-demand load
 
 
 module K8
@@ -97,13 +98,21 @@ module K8
     end
 
     def parse_query_string(query_str)
+      return _parse(query_str, /[&;]/)
+    end
+
+    def parse_cookie_string(cookie_str)
+      return _parse(cookie_str, /;\s*/)
+    end
+
+    def _parse(query_str, separator)
       #; [!engr6] returns empty Hash object when query string is empty.
       d = {}
       return d if query_str.empty?
       #; [!fzt3w] parses query string and returns Hahs object.
       equal    = '='
       brackets = '[]'
-      query_str.split(/[&;]/).each do |s|
+      query_str.split(separator).each do |s|
         #kv = s.split('=', 2)
         #if kv.length == 2
         #  k, v = kv
@@ -129,22 +138,22 @@ module K8
       when nil    ; return nil
       when String ; return query
       when Hash, Array
-        return query.collect {|k, v|
-          name  = percent_decode(k.to_s)
-          value = percent_decode(v.to_s)
-          "#{name}=#{value}"
-        }.join('&')
+        return query.collect {|k, v| "#{percent_decode(k.to_s)}=#{percent_decode(v.to_s)}" }.join('&')
       else
         raise ArgumentError.new("Hash or Array expected but got #{query.inspect}.")
       end
     end
 
-    def mock_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
-      #uri = "http://localhost:80#{path}"n
+    def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
+      #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
       require 'stringio' unless defined?(StringIO)
       https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
+      #; [!c779l] raises ArgumentError when both form and json are specified.
+      ! form || ! json  or
+        raise ArgumentError.new("new_env(): not allowed both 'form' and 'json' at a time.")
+      #
       input = Util.build_query_string(form) if form
       input = json.is_a?(String) ? json : JSON.dump(json) if json
       environ = {
@@ -189,11 +198,11 @@ module K8
         environ[name] = value
       end if env
       if cookie
-        arr = ! cookie.is_a?(Hash) ? [cookie] : cookie.map {|k, v|
+        s = ! cookie.is_a?(Hash) ? cookie.to_s : cookie.map {|k, v|
           "#{percent_encode(k)}=#{percent_encode(v)}"
-        }
-        arr.unshift(environ['HTTP_COOKIE']) if environ['HTTP_COOKIE']
-        environ['HTTP_COOKIE'] = arr.join('; ')
+        }.join('; ')
+        s = "#{environ['HTTP_COOKIE']}; #{s}" if environ['HTTP_COOKIE']
+        environ['HTTP_COOKIE'] = s
       end
       return environ
     end
@@ -306,7 +315,7 @@ module K8
 
     def cookies
       #; [!c9pwr] parses cookie data and returns it as hash object.
-      return @cookies ||= Util.parse_query_string(@env['HTTP_COOKIE'] || "")
+      return @cookies ||= Util.parse_cookie_string(@env['HTTP_COOKIE'] || "")
     end
 
   end

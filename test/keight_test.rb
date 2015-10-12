@@ -125,12 +125,23 @@ Oktest.scope do
 
     topic '.parse_multipart()' do
 
+      fixture :multipart_data do
+        data_dir = File.join(File.dirname(__FILE__), "data")
+        data = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
+        data
+      end
+
+      fixture :boundary do |multipart_data|
+        boundary = /\A--(.*)\r\n/.match(multipart_data)[1]
+        boundary
+      end
+
       spec "[!mqrei] parses multipart form data." do
+        |multipart_data, boundary|
         begin
+          data = multipart_data
           data_dir = File.join(File.dirname(__FILE__), "data")
-          data = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
           stdin = StringIO.new(data)
-          boundary = /\A--(.*)\r\n/.match(data)[1]
           params, files = K8::Util.parse_multipart(stdin, boundary, data.length)
           ok {params} == {
             'text1'  => "test1",

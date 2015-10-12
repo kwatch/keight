@@ -144,16 +144,12 @@ module K8
       end
     end
 
-    MULTIPART_MAX_CONTENT_LENGTH =  100 * 1024 * 1024   # 100MB
     MULTIPART_MAX_FILESIZE       =   50 * 1024 * 1024   #  50MB
     MULTIPART_BUFFER_SIZE        =   10 * 1024 * 1024   #  10MB
 
     def parse_multipart(stdin, boundary, content_length, max_filesize=nil, bufsize=nil)
       max_filesize ||= MULTIPART_MAX_FILESIZE
       bufsize      ||= MULTIPART_BUFFER_SIZE
-      #; [!v33h3] error when content length is too large.
-      content_length <= MULTIPART_MAX_CONTENT_LENGTH  or
-        raise _mp_err("too large request.")
       #; [!mqrei] parses multipart form data.
       params = {}   # {"name": "value"}
       files  = {}   # {"name": UploadedFile}

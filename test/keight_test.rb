@@ -172,15 +172,6 @@ Oktest.scope do
         end
       end
 
-      spec "[!v33h3] error when content length is too large." do
-        |multipart_data, boundary|
-        stdin = StringIO.new(multipart_data)
-        pr = proc { K8::Util.parse_multipart(stdin, boundary, 120*1024*1024) }
-        ok {pr}.raise?(K8::HttpException)
-        ok {pr.exception.message} == "too large request."
-        ok {pr.exception.status_code} == 400
-      end
-
     end
 
 

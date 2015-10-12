@@ -150,21 +150,8 @@ module K8
       files  = {}   # {"name": UploadedFile}
       _parse_multipart(stdin, boundary, content_length, bufsize) do |part|
         header, body = part.split("\r\n\r\n")
-        cont_disp = cont_type = nil
-        header.split("\r\n").each do |line|
-          name, val = line.split(/: */, 2)
-          if    name == 'Content-Disposition'; cont_disp = val
-          elsif name == 'Content-Type'       ; cont_type = val
-          else                               ; nil
-          end
-        end
-        cont_disp  or
-          raise HttpException.new(400, "Content-Disposition is required.")
-        cont_disp =~ /form-data; *name=(?:"([^"\r\n]*)"|([^;\r\n]+))/  or
-          raise HttpException.new(400, "Content-Disposition is invalid.")
-        pname = percent_decode($1 || $2)
-        if cont_disp =~ /; *filename=(?:"([^"\r\n]+)"|([^;\r\n]+))/
-          filename = percent_decode($1 || $2)
+        pname, filename, cont_type = _parse_multipart_header(header)
+        if filename
           upfile = UploadedFile.new(filename, cont_type) {|f| f.write(body) }
           pvalue = filename
         else
@@ -211,6 +198,31 @@ module K8
         raise HttpException.new(400, "invalid last line.")
     end
     private :_parse_multipart
+
+    def _parse_multipart_header(header)
+      cont_disp = cont_type = nil
+      header.split("\r\n").each do |line|
+        name, val = line.split(/: */, 2)
+        if    name == 'Content-Disposition'; cont_disp = val
+        elsif name == 'Content-Type'       ; cont_type = val
+        else                               ; nil
+        end
+      end
+      cont_disp  or
+        raise HttpException.new(400, "Content-Disposition is required.")
+      if cont_disp =~ /form-data; *name=(?:"([^"\r\n]*)"|([^;\r\n]+))/
+        param_name = percent_decode($1 || $2)
+      else
+        raise HttpException.new(400, "Content-Disposition is invalid.")
+      end
+      if cont_disp =~ /; *filename=(?:"([^"\r\n]+)"|([^;\r\n]+))/
+        filename = percent_decode($1 || $2)
+      else
+        filename = nil
+      end
+      return param_name, filename, cont_type
+    end
+    private :_parse_multipart_header
 
     def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"

@@ -144,10 +144,11 @@ module K8
       end
     end
 
-    def parse_multipart(stdin, boundary, content_length)
+    def parse_multipart(stdin, boundary, content_length, bufsize=10*1024*1024)
+      #; [!mqrei] parses multipart form data.
       params = {}   # {"name": "value"}
       files  = {}   # {"name": UploadedFile}
-      _parse_multipart(stdin, boundary, content_length) do |part|
+      _parse_multipart(stdin, boundary, content_length, bufsize) do |part|
         header, body = part.split("\r\n\r\n")
         cont_disp = cont_type = nil
         header.split("\r\n").each do |line|
@@ -181,8 +182,7 @@ module K8
       return params, files
     end
 
-    def _parse_multipart(stdin, boundary, content_length)
-      #; [!mqrei] parses multipart form data.
+    def _parse_multipart(stdin, boundary, content_length, bufsize)
       first_line = "--#{boundary}\r\n"
       last_line  = "\r\n--#{boundary}--\r\n"
       separator  = "\r\n--#{boundary}\r\n"
@@ -192,10 +192,20 @@ module K8
       len = content_length - first_line.bytesize - last_line.bytesize
       len > 0  or
         raise HttpException.new(400, "invalid content length.")
-      buf = stdin.read(len)
-      buf.split(separator).each do |part|
-        yield part
+      last = nil
+      while len > 0
+        n = bufsize < len ? bufsize : len
+        buf = stdin.read(n)
+        break if buf.nil? || buf.empty?
+        len -= buf.bytesize
+        buf = (last << buf) if last
+        parts = buf.split(separator)
+        last = parts.pop()
+        parts.each do |part|
+          yield part
+        end
       end
+      yield last if last
       s = stdin.read(last_line.bytesize)
       s == last_line  or
         raise HttpException.new(400, "invalid last line.")

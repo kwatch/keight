@@ -3,6 +3,8 @@
 $LOAD_PATH << "lib"  unless $LOAD_PATH.include?("lib")
 $LOAD_PATH << "test" unless $LOAD_PATH.include?("test")
 
+require 'stringio'
+
 require 'oktest'
 
 require 'keight'
@@ -116,6 +118,47 @@ Oktest.scope do
       spec "[!t0w33] regards as array of string when param name ends with '[]'." do
         d = K8::Util.parse_query_string("x[]=123&x[]=456")
         ok {d} == {"x[]"=>["123", "456"]}
+      end
+
+    end
+
+
+    topic '.parse_multipart()' do
+
+      spec "[!mqrei] parses multipart form data." do
+        begin
+          data_dir = File.join(File.dirname(__FILE__), "data")
+          data = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
+          stdin = StringIO.new(data)
+          boundary = /\A--(.*)\r\n/.match(data)[1]
+          params, files = K8::Util.parse_multipart(stdin, boundary, data.length)
+          ok {params} == {
+            'text1'  => "test1",
+            'text2'  => "日本語\r\nあいうえお\r\n".force_encoding('binary'),
+            'file1'  => "example1.png",
+            'file2'  => "example1.jpg",
+          }
+          #
+          upfile1 = files['file1']
+          ok {upfile1}.is_a?(K8::UploadedFile)
+          ok {upfile1.filename}     == "example1.png"
+          ok {upfile1.content_type} == "image/png"
+          ok {upfile1.tmp_filepath}.file_exist?
+          tmpfile1 = upfile1.tmp_filepath
+          ok {File.size(tmpfile1)}  == File.size("#{data_dir}/example1.png")
+          ok {File.read(tmpfile1)}  == File.read("#{data_dir}/example1.png")
+          #
+          upfile2 = files['file2']
+          ok {upfile2}.is_a?(K8::UploadedFile)
+          ok {upfile2.filename}     == "example1.jpg"
+          ok {upfile2.content_type} == "image/jpeg"
+          ok {upfile2.tmp_filepath}.file_exist?
+          tmpfile2 = upfile2.tmp_filepath
+          ok {File.size(tmpfile2)}  == File.size("#{data_dir}/example1.jpg")
+          ok {File.read(tmpfile2)}  == File.read("#{data_dir}/example1.jpg")
+        ensure
+          files.values.each {|x| x.clean() } if files
+        end
       end
 
     end

@@ -144,6 +144,57 @@ module K8
       end
     end
 
+    def parse_multipart(stdin, boundary, content_length)
+      #; [!mqrei] parses multipart form data.
+      first_line = "--#{boundary}\r\n"
+      last_line  = "\r\n--#{boundary}--\r\n"
+      separator  = "\r\n--#{boundary}\r\n"
+      s = stdin.read(first_line.bytesize)
+      s == first_line  or
+        raise HttpException.new(400, "invalid first line.")
+      len = content_length - first_line.bytesize - last_line.bytesize
+      len > 0  or
+        raise HttpException.new(400, "invalid content length.")
+      params = {}   # {"name": "value"}
+      files  = {}   # {"name": UploadedFile}
+      buf = stdin.read(len)
+      buf.split(separator).each do |part|
+        header, body = part.split("\r\n\r\n")
+        cont_disp = cont_type = nil
+        header.split("\r\n").each do |line|
+          name, val = line.split(/: */, 2)
+          if    name == 'Content-Disposition'; cont_disp = val
+          elsif name == 'Content-Type'       ; cont_type = val
+          else                               ; nil
+          end
+        end
+        cont_disp  or
+          raise HttpException.new(400, "Content-Disposition is required.")
+        cont_disp =~ /form-data; *name=(?:"([^"\r\n]*)"|([^;\r\n]+))/  or
+          raise HttpException.new(400, "Content-Disposition is invalid.")
+        pname = percent_decode($1 || $2)
+        if cont_disp =~ /; *filename=(?:"([^"\r\n]+)"|([^;\r\n]+))/
+          filename = percent_decode($1 || $2)
+          upfile = UploadedFile.new(filename, cont_type) {|f| f.write(body) }
+          pvalue = filename
+        else
+          upfile = nil
+          pvalue = body
+        end
+        if pname.end_with?('[]')
+          (params[pname] ||= []) << pvalue
+          (files[pname]  ||= []) << upfile if upfile
+        else
+          params[pname] = pvalue
+          files[pname]  = upfile if upfile
+        end
+      end
+      s = stdin.read(last_line.bytesize)
+      s == last_line  or
+        raise HttpException.new(400, "invalid last line.")
+      return params, files
+    end
+
     def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth

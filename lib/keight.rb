@@ -210,6 +210,38 @@ module K8
   end
 
 
+  class UploadedFile
+
+    def initialize(filename, content_type)
+      #; [!ityxj] takes filename and content type.
+      @filename     = filename
+      @content_type = content_type
+      #; [!5c8w6] sets temporary filepath with random string.
+      @tmp_filepath = new_filepath()
+      #; [!8ezhr] yields with opened temporary file.
+      File.open(@tmp_filepath, 'wb') {|f| yield f } if block_given?
+    end
+
+    attr_reader :filename, :content_type, :tmp_filepath
+
+    def clean
+      #; [!ft454] removes temporary file if exists.
+      File.unlink(@tmp_filepath) if @tmp_filepath
+    rescue SystemCallError   # or Errno::ENOENT?
+      nil
+    end
+
+    protected
+
+    def new_filepath
+      dir = ENV['TMPDIR'] || ENV['TEMPDIR'] || '/tmp'   # TODO: read from config file?
+      randstr = Digest::SHA1.hexdigest("#{rand()}#{rand()}#{rand()}")
+      return File.join(dir, "up.#{randstr}")
+    end
+
+  end
+
+
   class HttpException < Exception
 
     def initialize(status_code, message=nil, response_headers=nil)

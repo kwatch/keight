@@ -134,6 +134,54 @@ Oktest.scope do
   end
 
 
+  topic K8::UploadedFile do
+
+
+    topic '#initialize()' do
+
+      spec "[!ityxj] takes filename and content type." do
+        x = K8::UploadedFile.new("hom.html", "text/html")
+        ok {x.filename} == "hom.html"
+        ok {x.content_type} == "text/html"
+      end
+
+      spec "[!5c8w6] sets temporary filepath with random string." do
+        arr = (1..1000).collect { K8::UploadedFile.new("x", "x").tmp_filepath }
+        ok {arr.sort.uniq.length} == 1000
+      end
+
+      spec "[!8ezhr] yields with opened temporary file." do
+        begin
+          s = "homhom"
+          x = K8::UploadedFile.new("hom.html", "text/html") {|f| f.write(s) }
+          ok {x.tmp_filepath}.file_exist?
+          ok {File.open(x.tmp_filepath) {|f| f.read() }} == s
+        ensure
+          File.unlink(x.tmp_filepath) if File.exist?(x.tmp_filepath)
+        end
+      end
+
+    end
+
+
+    topic '#clean()' do
+
+      spec "[!ft454] removes temporary file if exists." do
+        begin
+          x = K8::UploadedFile.new("hom.html", "text/html") {|f| f.write("hom") }
+          ok {x.tmp_filepath}.file_exist?
+          x.clean()
+          ok {x.tmp_filepath}.NOT.file_exist?
+        ensure
+          File.unlink(x.tmp_filepath) if File.exist?(x.tmp_filepath)
+        end
+      end
+
+    end
+
+  end
+
+
   topic K8::Request do
 
     fixture :req do

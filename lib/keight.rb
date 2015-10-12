@@ -144,11 +144,11 @@ module K8
       end
     end
 
-    def parse_multipart(stdin, boundary, content_length, bufsize=10*1024*1024)
+    def parse_multipart(stdin, boundary, content_length, max_filesize=50*1024*1024, bufsize=10*1024*1024)
       #; [!mqrei] parses multipart form data.
       params = {}   # {"name": "value"}
       files  = {}   # {"name": UploadedFile}
-      _parse_multipart(stdin, boundary, content_length, bufsize) do |part|
+      _parse_multipart(stdin, boundary, content_length, max_filesize, bufsize) do |part|
         header, body = part.split("\r\n\r\n")
         pname, filename, cont_type = _parse_multipart_header(header)
         if filename
@@ -169,7 +169,7 @@ module K8
       return params, files
     end
 
-    def _parse_multipart(stdin, boundary, content_length, bufsize)
+    def _parse_multipart(stdin, boundary, content_length, max_filesize, bufsize)
       first_line = "--#{boundary}\r\n"
       last_line  = "\r\n--#{boundary}--\r\n"
       separator  = "\r\n--#{boundary}\r\n"
@@ -187,6 +187,8 @@ module K8
         len -= buf.bytesize
         buf = (last << buf) if last
         parts = buf.split(separator)
+        ! (parts.length == 1 && buf.bytesize > max_filesize)  or
+          raise _mp_err("too large file or data (max: about #{max_filesize/(1024*1024)}MB)")
         last = parts.pop()
         parts.each do |part|
           yield part

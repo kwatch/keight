@@ -1345,6 +1345,15 @@ Oktest.scope do
         end
       end
 
+      spec "[!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'." do
+        |app|
+        app.instance_exec(self) do |_|
+          pat, proc_ = @default_patterns.lookup('ext')
+          _.ok {pat} == '(?:\.\w+)?'
+          _.ok {proc_} == nil
+        end
+      end
+
       spec "[!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/." do
         |app|
         app.instance_exec(self) do |_|

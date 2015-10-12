@@ -1041,6 +1041,8 @@ module K8
       x = default_patterns
       x.register('id',    '\d+') {|val| val.to_i }
       x.register(/_id\z/, '\d+') {|val| val.to_i }
+      #; [!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'.
+      x.register('ext',   '(?:\.\w+)?')
       #; [!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/.
       to_date = proc {|val|
         #; [!wg9vl] raises 404 error when invalid date (such as 2012-02-30).

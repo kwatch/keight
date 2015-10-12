@@ -175,10 +175,10 @@ module K8
       separator  = "\r\n--#{boundary}\r\n"
       s = stdin.read(first_line.bytesize)
       s == first_line  or
-        raise HttpException.new(400, "invalid first line.")
+        raise _mp_err("invalid first line.")
       len = content_length - first_line.bytesize - last_line.bytesize
       len > 0  or
-        raise HttpException.new(400, "invalid content length.")
+        raise _mp_err("invalid content length.")
       last = nil
       while len > 0
         n = bufsize < len ? bufsize : len
@@ -195,7 +195,7 @@ module K8
       yield last if last
       s = stdin.read(last_line.bytesize)
       s == last_line  or
-        raise HttpException.new(400, "invalid last line.")
+        raise _mp_err("invalid last line.")
     end
     private :_parse_multipart
 
@@ -209,15 +209,20 @@ module K8
         end
       end
       cont_disp  or
-        raise HttpException.new(400, "Content-Disposition is required.")
+        raise _mp_err("Content-Disposition is required.")
       cont_disp =~ /form-data; *name=(?:"([^"\r\n]*)"|([^;\r\n]+))/  or
-        raise HttpException.new(400, "Content-Disposition is invalid.")
+        raise _mp_err("Content-Disposition is invalid.")
       param_name = percent_decode($1 || $2)
       filename = (cont_disp =~ /; *filename=(?:"([^"\r\n]+)"|([^;\r\n]+))/ \
                   ? percent_decode($1 || $2) : nil)
       return param_name, filename, cont_type
     end
     private :_parse_multipart_header
+
+    def _mp_err(msg)
+      return HttpException.new(400, msg)
+    end
+    private :_mp_err
 
     def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"

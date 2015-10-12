@@ -1014,8 +1014,11 @@ module K8
         #param_values = procs.zip(values).map {|pr, v| pr ? pr.call(v) : v }
         param_values = \
             case procs.length
-            when 1; [procs[0].call(values[0])]
-            when 2; [procs[0].call(values[0]), procs[1].call(values[1])]
+            when 1; pr0 = procs[0]
+                    [pr0 ? pr0.call(values[0]) : values[0]]
+            when 2; pr0, pr1 = procs
+                    [pr0 ? pr0.call(values[0]) : values[0],
+                     pr1 ? pr1.call(values[1]) : values[1]]
             else  ; procs.zip(values).map {|pr, v| pr ? pr.call(v) : v }
             end    # ex: ["123"] -> [123]
       end

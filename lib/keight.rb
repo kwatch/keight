@@ -144,6 +144,93 @@ module K8
       end
     end
 
+    MULTIPART_MAX_FILESIZE       =   50 * 1024 * 1024   #  50MB
+    MULTIPART_BUFFER_SIZE        =   10 * 1024 * 1024   #  10MB
+
+    def parse_multipart(stdin, boundary, content_length, max_filesize=nil, bufsize=nil)
+      max_filesize ||= MULTIPART_MAX_FILESIZE
+      bufsize      ||= MULTIPART_BUFFER_SIZE
+      #; [!mqrei] parses multipart form data.
+      params = {}   # {"name": "value"}
+      files  = {}   # {"name": UploadedFile}
+      _parse_multipart(stdin, boundary, content_length, max_filesize, bufsize) do |part|
+        header, body = part.split("\r\n\r\n")
+        pname, filename, cont_type = _parse_multipart_header(header)
+        if filename
+          upfile = UploadedFile.new(filename, cont_type) {|f| f.write(body) }
+          pvalue = filename
+        else
+          upfile = nil
+          pvalue = body
+        end
+        if pname.end_with?('[]')
+          (params[pname] ||= []) << pvalue
+          (files[pname]  ||= []) << upfile if upfile
+        else
+          params[pname] = pvalue
+          files[pname]  = upfile if upfile
+        end
+      end
+      return params, files
+    end
+
+    def _parse_multipart(stdin, boundary, content_length, max_filesize, bufsize)
+      first_line = "--#{boundary}\r\n"
+      last_line  = "\r\n--#{boundary}--\r\n"
+      separator  = "\r\n--#{boundary}\r\n"
+      s = stdin.read(first_line.bytesize)
+      s == first_line  or
+        raise _mp_err("invalid first line.")
+      len = content_length - first_line.bytesize - last_line.bytesize
+      len > 0  or
+        raise _mp_err("invalid content length.")
+      last = nil
+      while len > 0
+        n = bufsize < len ? bufsize : len
+        buf = stdin.read(n)
+        break if buf.nil? || buf.empty?
+        len -= buf.bytesize
+        buf = (last << buf) if last
+        parts = buf.split(separator)
+        ! (parts.length == 1 && buf.bytesize > max_filesize)  or
+          raise _mp_err("too large file or data (max: about #{max_filesize/(1024*1024)}MB)")
+        last = parts.pop()
+        parts.each do |part|
+          yield part
+        end
+      end
+      yield last if last
+      s = stdin.read(last_line.bytesize)
+      s == last_line  or
+        raise _mp_err("invalid last line.")
+    end
+    private :_parse_multipart
+
+    def _parse_multipart_header(header)
+      cont_disp = cont_type = nil
+      header.split("\r\n").each do |line|
+        name, val = line.split(/: */, 2)
+        if    name == 'Content-Disposition'; cont_disp = val
+        elsif name == 'Content-Type'       ; cont_type = val
+        else                               ; nil
+        end
+      end
+      cont_disp  or
+        raise _mp_err("Content-Disposition is required.")
+      cont_disp =~ /form-data; *name=(?:"([^"\r\n]*)"|([^;\r\n]+))/  or
+        raise _mp_err("Content-Disposition is invalid.")
+      param_name = percent_decode($1 || $2)
+      filename = (cont_disp =~ /; *filename=(?:"([^"\r\n]+)"|([^;\r\n]+))/ \
+                  ? percent_decode($1 || $2) : nil)
+      return param_name, filename, cont_type
+    end
+    private :_parse_multipart_header
+
+    def _mp_err(msg)
+      return HttpException.new(400, msg)
+    end
+    private :_mp_err
+
     def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth
@@ -205,6 +292,38 @@ module K8
         environ['HTTP_COOKIE'] = s
       end
       return environ
+    end
+
+  end
+
+
+  class UploadedFile
+
+    def initialize(filename, content_type)
+      #; [!ityxj] takes filename and content type.
+      @filename     = filename
+      @content_type = content_type
+      #; [!5c8w6] sets temporary filepath with random string.
+      @tmp_filepath = new_filepath()
+      #; [!8ezhr] yields with opened temporary file.
+      File.open(@tmp_filepath, 'wb') {|f| yield f } if block_given?
+    end
+
+    attr_reader :filename, :content_type, :tmp_filepath
+
+    def clean
+      #; [!ft454] removes temporary file if exists.
+      File.unlink(@tmp_filepath) if @tmp_filepath
+    rescue SystemCallError   # or Errno::ENOENT?
+      nil
+    end
+
+    protected
+
+    def new_filepath
+      dir = ENV['TMPDIR'] || ENV['TEMPDIR'] || '/tmp'   # TODO: read from config file?
+      randstr = Digest::SHA1.hexdigest("#{rand()}#{rand()}#{rand()}")
+      return File.join(dir, "up.#{randstr}")
     end
 
   end

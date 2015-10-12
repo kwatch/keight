@@ -3,6 +3,8 @@
 $LOAD_PATH << "lib"  unless $LOAD_PATH.include?("lib")
 $LOAD_PATH << "test" unless $LOAD_PATH.include?("test")
 
+require 'stringio'
+
 require 'oktest'
 
 require 'keight'
@@ -121,6 +123,58 @@ Oktest.scope do
     end
 
 
+    topic '.parse_multipart()' do
+
+      fixture :multipart_data do
+        data_dir = File.join(File.dirname(__FILE__), "data")
+        data = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
+        data
+      end
+
+      fixture :boundary do |multipart_data|
+        boundary = /\A--(.*)\r\n/.match(multipart_data)[1]
+        boundary
+      end
+
+      spec "[!mqrei] parses multipart form data." do
+        |multipart_data, boundary|
+        begin
+          data = multipart_data
+          data_dir = File.join(File.dirname(__FILE__), "data")
+          stdin = StringIO.new(data)
+          params, files = K8::Util.parse_multipart(stdin, boundary, data.length)
+          ok {params} == {
+            'text1'  => "test1",
+            'text2'  => "日本語\r\nあいうえお\r\n".force_encoding('binary'),
+            'file1'  => "example1.png",
+            'file2'  => "example1.jpg",
+          }
+          #
+          upfile1 = files['file1']
+          ok {upfile1}.is_a?(K8::UploadedFile)
+          ok {upfile1.filename}     == "example1.png"
+          ok {upfile1.content_type} == "image/png"
+          ok {upfile1.tmp_filepath}.file_exist?
+          tmpfile1 = upfile1.tmp_filepath
+          ok {File.size(tmpfile1)}  == File.size("#{data_dir}/example1.png")
+          ok {File.read(tmpfile1)}  == File.read("#{data_dir}/example1.png")
+          #
+          upfile2 = files['file2']
+          ok {upfile2}.is_a?(K8::UploadedFile)
+          ok {upfile2.filename}     == "example1.jpg"
+          ok {upfile2.content_type} == "image/jpeg"
+          ok {upfile2.tmp_filepath}.file_exist?
+          tmpfile2 = upfile2.tmp_filepath
+          ok {File.size(tmpfile2)}  == File.size("#{data_dir}/example1.jpg")
+          ok {File.read(tmpfile2)}  == File.read("#{data_dir}/example1.jpg")
+        ensure
+          files.values.each {|x| x.clean() } if files
+        end
+      end
+
+    end
+
+
     topic '.new_env()' do
 
       spec "[!c779l] raises ArgumentError when both form and json are specified." do
@@ -130,6 +184,54 @@ Oktest.scope do
 
     end
 
+
+  end
+
+
+  topic K8::UploadedFile do
+
+
+    topic '#initialize()' do
+
+      spec "[!ityxj] takes filename and content type." do
+        x = K8::UploadedFile.new("hom.html", "text/html")
+        ok {x.filename} == "hom.html"
+        ok {x.content_type} == "text/html"
+      end
+
+      spec "[!5c8w6] sets temporary filepath with random string." do
+        arr = (1..1000).collect { K8::UploadedFile.new("x", "x").tmp_filepath }
+        ok {arr.sort.uniq.length} == 1000
+      end
+
+      spec "[!8ezhr] yields with opened temporary file." do
+        begin
+          s = "homhom"
+          x = K8::UploadedFile.new("hom.html", "text/html") {|f| f.write(s) }
+          ok {x.tmp_filepath}.file_exist?
+          ok {File.open(x.tmp_filepath) {|f| f.read() }} == s
+        ensure
+          File.unlink(x.tmp_filepath) if File.exist?(x.tmp_filepath)
+        end
+      end
+
+    end
+
+
+    topic '#clean()' do
+
+      spec "[!ft454] removes temporary file if exists." do
+        begin
+          x = K8::UploadedFile.new("hom.html", "text/html") {|f| f.write("hom") }
+          ok {x.tmp_filepath}.file_exist?
+          x.clean()
+          ok {x.tmp_filepath}.NOT.file_exist?
+        ensure
+          File.unlink(x.tmp_filepath) if File.exist?(x.tmp_filepath)
+        end
+      end
+
+    end
 
   end
 

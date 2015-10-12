@@ -210,16 +210,11 @@ module K8
       end
       cont_disp  or
         raise HttpException.new(400, "Content-Disposition is required.")
-      if cont_disp =~ /form-data; *name=(?:"([^"\r\n]*)"|([^;\r\n]+))/
-        param_name = percent_decode($1 || $2)
-      else
+      cont_disp =~ /form-data; *name=(?:"([^"\r\n]*)"|([^;\r\n]+))/  or
         raise HttpException.new(400, "Content-Disposition is invalid.")
-      end
-      if cont_disp =~ /; *filename=(?:"([^"\r\n]+)"|([^;\r\n]+))/
-        filename = percent_decode($1 || $2)
-      else
-        filename = nil
-      end
+      param_name = percent_decode($1 || $2)
+      filename = (cont_disp =~ /; *filename=(?:"([^"\r\n]+)"|([^;\r\n]+))/ \
+                  ? percent_decode($1 || $2) : nil)
       return param_name, filename, cont_type
     end
     private :_parse_multipart_header

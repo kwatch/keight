@@ -145,20 +145,9 @@ module K8
     end
 
     def parse_multipart(stdin, boundary, content_length)
-      #; [!mqrei] parses multipart form data.
-      first_line = "--#{boundary}\r\n"
-      last_line  = "\r\n--#{boundary}--\r\n"
-      separator  = "\r\n--#{boundary}\r\n"
-      s = stdin.read(first_line.bytesize)
-      s == first_line  or
-        raise HttpException.new(400, "invalid first line.")
-      len = content_length - first_line.bytesize - last_line.bytesize
-      len > 0  or
-        raise HttpException.new(400, "invalid content length.")
       params = {}   # {"name": "value"}
       files  = {}   # {"name": UploadedFile}
-      buf = stdin.read(len)
-      buf.split(separator).each do |part|
+      _parse_multipart(stdin, boundary, content_length) do |part|
         header, body = part.split("\r\n\r\n")
         cont_disp = cont_type = nil
         header.split("\r\n").each do |line|
@@ -189,11 +178,29 @@ module K8
           files[pname]  = upfile if upfile
         end
       end
+      return params, files
+    end
+
+    def _parse_multipart(stdin, boundary, content_length)
+      #; [!mqrei] parses multipart form data.
+      first_line = "--#{boundary}\r\n"
+      last_line  = "\r\n--#{boundary}--\r\n"
+      separator  = "\r\n--#{boundary}\r\n"
+      s = stdin.read(first_line.bytesize)
+      s == first_line  or
+        raise HttpException.new(400, "invalid first line.")
+      len = content_length - first_line.bytesize - last_line.bytesize
+      len > 0  or
+        raise HttpException.new(400, "invalid content length.")
+      buf = stdin.read(len)
+      buf.split(separator).each do |part|
+        yield part
+      end
       s = stdin.read(last_line.bytesize)
       s == last_line  or
         raise HttpException.new(400, "invalid last line.")
-      return params, files
     end
+    private :_parse_multipart
 
     def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"

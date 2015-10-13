@@ -485,7 +485,7 @@ Oktest.scope do
   topic K8::Action do
 
     fixture :action_obj do
-      env = new_env("GET", "/")
+      env = new_env("GET", "/", env: {'rack.session'=>{}})
       BooksAction.new(K8::Request.new(env), K8::Response.new())
     end
 
@@ -505,6 +505,17 @@ Oktest.scope do
       spec "[!qnzp6] response object is accessable with 'response' method as well as 'resp'." do
         |action_obj|
         ok {action_obj.response}.same?(action_obj.resp)
+      end
+
+    end
+
+
+    topic '#session' do
+
+      spec "[!bd3y4] session object is accessable with 'session' method as well as 'sess'." do
+        |action_obj|
+        ok {action_obj.session}.same?(action_obj.sess)
+        ok {action_obj.session} != nil
       end
 
     end

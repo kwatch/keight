@@ -505,9 +505,11 @@ module K8
       #; [!uotpb] accepts request and response objects.
       @req  = req
       @resp = resp
+      #; [!7sfyf] sets session object.
+      @sess = req.env['rack.session']
     end
 
-    attr_reader :req, :resp
+    attr_reader :req, :resp, :sess
 
     def handle_action(action_method, urlpath_params)
       @current_action = action_method

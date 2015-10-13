@@ -412,6 +412,15 @@ Oktest.scope do
         ok {action.instance_variable_get('@resp')}.same?(resp)
       end
 
+      spec "[!7sfyf] sets session object." do
+        d = {'a'=>1}
+        req    = K8::Request.new(new_env("GET", "/books", env: {'rack.session'=>d}))
+        resp   = K8::Response.new()
+        action = K8::BaseAction.new(req, resp)
+        ok {action.instance_variable_get('@sess')}.same?(d)
+        ok {action.sess}.same?(d)
+      end
+
     end
 
 

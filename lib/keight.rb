@@ -384,6 +384,7 @@ module K8
     end
 
     MAX_POST_SIZE      =  10*1024*1024
+    MAX_MULTIPART_SIZE = 100*1024*1024
 
     def params_form
       d = @params_form
@@ -406,6 +407,9 @@ module K8
         d = Util.parse_query_string(qstr)
       #; [!y1jng] parses multipart when multipart form requested.
       when /\Amultipart\/form-data;\s*boundary=(.*)/
+        #; [!mtx6t] raises error when content length of multipart is too long (> 100MB).
+        len <= MAX_MULTIPART_SIZE  or
+          raise HttpException.new(400, 'Content-Length of multipart is too long.')
         d = {}   # TODO
       #; [!4hh3k] returns empty hash object when form param is not sent.
       else

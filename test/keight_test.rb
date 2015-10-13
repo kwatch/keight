@@ -285,6 +285,18 @@ Oktest.scope do
 
     topic '#params_form' do
 
+      fixture :data_dir do
+        File.join(File.dirname(__FILE__), "data")
+      end
+
+      fixture :multipart_env do |data_dir|
+        input = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
+        boundary = /--(\w+)\r\n/.match(input)[1]
+        cont_type = "multipart/form-data;boundary=#{boundary}"
+        env = new_env("POST", "/", input: input, env: {'CONTENT_TYPE'=>cont_type})
+        env
+      end
+
       spec "[!q88w9] raises error when content length is missing." do
         env = new_env("POST", "/", form: "x=1")
         env['CONTENT_LENGTH'] = nil
@@ -316,6 +328,15 @@ Oktest.scope do
       end
 
       spec "[!y1jng] parses multipart when multipart form requested."
+
+      spec "[!mtx6t] raises error when content length of multipart is too long (> 100MB)." do
+        |multipart_env|
+        env = multipart_env
+        env['CONTENT_LENGTH'] = (100*1024*1024 + 1).to_s
+        req = K8::Request.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length of multipart is too long.')
+      end
 
       spec "[!4hh3k] returns empty hash object when form param is not sent." do
         form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"

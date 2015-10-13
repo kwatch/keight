@@ -383,13 +383,26 @@ module K8
       return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
 
+    MAX_POST_SIZE      =  10*1024*1024
+
     def params_form
       d = @params_form
       return d if d
+      #; [!q88w9] raises error when content length is missing.
+      cont_len = @env['CONTENT_LENGTH']  or
+        raise HttpException.new(400, 'Content-Length header expected.')
+      #; [!gi4qq] raises error when content length is invalid.
+      cont_len =~ /\A\d+\z/  or
+        raise HttpException.new(400, 'Content-Length should be an integer.')
+      #
+      len = cont_len.to_i
       case @env['CONTENT_TYPE']
       #; [!59ad2] parses form parameters and returns it as Hash object when form requested.
       when 'application/x-www-form-urlencoded'
-        qstr = @env['rack.input'].read(10*1024*1024)   # TODO
+        #; [!puxlr] raises error when content length is too long (> 10MB).
+        len <= MAX_POST_SIZE  or
+          raise HttpException.new(400, 'Content-Length is too long.')
+        qstr = @env['rack.input'].read(len)
         d = Util.parse_query_string(qstr)
       #; [!y1jng] parses multipart when multipart form requested.
       when /\Amultipart\/form-data;\s*boundary=(.*)/

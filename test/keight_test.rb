@@ -285,10 +285,34 @@ Oktest.scope do
 
     topic '#params_form' do
 
+      spec "[!q88w9] raises error when content length is missing." do
+        env = new_env("POST", "/", form: "x=1")
+        env['CONTENT_LENGTH'] = nil
+        req = K8::Request.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length header expected.')
+      end
+
+      spec "[!gi4qq] raises error when content length is invalid." do
+        env = new_env("POST", "/", form: "x=1")
+        env['CONTENT_LENGTH'] = "abc"
+        req = K8::Request.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length should be an integer.')
+      end
+
       spec "[!59ad2] parses form parameters and returns it as Hash object when form requested." do
         form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
         req = K8::Request.new(new_env("POST", "/", form: form))
         ok {req.params_form} == {'x'=>'1', 'y'=>'2', 'arr[xxx]'=>'<> &;'}
+      end
+
+      spec "[!puxlr] raises error when content length is too long (> 10MB)." do
+        env = new_env("POST", "/", form: "x=1")
+        env['CONTENT_LENGTH'] = (10*1024*1024 + 1).to_s
+        req = K8::Request.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length is too long.')
       end
 
       spec "[!y1jng] parses multipart when multipart form requested."

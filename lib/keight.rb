@@ -505,9 +505,11 @@ module K8
       #; [!uotpb] accepts request and response objects.
       @req  = req
       @resp = resp
+      #; [!7sfyf] sets session object.
+      @sess = req.env['rack.session']
     end
 
-    attr_reader :req, :resp
+    attr_reader :req, :resp, :sess
 
     def handle_action(action_method, urlpath_params)
       @current_action = action_method
@@ -561,8 +563,10 @@ module K8
 
     #; [!siucz] request object is accessable with 'request' method as well as 'req'.
     #; [!qnzp6] response object is accessable with 'response' method as well as 'resp'.
-    alias request  req    # just for compatibility with other frameworks; use 'req'!
-    alias response resp   # just for compatibility with other frameworks; use 'resp'!
+    #; [!bd3y4] session object is accessable with 'session' method as well as 'sess'.
+    alias request  req    # just for compatibility with other frameworks; use @req!
+    alias response resp   # just for compatibility with other frameworks; use @resp!
+    alias session  sess   # just for compatibility with other frameworks; use @sess!
 
     protected
 

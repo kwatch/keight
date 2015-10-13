@@ -407,10 +407,12 @@ module K8
         d = Util.parse_query_string(qstr)
       #; [!y1jng] parses multipart when multipart form requested.
       when /\Amultipart\/form-data;\s*boundary=(.*)/
+        boundary = $1
         #; [!mtx6t] raises error when content length of multipart is too long (> 100MB).
         len <= MAX_MULTIPART_SIZE  or
           raise HttpException.new(400, 'Content-Length of multipart is too long.')
-        d = {}   # TODO
+        d, d2 = Util.parse_multipart(@env['rack.input'], boundary, len, nil, nil)
+        @params_file = d2
       #; [!4hh3k] returns empty hash object when form param is not sent.
       else
         d = {}

@@ -291,7 +291,7 @@ Oktest.scope do
 
       fixture :multipart_env do |data_dir|
         input = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
-        boundary = /--(\w+)\r\n/.match(input)[1]
+        boundary = /\A--(.+)\r\n/.match(input)[1]
         cont_type = "multipart/form-data;boundary=#{boundary}"
         env = new_env("POST", "/", input: input, env: {'CONTENT_TYPE'=>cont_type})
         env
@@ -327,7 +327,18 @@ Oktest.scope do
         ok {pr}.raise?(K8::HttpException, 'Content-Length is too long.')
       end
 
-      spec "[!y1jng] parses multipart when multipart form requested."
+      spec "[!y1jng] parses multipart when multipart form requested." do
+        |multipart_env, data_dir|
+        env = multipart_env
+        req = K8::Request.new(env)
+        params = req.params_form
+        ok {params} == {
+          "text1" => "test1",
+          "text2" => "日本語\r\nあいうえお\r\n".force_encoding('binary'),
+          "file1" => "example1.png",
+          "file2" => "example1.jpg",
+        }
+      end
 
       spec "[!mtx6t] raises error when content length of multipart is too long (> 100MB)." do
         |multipart_env|

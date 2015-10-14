@@ -205,7 +205,7 @@ Oktest.scope do
   end
 
 
-  topic K8::MultiPartBuilder do
+  topic K8::Util::MultiPartBuilder do
 
 
     topic '#initialize()' do
@@ -213,7 +213,7 @@ Oktest.scope do
       spec "[!ajfgl] sets random string as boundary when boundary is nil." do
         arr = []
         1000.times do
-          mp = K8::MultiPartBuilder.new(nil)
+          mp = K8::Util::MultiPartBuilder.new(nil)
           ok {mp.boundary} != nil
           ok {mp.boundary}.is_a?(String)
           arr << mp.boundary
@@ -227,7 +227,7 @@ Oktest.scope do
     topic '#add()' do
 
       spec "[!tp4bk] detects content type from filename when filename is not nil." do
-        mp = K8::MultiPartBuilder.new
+        mp = K8::Util::MultiPartBuilder.new
         mp.add("name1", "value1")
         mp.add("name2", "value2", "foo.csv")
         mp.add("name3", "value3", "bar.csv", "text/plain")
@@ -244,7 +244,7 @@ Oktest.scope do
     topic '#to_s()' do
 
       spec "[!61gc4] returns multipart form string." do
-        mp = K8::MultiPartBuilder.new("abc123")
+        mp = K8::Util::MultiPartBuilder.new("abc123")
         mp.add("name1", "value1")
         mp.add("name2", "value2", "foo.txt", "text/plain")
         s = mp.to_s

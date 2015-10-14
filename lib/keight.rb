@@ -305,7 +305,7 @@ module K8
   end
 
 
-  class MultiPartBuilder
+  class Util::MultiPartBuilder
 
     def initialize(boundary=nil)
       #; [!ajfgl] sets random string as boundary when boundary is nil.

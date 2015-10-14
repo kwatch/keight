@@ -237,20 +237,24 @@ module K8
       #env = Rack::MockRequest.env_for(uri, opts)
       require 'stringio' unless defined?(StringIO)
       https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
-      #; [!c779l] raises ArgumentError when both form and json are specified.
-      ! form || ! json  or
-        raise ArgumentError.new("new_env(): not allowed both 'form' and 'json' at a time.")
       #
+      err = proc {|a, b|
+        ArgumentError.new("new_env(): not allowed both '#{a}' and '#{b}' at a time.")
+      }
       ctype = nil
       if form
+        #; [!c779l] raises ArgumentError when both form and json are specified.
+        ! json  or  raise err.call('form', 'json')
         input = Util.build_query_string(form)
         ctype = "application/x-www-form-urlencoded"
       end
       if json
+        ! multipart  or  raise err.call('json', 'multipart')
         input = json.is_a?(String) ? json : JSON.dump(json)
         ctype = "application/json"
       end
       if multipart
+        ! form  or  raise err.call('multipart', 'form')
         input = multipart.is_a?(Util::MultiPart) ? multipart.to_s : multipart
         boundary = /\A--(\S+)\r\n/.match(input)[1]
         ctype = "multipart/form-data; boundary=#{boundary}"

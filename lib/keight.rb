@@ -231,7 +231,7 @@ module K8
     end
     private :_mp_err
 
-    def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
+    def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
@@ -249,6 +249,11 @@ module K8
       if json
         input = json.is_a?(String) ? json : JSON.dump(json)
         ctype = "application/json"
+      end
+      if multipart
+        input = multipart.is_a?(Util::MultiPart) ? multipart.to_s : multipart
+        boundary = /\A--(\S+)\r\n/.match(input)[1]
+        ctype = "multipart/form-data; boundary=#{boundary}"
       end
       environ = {
         "rack.version"      => [1, 3],

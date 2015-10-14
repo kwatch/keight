@@ -185,6 +185,23 @@ Oktest.scope do
     end
 
 
+    topic '.detect_content_type()' do
+
+      spec "[!xw0js] returns content type detected from filename." do
+        ok {K8::Util.detect_content_type("foo.html")} == "text/html"
+        ok {K8::Util.detect_content_type("foo.jpg")}  == "image/jpeg"
+        ok {K8::Util.detect_content_type("foo.json")} == "application/json"
+        ok {K8::Util.detect_content_type("foo.xls")}  == "application/excel"
+      end
+
+      spec "[!dku5c] returns 'application/octet-stream' when failed to detect content type." do
+        ok {K8::Util.detect_content_type("foo.rbc")}  == "application/octet-stream"
+        ok {K8::Util.detect_content_type("foo")}      == "application/octet-stream"
+      end
+
+    end
+
+
   end
 
 

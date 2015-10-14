@@ -294,6 +294,14 @@ module K8
       return environ
     end
 
+    def detect_content_type(filename)
+      #; [!xw0js] returns content type detected from filename.
+      #; [!dku5c] returns 'application/octet-stream' when failed to detect content type.
+      require 'mime/types' unless defined?(MIME::Types)
+      mtype = MIME::Types.type_for(filename).first
+      return mtype ? mtype.content_type : 'application/octet-stream'
+    end
+
   end
 
 

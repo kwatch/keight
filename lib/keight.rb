@@ -231,18 +231,34 @@ module K8
     end
     private :_mp_err
 
-    def new_env(meth="GET", path="/", query: nil, form: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
+    def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
       require 'stringio' unless defined?(StringIO)
       https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
-      #; [!c779l] raises ArgumentError when both form and json are specified.
-      ! form || ! json  or
-        raise ArgumentError.new("new_env(): not allowed both 'form' and 'json' at a time.")
       #
-      input = Util.build_query_string(form) if form
-      input = json.is_a?(String) ? json : JSON.dump(json) if json
+      err = proc {|a, b|
+        ArgumentError.new("new_env(): not allowed both '#{a}' and '#{b}' at a time.")
+      }
+      ctype = nil
+      if form
+        #; [!c779l] raises ArgumentError when both form and json are specified.
+        ! json  or  raise err.call('form', 'json')
+        input = Util.build_query_string(form)
+        ctype = "application/x-www-form-urlencoded"
+      end
+      if json
+        ! multipart  or  raise err.call('json', 'multipart')
+        input = json.is_a?(String) ? json : JSON.dump(json)
+        ctype = "application/json"
+      end
+      if multipart
+        ! form  or  raise err.call('multipart', 'form')
+        input = multipart.is_a?(Util::MultiPart) ? multipart.to_s : multipart
+        boundary = /\A--(\S+)\r\n/.match(input)[1]
+        ctype = "multipart/form-data; boundary=#{boundary}"
+      end
       environ = {
         "rack.version"      => [1, 3],
         "rack.input"        => StringIO.new(input || ""),
@@ -259,8 +275,7 @@ module K8
         "HTTPS"             => https ? "on" : "off",
         "SCRIPT_NAME"       => "",
         "CONTENT_LENGTH"    => (input ? input.bytesize.to_s : "0"),
-        "CONTENT_TYPE"      => (form ? "application/x-www-form-urlencoded" :
-                                json ? "application/json" : nil)
+        "CONTENT_TYPE"      => ctype,
       }
       environ.delete("CONTENT_TYPE") if environ["CONTENT_TYPE"].nil?
       headers.each do |name, value|
@@ -292,6 +307,58 @@ module K8
         environ['HTTP_COOKIE'] = s
       end
       return environ
+    end
+
+    def detect_content_type(filename)
+      #; [!xw0js] returns content type detected from filename.
+      #; [!dku5c] returns 'application/octet-stream' when failed to detect content type.
+      require 'mime/types' unless defined?(MIME::Types)
+      mtype = MIME::Types.type_for(filename).first
+      return mtype ? mtype.content_type : 'application/octet-stream'
+    end
+
+  end
+
+
+  class Util::MultiPartBuilder
+
+    def initialize(boundary=nil)
+      #; [!ajfgl] sets random string as boundary when boundary is nil.
+      @boundary = boundary || self.class.new_boundary()
+      @params = []
+    end
+
+    attr_reader :boundary
+
+    def self.new_boundary
+      return Digest::SHA1.hexdigest("#{rand()}#{rand()}#{rand()}")
+    end
+
+    def add(name, value, filename=nil, content_type=nil)
+      #; [!tp4bk] detects content type from filename when filename is not nil.
+      content_type ||= Util.detect_content_type(filename) if filename
+      @params << [name, value, filename, content_type]
+      self
+    end
+
+    def to_s
+      #; [!61gc4] returns multipart form string.
+      boundary = @boundary
+      s = ""
+      @params.each do |name, value, filename, content_type|
+        s <<   "--#{boundary}\r\n"
+        if filename
+          s << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{filename}\"\r\n"
+        else
+          s << "Content-Disposition: form-data; name=\"#{name}\"\r\n"
+        end
+        s <<   "Content-Type: #{content_type}\r\n" if content_type
+        s <<   "\r\n"
+        s <<   value
+        s <<   "\r\n"
+      end
+      s <<     "--#{boundary}--\r\n"
+      return s
     end
 
   end

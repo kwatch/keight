@@ -241,8 +241,15 @@ module K8
       ! form || ! json  or
         raise ArgumentError.new("new_env(): not allowed both 'form' and 'json' at a time.")
       #
-      input = Util.build_query_string(form) if form
-      input = json.is_a?(String) ? json : JSON.dump(json) if json
+      ctype = nil
+      if form
+        input = Util.build_query_string(form)
+        ctype = "application/x-www-form-urlencoded"
+      end
+      if json
+        input = json.is_a?(String) ? json : JSON.dump(json)
+        ctype = "application/json"
+      end
       environ = {
         "rack.version"      => [1, 3],
         "rack.input"        => StringIO.new(input || ""),
@@ -259,8 +266,7 @@ module K8
         "HTTPS"             => https ? "on" : "off",
         "SCRIPT_NAME"       => "",
         "CONTENT_LENGTH"    => (input ? input.bytesize.to_s : "0"),
-        "CONTENT_TYPE"      => (form ? "application/x-www-form-urlencoded" :
-                                json ? "application/json" : nil)
+        "CONTENT_TYPE"      => ctype,
       }
       environ.delete("CONTENT_TYPE") if environ["CONTENT_TYPE"].nil?
       headers.each do |name, value|

@@ -383,23 +383,50 @@ module K8
       return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
 
+    MAX_POST_SIZE      =  10*1024*1024
+    MAX_MULTIPART_SIZE = 100*1024*1024
+
     def params_form
       d = @params_form
       return d if d
+      #; [!q88w9] raises error when content length is missing.
+      cont_len = @env['CONTENT_LENGTH']  or
+        raise HttpException.new(400, 'Content-Length header expected.')
+      #; [!gi4qq] raises error when content length is invalid.
+      cont_len =~ /\A\d+\z/  or
+        raise HttpException.new(400, 'Content-Length should be an integer.')
+      #
+      len = cont_len.to_i
       case @env['CONTENT_TYPE']
       #; [!59ad2] parses form parameters and returns it as Hash object when form requested.
       when 'application/x-www-form-urlencoded'
-        qstr = @env['rack.input'].read(10*1024*1024)   # TODO
+        #; [!puxlr] raises error when content length is too long (> 10MB).
+        len <= MAX_POST_SIZE  or
+          raise HttpException.new(400, 'Content-Length is too long.')
+        qstr = @env['rack.input'].read(len)
         d = Util.parse_query_string(qstr)
       #; [!y1jng] parses multipart when multipart form requested.
       when /\Amultipart\/form-data;\s*boundary=(.*)/
-        d = {}   # TODO
+        boundary = $1
+        #; [!mtx6t] raises error when content length of multipart is too long (> 100MB).
+        len <= MAX_MULTIPART_SIZE  or
+          raise HttpException.new(400, 'Content-Length of multipart is too long.')
+        d, d2 = Util.parse_multipart(@env['rack.input'], boundary, len, nil, nil)
+        @params_file = d2
       #; [!4hh3k] returns empty hash object when form param is not sent.
       else
         d = {}
       end
       @params_form = d
       return d
+    end
+
+    def params_file
+      #; [!1el9z] returns uploaded files of multipart.
+      d = @params_file
+      return d if d
+      self.params_form
+      return @params_file ||= {}
     end
 
     def params_json

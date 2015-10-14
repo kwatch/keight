@@ -242,6 +242,18 @@ Oktest.scope do
       K8::Request.new(new_env("GET", "/123"))
     end
 
+    fixture :data_dir do
+      File.join(File.dirname(__FILE__), "data")
+    end
+
+    fixture :multipart_env do |data_dir|
+      input = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
+      boundary = /\A--(.+)\r\n/.match(input)[1]
+      cont_type = "multipart/form-data;boundary=#{boundary}"
+      env = new_env("POST", "/", input: input, env: {'CONTENT_TYPE'=>cont_type})
+      env
+    end
+
 
     topic '#initialize()' do
 
@@ -285,18 +297,92 @@ Oktest.scope do
 
     topic '#params_form' do
 
+      spec "[!q88w9] raises error when content length is missing." do
+        env = new_env("POST", "/", form: "x=1")
+        env['CONTENT_LENGTH'] = nil
+        req = K8::Request.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length header expected.')
+      end
+
+      spec "[!gi4qq] raises error when content length is invalid." do
+        env = new_env("POST", "/", form: "x=1")
+        env['CONTENT_LENGTH'] = "abc"
+        req = K8::Request.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length should be an integer.')
+      end
+
       spec "[!59ad2] parses form parameters and returns it as Hash object when form requested." do
         form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
         req = K8::Request.new(new_env("POST", "/", form: form))
         ok {req.params_form} == {'x'=>'1', 'y'=>'2', 'arr[xxx]'=>'<> &;'}
       end
 
-      spec "[!y1jng] parses multipart when multipart form requested."
+      spec "[!puxlr] raises error when content length is too long (> 10MB)." do
+        env = new_env("POST", "/", form: "x=1")
+        env['CONTENT_LENGTH'] = (10*1024*1024 + 1).to_s
+        req = K8::Request.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length is too long.')
+      end
+
+      spec "[!y1jng] parses multipart when multipart form requested." do
+        |multipart_env, data_dir|
+        env = multipart_env
+        req = K8::Request.new(env)
+        params = req.params_form
+        ok {params} == {
+          "text1" => "test1",
+          "text2" => "日本語\r\nあいうえお\r\n".force_encoding('binary'),
+          "file1" => "example1.png",
+          "file2" => "example1.jpg",
+        }
+      end
+
+      spec "[!mtx6t] raises error when content length of multipart is too long (> 100MB)." do
+        |multipart_env|
+        env = multipart_env
+        env['CONTENT_LENGTH'] = (100*1024*1024 + 1).to_s
+        req = K8::Request.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length of multipart is too long.')
+      end
 
       spec "[!4hh3k] returns empty hash object when form param is not sent." do
         form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
         req = K8::Request.new(new_env("GET", "/", query: form))
         ok {req.params_form} == {}
+      end
+
+    end
+
+
+    topic '#params_file' do
+
+      spec "[!1el9z] returns uploaded files of multipart." do
+        |multipart_env, data_dir|
+        env = multipart_env
+        req = K8::Request.new(env)
+        files = req.params_file
+        ok {files}.is_a?(Hash)
+        ok {files.keys.sort} == ["file1", "file2"]
+        #
+        ok {files['file1']}.is_a?(K8::UploadedFile)
+        ok {files['file1'].filename}     == "example1.png"
+        ok {files['file1'].content_type} == "image/png"
+        ok {files['file1'].tmp_filepath}.file_exist?
+        expected = File.read("#{data_dir}/example1.png",  encoding: 'binary')
+        actual   = File.read(files['file1'].tmp_filepath, encoding: 'binary')
+        ok {actual} == expected
+        #
+        ok {files['file2']}.is_a?(K8::UploadedFile)
+        ok {files['file2'].filename}     == "example1.jpg"
+        ok {files['file2'].content_type} == "image/jpeg"
+        ok {files['file2'].tmp_filepath}.file_exist?
+        expected = File.read("#{data_dir}/example1.jpg",  encoding: 'binary')
+        actual   = File.read(files['file2'].tmp_filepath, encoding: 'binary')
+        ok {actual} == expected
       end
 
     end

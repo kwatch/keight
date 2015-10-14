@@ -305,6 +305,50 @@ module K8
   end
 
 
+  class MultiPartBuilder
+
+    def initialize(boundary=nil)
+      #; [!ajfgl] sets random string as boundary when boundary is nil.
+      @boundary = boundary || self.class.new_boundary()
+      @params = []
+    end
+
+    attr_reader :boundary
+
+    def self.new_boundary
+      return Digest::SHA1.hexdigest("#{rand()}#{rand()}#{rand()}")
+    end
+
+    def add(name, value, filename=nil, content_type=nil)
+      #; [!tp4bk] detects content type from filename when filename is not nil.
+      content_type ||= Util.detect_content_type(filename) if filename
+      @params << [name, value, filename, content_type]
+      self
+    end
+
+    def to_s
+      #; [!61gc4] returns multipart form string.
+      boundary = @boundary
+      s = ""
+      @params.each do |name, value, filename, content_type|
+        s <<   "--#{boundary}\r\n"
+        if filename
+          s << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{filename}\"\r\n"
+        else
+          s << "Content-Disposition: form-data; name=\"#{name}\"\r\n"
+        end
+        s <<   "Content-Type: #{content_type}\r\n" if content_type
+        s <<   "\r\n"
+        s <<   value
+        s <<   "\r\n"
+      end
+      s <<     "--#{boundary}--\r\n"
+      return s
+    end
+
+  end
+
+
   class UploadedFile
 
     def initialize(filename, content_type)

@@ -205,6 +205,79 @@ Oktest.scope do
   end
 
 
+  topic K8::MultiPartBuilder do
+
+
+    topic '#initialize()' do
+
+      spec "[!ajfgl] sets random string as boundary when boundary is nil." do
+        arr = []
+        1000.times do
+          mp = K8::MultiPartBuilder.new(nil)
+          ok {mp.boundary} != nil
+          ok {mp.boundary}.is_a?(String)
+          arr << mp.boundary
+        end
+        ok {arr.sort.uniq.length} == 1000
+      end
+
+    end
+
+
+    topic '#add()' do
+
+      spec "[!tp4bk] detects content type from filename when filename is not nil." do
+        mp = K8::MultiPartBuilder.new
+        mp.add("name1", "value1")
+        mp.add("name2", "value2", "foo.csv")
+        mp.add("name3", "value3", "bar.csv", "text/plain")
+        ok {mp.instance_variable_get('@params')} == [
+          ["name1", "value1", nil, nil],
+          ["name2", "value2", "foo.csv", "text/comma-separated-values"],
+          ["name3", "value3", "bar.csv", "text/plain"],
+        ]
+      end
+
+    end
+
+
+    topic '#to_s()' do
+
+      spec "[!61gc4] returns multipart form string." do
+        mp = K8::MultiPartBuilder.new("abc123")
+        mp.add("name1", "value1")
+        mp.add("name2", "value2", "foo.txt", "text/plain")
+        s = mp.to_s
+        ok {s} == [
+          "--abc123\r\n",
+          "Content-Disposition: form-data; name=\"name1\"\r\n",
+          "\r\n",
+          "value1\r\n",
+          "--abc123\r\n",
+          "Content-Disposition: form-data; name=\"name2\"; filename=\"foo.txt\"\r\n",
+          "Content-Type: text/plain\r\n",
+          "\r\n",
+          "value2\r\n",
+          "--abc123--\r\n",
+        ].join()
+        #
+        params, files = K8::Util.parse_multipart(StringIO.new(s), "abc123", s.length)
+        begin
+          ok {params} == {'name1'=>"value1", 'name2'=>"foo.txt"}
+          ok {files.keys} == ['name2']
+          ok {files['name2'].filename} == "foo.txt"
+        ensure
+          fpath = files['name2'].tmp_filepath
+          File.unlink(fpath) if File.exist?(fpath)
+        end
+      end
+
+    end
+
+
+  end
+
+
   topic K8::UploadedFile do
 
 

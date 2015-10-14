@@ -421,6 +421,14 @@ module K8
       return d
     end
 
+    def params_file
+      #; [!1el9z] returns uploaded files of multipart.
+      d = @params_file
+      return d if d
+      self.params_form
+      return @params_file ||= {}
+    end
+
     def params_json
       d = @params_json
       return d if d

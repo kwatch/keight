@@ -242,6 +242,18 @@ Oktest.scope do
       K8::Request.new(new_env("GET", "/123"))
     end
 
+    fixture :data_dir do
+      File.join(File.dirname(__FILE__), "data")
+    end
+
+    fixture :multipart_env do |data_dir|
+      input = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
+      boundary = /\A--(.+)\r\n/.match(input)[1]
+      cont_type = "multipart/form-data;boundary=#{boundary}"
+      env = new_env("POST", "/", input: input, env: {'CONTENT_TYPE'=>cont_type})
+      env
+    end
+
 
     topic '#initialize()' do
 
@@ -284,18 +296,6 @@ Oktest.scope do
 
 
     topic '#params_form' do
-
-      fixture :data_dir do
-        File.join(File.dirname(__FILE__), "data")
-      end
-
-      fixture :multipart_env do |data_dir|
-        input = File.open("#{data_dir}/multipart.form", 'rb') {|f| f.read() }
-        boundary = /\A--(.+)\r\n/.match(input)[1]
-        cont_type = "multipart/form-data;boundary=#{boundary}"
-        env = new_env("POST", "/", input: input, env: {'CONTENT_TYPE'=>cont_type})
-        env
-      end
 
       spec "[!q88w9] raises error when content length is missing." do
         env = new_env("POST", "/", form: "x=1")
@@ -353,6 +353,36 @@ Oktest.scope do
         form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
         req = K8::Request.new(new_env("GET", "/", query: form))
         ok {req.params_form} == {}
+      end
+
+    end
+
+
+    topic '#params_file' do
+
+      spec "[!1el9z] returns uploaded files of multipart." do
+        |multipart_env, data_dir|
+        env = multipart_env
+        req = K8::Request.new(env)
+        files = req.params_file
+        ok {files}.is_a?(Hash)
+        ok {files.keys.sort} == ["file1", "file2"]
+        #
+        ok {files['file1']}.is_a?(K8::UploadedFile)
+        ok {files['file1'].filename}     == "example1.png"
+        ok {files['file1'].content_type} == "image/png"
+        ok {files['file1'].tmp_filepath}.file_exist?
+        expected = File.read("#{data_dir}/example1.png",  encoding: 'binary')
+        actual   = File.read(files['file1'].tmp_filepath, encoding: 'binary')
+        ok {actual} == expected
+        #
+        ok {files['file2']}.is_a?(K8::UploadedFile)
+        ok {files['file2'].filename}     == "example1.jpg"
+        ok {files['file2'].content_type} == "image/jpeg"
+        ok {files['file2'].tmp_filepath}.file_exist?
+        expected = File.read("#{data_dir}/example1.jpg",  encoding: 'binary')
+        actual   = File.read(files['file2'].tmp_filepath, encoding: 'binary')
+        ok {actual} == expected
       end
 
     end

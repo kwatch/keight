@@ -532,6 +532,12 @@ module K8
       return @cookies ||= Util.parse_cookie_string(@env['HTTP_COOKIE'] || "")
     end
 
+    def clear
+      #; [!0jdal] removes uploaded files.
+      d = nil
+      d.each {|_, uploaded| uploaded.clean() } if (d = @params_file)
+    end
+
   end
 
 
@@ -573,6 +579,9 @@ module K8
       value = @headers['Set-Cookie']
       @headers['Set-Cookie'] = value ? (value << "\n" << s) : s
       return self
+    end
+
+    def clear
     end
 
   end
@@ -1228,6 +1237,10 @@ module K8
         tuple = handle_http(ex, req, resp)
       rescue Exception => ex
         tuple = handle_error(ex, req, resp)
+      ensure
+        #; [!vdllr] clears request and response if possible.
+        req.clear()  if req.respond_to?(:clear)
+        resp.clear() if resp.respond_to?(:clear)
       end
       #; [!9wp9z] returns empty body when request method is HEAD.
       tuple[2] = [""] if req_meth == :HEAD

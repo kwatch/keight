@@ -231,6 +231,12 @@ module K8
     end
     private :_mp_err
 
+    def randstr_b64()
+      #; [!yq0gv] returns random string, encoded with urlsafe base64.
+      binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
+      return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
+    end
+
     def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth
@@ -324,15 +330,11 @@ module K8
 
     def initialize(boundary=nil)
       #; [!ajfgl] sets random string as boundary when boundary is nil.
-      @boundary = boundary || self.class.new_boundary()
+      @boundary = boundary || Util.randstr_b64()
       @params = []
     end
 
     attr_reader :boundary
-
-    def self.new_boundary
-      return Digest::SHA1.hexdigest("#{rand()}#{rand()}#{rand()}")
-    end
 
     def add(name, value, filename=nil, content_type=nil)
       #; [!tp4bk] detects content type from filename when filename is not nil.
@@ -389,8 +391,7 @@ module K8
 
     def new_filepath
       dir = ENV['TMPDIR'] || ENV['TEMPDIR'] || '/tmp'   # TODO: read from config file?
-      randstr = Digest::SHA1.hexdigest("#{rand()}#{rand()}#{rand()}")
-      return File.join(dir, "up.#{randstr}")
+      return File.join(dir, "up.#{Util.randstr_b64()}")
     end
 
   end
@@ -795,8 +796,7 @@ module K8
     def csrf_new_token
       #; [!zl6cl] returns new random token.
       #; [!sfgfx] uses SHA1 + urlsafe BASE64.
-      binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
-      return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
+      return Util.randstr_b64()
     end
 
     def csrf_token

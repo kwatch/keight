@@ -185,18 +185,18 @@ Oktest.scope do
     end
 
 
-    topic '.detect_content_type()' do
+    topic '.guess_content_type()' do
 
-      spec "[!xw0js] returns content type detected from filename." do
-        ok {K8::Util.detect_content_type("foo.html")} == "text/html"
-        ok {K8::Util.detect_content_type("foo.jpg")}  == "image/jpeg"
-        ok {K8::Util.detect_content_type("foo.json")} == "application/json"
-        ok {K8::Util.detect_content_type("foo.xls")}  == "application/excel"
+      spec "[!xw0js] returns content type guessed from filename." do
+        ok {K8::Util.guess_content_type("foo.html")} == "text/html"
+        ok {K8::Util.guess_content_type("foo.jpg")}  == "image/jpeg"
+        ok {K8::Util.guess_content_type("foo.json")} == "application/json"
+        ok {K8::Util.guess_content_type("foo.xls")}  == "application/excel"
       end
 
-      spec "[!dku5c] returns 'application/octet-stream' when failed to detect content type." do
-        ok {K8::Util.detect_content_type("foo.rbc")}  == "application/octet-stream"
-        ok {K8::Util.detect_content_type("foo")}      == "application/octet-stream"
+      spec "[!dku5c] returns 'application/octet-stream' when failed to guess content type." do
+        ok {K8::Util.guess_content_type("foo.rbc")}  == "application/octet-stream"
+        ok {K8::Util.guess_content_type("foo")}      == "application/octet-stream"
       end
 
     end
@@ -843,6 +843,37 @@ Oktest.scope do
           end
         end
 
+      end
+
+    end
+
+
+    topic '#detect_content_type()' do
+
+      spec "[!onjro] returns 'text/html; charset=utf-8' when text starts with '<'." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          ctype = 'text/html; charset=utf-8'
+          _.ok {detect_content_type("<p>Hello</p>")}     == ctype
+          _.ok {detect_content_type("\n\n<p>Hello</p>")} == ctype
+        end
+      end
+
+      spec "[!qiugc] returns 'application/json' when text starts with '{'." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          ctype = 'application/json'
+          _.ok {detect_content_type("{\"a\":1}")}     == ctype
+          _.ok {detect_content_type("\n\n{\"a\":1}")} == ctype
+        end
+      end
+
+      spec "[!zamnv] returns nil when text starts with neight '<' nor '{'." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          _.ok {detect_content_type("hoomhom")}    == nil
+          _.ok {detect_content_type("\n\nhomhom")} == nil
+        end
       end
 
     end

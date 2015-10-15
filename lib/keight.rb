@@ -309,9 +309,9 @@ module K8
       return environ
     end
 
-    def detect_content_type(filename)
-      #; [!xw0js] returns content type detected from filename.
-      #; [!dku5c] returns 'application/octet-stream' when failed to detect content type.
+    def guess_content_type(filename)
+      #; [!xw0js] returns content type guessed from filename.
+      #; [!dku5c] returns 'application/octet-stream' when failed to guess content type.
       require 'mime/types' unless defined?(MIME::Types)
       mtype = MIME::Types.type_for(filename).first
       return mtype ? mtype.content_type : 'application/octet-stream'
@@ -336,7 +336,7 @@ module K8
 
     def add(name, value, filename=nil, content_type=nil)
       #; [!tp4bk] detects content type from filename when filename is not nil.
-      content_type ||= Util.detect_content_type(filename) if filename
+      content_type ||= Util.guess_content_type(filename) if filename
       @params << [name, value, filename, content_type]
       self
     end
@@ -701,7 +701,7 @@ module K8
         #; [!uslm5] sets content type according to content when not set.
         #; [!79v6x] returns array of string.
         @resp.headers['Content-Length'] = content.bytesize.to_s
-        @resp.headers['Content-Type'] ||= guess_content_type(content)
+        @resp.headers['Content-Type'] ||= detect_content_type(content)
         return [content]
       #; [!s7eix] when content is an Enumerable object...
       when Enumerable
@@ -718,10 +718,13 @@ module K8
     ## helpers
 
     ## Returns "text/html; charset=utf-8" or "application/json" or nil.
-    def guess_content_type(text)
+    def detect_content_type(text)
+      #; [!onjro] returns 'text/html; charset=utf-8' when text starts with '<'.
+      #; [!qiugc] returns 'application/json' when text starts with '{'.
+      #; [!zamnv] returns nil when text starts with neight '<' nor '{'.
       case text
       when /\A\s*</ ; return "text/html; charset=utf-8"  # probably HTML
-      when /\A\s*{/ ; return "application/json"          # probably JSON
+      when /\A\s*\{/ ; return "application/json"          # probably JSON
       else          ; return nil
       end
     end

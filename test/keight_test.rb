@@ -185,30 +185,6 @@ Oktest.scope do
     end
 
 
-    topic '.sha1_urlsafebase64()' do
-
-      spec "[!89z12] encodes string with SHA1 and Base64." do
-        s = "Suzumiya"
-        ok {K8::Util.sha1_urlsafebase64(s)}   == "T2hG0p7_ZXDKsn_BHxbbaytbS-8"
-      end
-
-      spec "[!f8nug] transports '+' and '/' into '-' and '_'." do
-        s = "Suzumiya"
-        binary = Digest::SHA1.digest(s)
-        ok {[binary].pack('m').chomp!("=\n")} == "T2hG0p7/ZXDKsn/BHxbbaytbS+8"
-        ok {K8::Util.sha1_urlsafebase64(s)}   == "T2hG0p7_ZXDKsn_BHxbbaytbS-8"
-      end
-
-      spec "[!k46wk] remove '=\n' at end of encoded string." do
-        s = "Suzumiya"
-        binary = Digest::SHA1.digest(s)
-        ok {[binary].pack('m')}               == "T2hG0p7/ZXDKsn/BHxbbaytbS+8=\n"
-        ok {K8::Util.sha1_urlsafebase64(s)}   == "T2hG0p7_ZXDKsn_BHxbbaytbS-8"
-      end
-
-    end
-
-
     topic '.new_env()' do
 
       spec "[!c779l] raises ArgumentError when both form and json are specified." do

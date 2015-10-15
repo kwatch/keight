@@ -236,14 +236,6 @@ module K8
       return "#{rand()}#{rand()}#{rand()}"
     end
 
-    def sha1_urlsafebase64(s)
-      #; [!89z12] encodes string with SHA1 and Base64.
-      #; [!f8nug] transports '+' and '/' into '-' and '_'.
-      #; [!k46wk] remove '=\n' at end of encoded string.
-      binary = Digest::SHA1.digest(s)
-      return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
-    end
-
     def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth

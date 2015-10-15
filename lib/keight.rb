@@ -231,6 +231,11 @@ module K8
     end
     private :_mp_err
 
+    def randstr
+      #; [!2qxiw] returns random string.
+      return "#{rand()}#{rand()}#{rand()}"
+    end
+
     def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth

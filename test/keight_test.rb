@@ -175,6 +175,16 @@ Oktest.scope do
     end
 
 
+    topic '.randstr()' do
+
+      spec "[!2qxiw] returns random string." do
+        arr = (1..1000).map { K8::Util.randstr() }
+        ok {arr.sort.uniq.length} == 1000
+      end
+
+    end
+
+
     topic '.new_env()' do
 
       spec "[!c779l] raises ArgumentError when both form and json are specified." do

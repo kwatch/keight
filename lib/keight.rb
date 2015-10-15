@@ -532,6 +532,12 @@ module K8
       return @cookies ||= Util.parse_cookie_string(@env['HTTP_COOKIE'] || "")
     end
 
+    def clear
+      #; [!0jdal] removes uploaded files.
+      d = nil
+      d.each {|_, uploaded| uploaded.clean() } if (d = @params_file)
+    end
+
   end
 
 

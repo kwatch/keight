@@ -547,6 +547,26 @@ Oktest.scope do
     end
 
 
+    topic '#clear()' do
+
+      spec "[!0jdal] removes uploaded files." do
+        |multipart_env|
+        req = K8::Request.new(multipart_env)
+        files = req.params_file
+        ok {files.empty?} == false
+        tmpfile1 = files['file1'].tmp_filepath
+        tmpfile2 = files['file2'].tmp_filepath
+        ok {tmpfile1}.file_exist?
+        ok {tmpfile2}.file_exist?
+        #
+        req.clear()
+        ok {tmpfile1}.NOT.file_exist?
+        ok {tmpfile2}.NOT.file_exist?
+      end
+
+    end
+
+
   end
 
 

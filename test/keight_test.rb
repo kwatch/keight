@@ -78,7 +78,7 @@ end
 Oktest.scope do
 
   def new_env(meth="GET", path="/", opts={})
-    return K8::Util.new_env(meth, path, opts)
+    return K8::Dev.new_env(meth, path, opts)
   end
 
 
@@ -184,16 +184,6 @@ Oktest.scope do
           ok {s} =~ /\A[-\w]+\z/
           ok {s.length} == 27
         end
-      end
-
-    end
-
-
-    topic '.new_env()' do
-
-      spec "[!c779l] raises ArgumentError when both form and json are specified." do
-        pr = proc { K8::Util.new_env(form: "x=1", json: {"y": 2}) }
-        ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
       end
 
     end
@@ -1826,6 +1816,22 @@ Oktest.scope do
   methods: {GET: do_edit}
 
 END
+      end
+
+    end
+
+
+  end
+
+
+  topic K8::Dev do
+
+
+    topic '.new_env()' do
+
+      spec "[!c779l] raises ArgumentError when both form and json are specified." do
+        pr = proc { K8::Dev.new_env(form: "x=1", json: {"y": 2}) }
+        ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
       end
 
     end

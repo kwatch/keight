@@ -237,84 +237,6 @@ module K8
       return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
     end
 
-    def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
-      #uri = "http://localhost:80#{path}"
-      #opts["REQUEST_METHOD"] = meth
-      #env = Rack::MockRequest.env_for(uri, opts)
-      require 'stringio' unless defined?(StringIO)
-      https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
-      #
-      err = proc {|a, b|
-        ArgumentError.new("new_env(): not allowed both '#{a}' and '#{b}' at a time.")
-      }
-      ctype = nil
-      if form
-        #; [!c779l] raises ArgumentError when both form and json are specified.
-        ! json  or  raise err.call('form', 'json')
-        input = Util.build_query_string(form)
-        ctype = "application/x-www-form-urlencoded"
-      end
-      if json
-        ! multipart  or  raise err.call('json', 'multipart')
-        input = json.is_a?(String) ? json : JSON.dump(json)
-        ctype = "application/json"
-      end
-      if multipart
-        ! form  or  raise err.call('multipart', 'form')
-        input = multipart.is_a?(Util::Dev::MultiPartBuilder) ? multipart.to_s : multipart
-        boundary = /\A--(\S+)\r\n/.match(input)[1]
-        ctype = "multipart/form-data; boundary=#{boundary}"
-      end
-      environ = {
-        "rack.version"      => [1, 3],
-        "rack.input"        => StringIO.new(input || ""),
-        "rack.errors"       => StringIO.new,
-        "rack.multithread"  => true,
-        "rack.multiprocess" => true,
-        "rack.run_once"     => false,
-        "rack.url_scheme"   => https ? "https" : "http",
-        "REQUEST_METHOD"    => meth,
-        "SERVER_NAME"       => "localhost",
-        "SERVER_PORT"       => https ? "443" : "80",
-        "QUERY_STRING"      => Util.build_query_string(query || ""),
-        "PATH_INFO"         => path,
-        "HTTPS"             => https ? "on" : "off",
-        "SCRIPT_NAME"       => "",
-        "CONTENT_LENGTH"    => (input ? input.bytesize.to_s : "0"),
-        "CONTENT_TYPE"      => ctype,
-      }
-      environ.delete("CONTENT_TYPE") if environ["CONTENT_TYPE"].nil?
-      headers.each do |name, value|
-        name =~ /\A[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\z/  or
-          raise ArgumentError.new("invalid http header name: #{name.inspect}")
-        value.is_a?(String)  or
-          raise ArgumentError.new("http header value should be a string but got: #{value.inspect}")
-        ## ex: 'X-Requested-With' -> 'HTTP_X_REQUESTED_WITH'
-        k = "HTTP_#{name.upcase.gsub(/-/, '_')}"
-        environ[k] = value
-      end if headers
-      env.each do |name, value|
-        case name
-        when /\Arack\./
-          # ok
-        when /\A[A-Z]+(_[A-Z0-9]+)*\z/
-          value.is_a?(String)  or
-            raise ArgumentError.new("rack env value should be a string but got: #{value.inspect}")
-        else
-          raise ArgumentError.new("invalid rack env key: #{name}")
-        end
-        environ[name] = value
-      end if env
-      if cookie
-        s = ! cookie.is_a?(Hash) ? cookie.to_s : cookie.map {|k, v|
-          "#{percent_encode(k)}=#{percent_encode(v)}"
-        }.join('; ')
-        s = "#{environ['HTTP_COOKIE']}; #{s}" if environ['HTTP_COOKIE']
-        environ['HTTP_COOKIE'] = s
-      end
-      return environ
-    end
-
     def guess_content_type(filename)
       #; [!xw0js] returns content type guessed from filename.
       #; [!dku5c] returns 'application/octet-stream' when failed to guess content type.
@@ -1278,6 +1200,87 @@ END
 
 
   module Dev
+
+
+    module_function
+
+    def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
+      #uri = "http://localhost:80#{path}"
+      #opts["REQUEST_METHOD"] = meth
+      #env = Rack::MockRequest.env_for(uri, opts)
+      require 'stringio' unless defined?(StringIO)
+      https = env && (env['rack.url_scheme'] == 'https' || env['HTTPS'] == 'on')
+      #
+      err = proc {|a, b|
+        ArgumentError.new("new_env(): not allowed both '#{a}' and '#{b}' at a time.")
+      }
+      ctype = nil
+      if form
+        #; [!c779l] raises ArgumentError when both form and json are specified.
+        ! json  or  raise err.call('form', 'json')
+        input = Util.build_query_string(form)
+        ctype = "application/x-www-form-urlencoded"
+      end
+      if json
+        ! multipart  or  raise err.call('json', 'multipart')
+        input = json.is_a?(String) ? json : JSON.dump(json)
+        ctype = "application/json"
+      end
+      if multipart
+        ! form  or  raise err.call('multipart', 'form')
+        input = multipart.is_a?(Util::Dev::MultiPartBuilder) ? multipart.to_s : multipart
+        boundary = /\A--(\S+)\r\n/.match(input)[1]
+        ctype = "multipart/form-data; boundary=#{boundary}"
+      end
+      environ = {
+        "rack.version"      => [1, 3],
+        "rack.input"        => StringIO.new(input || ""),
+        "rack.errors"       => StringIO.new,
+        "rack.multithread"  => true,
+        "rack.multiprocess" => true,
+        "rack.run_once"     => false,
+        "rack.url_scheme"   => https ? "https" : "http",
+        "REQUEST_METHOD"    => meth,
+        "SERVER_NAME"       => "localhost",
+        "SERVER_PORT"       => https ? "443" : "80",
+        "QUERY_STRING"      => Util.build_query_string(query || ""),
+        "PATH_INFO"         => path,
+        "HTTPS"             => https ? "on" : "off",
+        "SCRIPT_NAME"       => "",
+        "CONTENT_LENGTH"    => (input ? input.bytesize.to_s : "0"),
+        "CONTENT_TYPE"      => ctype,
+      }
+      environ.delete("CONTENT_TYPE") if environ["CONTENT_TYPE"].nil?
+      headers.each do |name, value|
+        name =~ /\A[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\z/  or
+          raise ArgumentError.new("invalid http header name: #{name.inspect}")
+        value.is_a?(String)  or
+          raise ArgumentError.new("http header value should be a string but got: #{value.inspect}")
+        ## ex: 'X-Requested-With' -> 'HTTP_X_REQUESTED_WITH'
+        k = "HTTP_#{name.upcase.gsub(/-/, '_')}"
+        environ[k] = value
+      end if headers
+      env.each do |name, value|
+        case name
+        when /\Arack\./
+          # ok
+        when /\A[A-Z]+(_[A-Z0-9]+)*\z/
+          value.is_a?(String)  or
+            raise ArgumentError.new("rack env value should be a string but got: #{value.inspect}")
+        else
+          raise ArgumentError.new("invalid rack env key: #{name}")
+        end
+        environ[name] = value
+      end if env
+      if cookie
+        s = ! cookie.is_a?(Hash) ? cookie.to_s : cookie.map {|k, v|
+          "#{Util.percent_encode(k)}=#{Util.percent_encode(v)}"
+        }.join('; ')
+        s = "#{environ['HTTP_COOKIE']}; #{s}" if environ['HTTP_COOKIE']
+        environ['HTTP_COOKIE'] = s
+      end
+      return environ
+    end
 
 
     class MultiPartBuilder

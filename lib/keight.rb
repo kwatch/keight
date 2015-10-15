@@ -581,6 +581,9 @@ module K8
       return self
     end
 
+    def clear
+    end
+
   end
 
 

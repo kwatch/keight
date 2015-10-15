@@ -175,6 +175,20 @@ Oktest.scope do
     end
 
 
+    topic '.randstr_b64()' do
+
+      spec "[!yq0gv] returns random string, encoded with urlsafe base64." do
+        arr = (1..1000).map { K8::Util.randstr_b64() }
+        ok {arr.sort.uniq.length} == 1000
+        arr.each do |s|
+          ok {s} =~ /\A[-\w]+\z/
+          ok {s.length} == 27
+        end
+      end
+
+    end
+
+
     topic '.new_env()' do
 
       spec "[!c779l] raises ArgumentError when both form and json are specified." do

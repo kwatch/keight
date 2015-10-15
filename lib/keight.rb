@@ -231,6 +231,12 @@ module K8
     end
     private :_mp_err
 
+    def randstr_b64()
+      #; [!yq0gv] returns random string, encoded with urlsafe base64.
+      binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
+      return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
+    end
+
     def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth

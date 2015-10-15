@@ -730,6 +730,11 @@ module K8
       return HttpException.new(status_code, message, response_headers)
     end
 
+    def redirect_to(location, status=302, flash: nil)
+      #; [!6zgnj] raises HTTP 302 with 'Location' header.
+      raise HttpException.new(status, location, {"Location"=>location})
+    end
+
     ##
     ## helpers for CSRF protection
     ##

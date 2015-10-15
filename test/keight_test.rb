@@ -848,6 +848,20 @@ Oktest.scope do
     end
 
 
+    topic '#redirect_to()' do
+
+      spec "[!6zgnj] raises HTTP 302 with 'Location' header." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          pr = proc { redirect_to '/top', flash: "created!" }
+          _.ok {pr}.raise?(K8::HttpException, '/top')
+          _.ok {pr.exception.response_headers} == {"Location"=>"/top"}
+        end
+      end
+
+    end
+
+
     topic '#csrf_protection_required?' do
 
       fixture :action_obj do

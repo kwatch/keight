@@ -261,7 +261,7 @@ module K8
       end
       if multipart
         ! form  or  raise err.call('multipart', 'form')
-        input = multipart.is_a?(Util::MultiPart) ? multipart.to_s : multipart
+        input = multipart.is_a?(Util::Dev::MultiPartBuilder) ? multipart.to_s : multipart
         boundary = /\A--(\S+)\r\n/.match(input)[1]
         ctype = "multipart/form-data; boundary=#{boundary}"
       end
@@ -321,46 +321,6 @@ module K8
       require 'mime/types' unless defined?(MIME::Types)
       mtype = MIME::Types.type_for(filename).first
       return mtype ? mtype.content_type : 'application/octet-stream'
-    end
-
-  end
-
-
-  class Util::MultiPartBuilder
-
-    def initialize(boundary=nil)
-      #; [!ajfgl] sets random string as boundary when boundary is nil.
-      @boundary = boundary || Util.randstr_b64()
-      @params = []
-    end
-
-    attr_reader :boundary
-
-    def add(name, value, filename=nil, content_type=nil)
-      #; [!tp4bk] detects content type from filename when filename is not nil.
-      content_type ||= Util.guess_content_type(filename) if filename
-      @params << [name, value, filename, content_type]
-      self
-    end
-
-    def to_s
-      #; [!61gc4] returns multipart form string.
-      boundary = @boundary
-      s = ""
-      @params.each do |name, value, filename, content_type|
-        s <<   "--#{boundary}\r\n"
-        if filename
-          s << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{filename}\"\r\n"
-        else
-          s << "Content-Disposition: form-data; name=\"#{name}\"\r\n"
-        end
-        s <<   "Content-Type: #{content_type}\r\n" if content_type
-        s <<   "\r\n"
-        s <<   value
-        s <<   "\r\n"
-      end
-      s <<     "--#{boundary}--\r\n"
-      return s
     end
 
   end
@@ -1318,6 +1278,47 @@ END
 
 
   module Dev
+
+
+    class MultiPartBuilder
+
+      def initialize(boundary=nil)
+        #; [!ajfgl] sets random string as boundary when boundary is nil.
+        @boundary = boundary || Util.randstr_b64()
+        @params = []
+      end
+
+      attr_reader :boundary
+
+      def add(name, value, filename=nil, content_type=nil)
+        #; [!tp4bk] detects content type from filename when filename is not nil.
+        content_type ||= Util.guess_content_type(filename) if filename
+        @params << [name, value, filename, content_type]
+        self
+      end
+
+      def to_s
+        #; [!61gc4] returns multipart form string.
+        boundary = @boundary
+        s = ""
+        @params.each do |name, value, filename, content_type|
+          s <<   "--#{boundary}\r\n"
+          if filename
+            s << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{filename}\"\r\n"
+          else
+            s << "Content-Disposition: form-data; name=\"#{name}\"\r\n"
+          end
+          s <<   "Content-Type: #{content_type}\r\n" if content_type
+          s <<   "\r\n"
+          s <<   value
+          s <<   "\r\n"
+        end
+        s <<     "--#{boundary}--\r\n"
+        return s
+      end
+
+    end
+
 
   end
 

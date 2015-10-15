@@ -330,15 +330,11 @@ module K8
 
     def initialize(boundary=nil)
       #; [!ajfgl] sets random string as boundary when boundary is nil.
-      @boundary = boundary || self.class.new_boundary()
+      @boundary = boundary || Util.randstr_b64()
       @params = []
     end
 
     attr_reader :boundary
-
-    def self.new_boundary
-      return Util.randstr_b64()
-    end
 
     def add(name, value, filename=nil, content_type=nil)
       #; [!tp4bk] detects content type from filename when filename is not nil.
@@ -395,8 +391,7 @@ module K8
 
     def new_filepath
       dir = ENV['TMPDIR'] || ENV['TEMPDIR'] || '/tmp'   # TODO: read from config file?
-      randstr = Util.randstr_b64()
-      return File.join(dir, "up.#{randstr}")
+      return File.join(dir, "up.#{Util.randstr_b64()}")
     end
 
   end

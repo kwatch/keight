@@ -1798,6 +1798,22 @@ Oktest.scope do
         end
       end
 
+      spec "[!vdllr] clears request and response if possible." do
+        |app|
+        req  = K8::Request.new(new_env("GET", "/"))
+        resp = K8::Response.new()
+        req_clear = false
+        (class << req; self; end).__send__(:define_method, :clear) { req_clear = true }
+        resp_clear = false
+        (class << resp; self; end).__send__(:define_method, :clear) { resp_clear = true }
+        #
+        app.instance_exec(self) do |_|
+          tuple = handle_request(req, resp)
+          _.ok {req_clear}  == true
+          _.ok {resp_clear} == true
+        end
+      end
+
       spec "[!9wp9z] returns empty body when request method is HEAD." do
         |app|
         env = new_env("HEAD", "/api/books/123")

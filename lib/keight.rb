@@ -309,9 +309,9 @@ module K8
       return environ
     end
 
-    def detect_content_type(filename)
-      #; [!xw0js] returns content type detected from filename.
-      #; [!dku5c] returns 'application/octet-stream' when failed to detect content type.
+    def guess_content_type(filename)
+      #; [!xw0js] returns content type guessed from filename.
+      #; [!dku5c] returns 'application/octet-stream' when failed to guess content type.
       require 'mime/types' unless defined?(MIME::Types)
       mtype = MIME::Types.type_for(filename).first
       return mtype ? mtype.content_type : 'application/octet-stream'
@@ -336,7 +336,7 @@ module K8
 
     def add(name, value, filename=nil, content_type=nil)
       #; [!tp4bk] detects content type from filename when filename is not nil.
-      content_type ||= Util.detect_content_type(filename) if filename
+      content_type ||= Util.guess_content_type(filename) if filename
       @params << [name, value, filename, content_type]
       self
     end

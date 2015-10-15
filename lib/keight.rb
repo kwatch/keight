@@ -337,7 +337,7 @@ module K8
     attr_reader :boundary
 
     def self.new_boundary
-      return Digest::SHA1.hexdigest("#{rand()}#{rand()}#{rand()}")
+      return Util.randstr_b64()
     end
 
     def add(name, value, filename=nil, content_type=nil)
@@ -395,7 +395,7 @@ module K8
 
     def new_filepath
       dir = ENV['TMPDIR'] || ENV['TEMPDIR'] || '/tmp'   # TODO: read from config file?
-      randstr = Digest::SHA1.hexdigest("#{rand()}#{rand()}#{rand()}")
+      randstr = Util.randstr_b64()
       return File.join(dir, "up.#{randstr}")
     end
 
@@ -801,8 +801,7 @@ module K8
     def csrf_new_token
       #; [!zl6cl] returns new random token.
       #; [!sfgfx] uses SHA1 + urlsafe BASE64.
-      binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
-      return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
+      return Util.randstr_b64()
     end
 
     def csrf_token

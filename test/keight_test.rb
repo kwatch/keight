@@ -848,6 +848,37 @@ Oktest.scope do
     end
 
 
+    topic '#detect_content_type()' do
+
+      spec "[!onjro] returns 'text/html; charset=utf-8' when text starts with '<'." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          ctype = 'text/html; charset=utf-8'
+          _.ok {detect_content_type("<p>Hello</p>")}     == ctype
+          _.ok {detect_content_type("\n\n<p>Hello</p>")} == ctype
+        end
+      end
+
+      spec "[!qiugc] returns 'application/json' when text starts with '{'." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          ctype = 'application/json'
+          _.ok {detect_content_type("{\"a\":1}")}     == ctype
+          _.ok {detect_content_type("\n\n{\"a\":1}")} == ctype
+        end
+      end
+
+      spec "[!zamnv] returns nil when text starts with neight '<' nor '{'." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          _.ok {detect_content_type("hoomhom")}    == nil
+          _.ok {detect_content_type("\n\nhomhom")} == nil
+        end
+      end
+
+    end
+
+
     topic '#set_flash_message()' do
 
       spec "[!9f0iv] sets flash message into session." do

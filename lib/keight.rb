@@ -701,7 +701,7 @@ module K8
         #; [!uslm5] sets content type according to content when not set.
         #; [!79v6x] returns array of string.
         @resp.headers['Content-Length'] = content.bytesize.to_s
-        @resp.headers['Content-Type'] ||= guess_content_type(content)
+        @resp.headers['Content-Type'] ||= detect_content_type(content)
         return [content]
       #; [!s7eix] when content is an Enumerable object...
       when Enumerable
@@ -718,10 +718,13 @@ module K8
     ## helpers
 
     ## Returns "text/html; charset=utf-8" or "application/json" or nil.
-    def guess_content_type(text)
+    def detect_content_type(text)
+      #; [!onjro] returns 'text/html; charset=utf-8' when text starts with '<'.
+      #; [!qiugc] returns 'application/json' when text starts with '{'.
+      #; [!zamnv] returns nil when text starts with neight '<' nor '{'.
       case text
       when /\A\s*</ ; return "text/html; charset=utf-8"  # probably HTML
-      when /\A\s*{/ ; return "application/json"          # probably JSON
+      when /\A\s*\{/ ; return "application/json"          # probably JSON
       else          ; return nil
       end
     end

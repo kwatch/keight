@@ -731,8 +731,21 @@ module K8
     end
 
     def redirect_to(location, status=302, flash: nil)
+      #; [!xkrfk] sets flash message if provided.
+      set_flash_message(flash) if flash
       #; [!6zgnj] raises HTTP 302 with 'Location' header.
       raise HttpException.new(status, location, {"Location"=>location})
+    end
+
+    def set_flash_message(message)
+      #; [!9f0iv] sets flash message into session.
+      self.sess['_flash'] = message
+    end
+
+    def get_flash_message
+      #; [!5minm] returns flash message stored in session.
+      #; [!056bp] deletes flash message from sesson.
+      return self.sess.delete('_flash')
     end
 
     ##

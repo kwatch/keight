@@ -848,14 +848,62 @@ Oktest.scope do
     end
 
 
+    topic '#set_flash_message()' do
+
+      spec "[!9f0iv] sets flash message into session." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          @sess = {}
+          action_obj.set_flash_message("homhom")
+          _.ok {@sess} == {"_flash"=>"homhom"}
+        end
+      end
+
+    end
+
+
+    topic '#get_flash_message()' do
+
+      spec "[!5minm] returns flash message stored in session." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          @sess = {}
+          action_obj.set_flash_message("homhom")
+          _.ok {action_obj.get_flash_message()} == "homhom"
+        end
+      end
+
+      spec "[!056bp] deletes flash message from sesson." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          @sess = {}
+          action_obj.set_flash_message("homhom")
+          _.ok {@sess.empty?} == false
+          action_obj.get_flash_message()
+          _.ok {@sess.empty?} == true
+        end
+      end
+
+    end
+
+
     topic '#redirect_to()' do
 
       spec "[!6zgnj] raises HTTP 302 with 'Location' header." do
         |action_obj|
         action_obj.instance_exec(self) do |_|
-          pr = proc { redirect_to '/top', flash: "created!" }
+          pr = proc { redirect_to '/top' }
           _.ok {pr}.raise?(K8::HttpException, '/top')
           _.ok {pr.exception.response_headers} == {"Location"=>"/top"}
+        end
+      end
+
+      spec "[!xkrfk] sets flash message if provided." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          pr = proc { redirect_to '/top', flash: "created!" }
+          _.ok {pr}.raise?(K8::HttpException)
+          _.ok {get_flash_message()} == "created!"
         end
       end
 

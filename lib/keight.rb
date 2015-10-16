@@ -1339,9 +1339,9 @@ END
         @app = app
       end
 
-      def request(meth, path, kwargs={})
+      def request(meth, path, query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
         #; [!4xpwa] creates env object and calls app with it.
-        env = K8::Dev.new_env(meth, path, kwargs)
+        env = K8::Dev.new_env(meth, path, query: query, form: form, multipart: multipart, json: json, input: input, headers: headers, cookie: cookie, env: env)
         status, headers, body = @app.call(env)
         return TestResponse.new(status, headers, body)
       end

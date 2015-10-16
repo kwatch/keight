@@ -1217,17 +1217,17 @@ END
       ctype = nil
       if form
         #; [!c779l] raises ArgumentError when both form and json are specified.
-        ! json  or  raise err.call('form', 'json')
+        ! json  or raise err.call('form', 'json')
         input = Util.build_query_string(form)
         ctype = "application/x-www-form-urlencoded"
       end
       if json
-        ! multipart  or  raise err.call('json', 'multipart')
+        ! multipart  or raise err.call('json', 'multipart')
         input = json.is_a?(String) ? json : JSON.dump(json)
         ctype = "application/json"
       end
       if multipart
-        ! form  or  raise err.call('multipart', 'form')
+        ! form  or raise err.call('multipart', 'form')
         input = multipart.to_s
         m = /\A--(\S+)\r\n/.match(input)  or
           raise ArgumentError.new("invalid multipart format.")

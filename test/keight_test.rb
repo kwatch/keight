@@ -78,7 +78,7 @@ end
 Oktest.scope do
 
   def new_env(meth="GET", path="/", opts={})
-    return K8::Dev.new_env(meth, path, opts)
+    return K8::Mock.new_env(meth, path, opts)
   end
 
 
@@ -1826,13 +1826,13 @@ Oktest.scope do
   end
 
 
-  topic K8::Dev do
+  topic K8::Mock do
 
 
     topic '.new_env()' do
 
       spec "[!c779l] raises ArgumentError when both form and json are specified." do
-        pr = proc { K8::Dev.new_env(form: "x=1", json: {"y": 2}) }
+        pr = proc { K8::Mock.new_env(form: "x=1", json: {"y": 2}) }
         ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
       end
 
@@ -1842,7 +1842,7 @@ Oktest.scope do
   end
 
 
-  topic K8::Dev::MultiPartBuilder do
+  topic K8::Mock::MultiPartBuilder do
 
 
     topic '#initialize()' do
@@ -1850,7 +1850,7 @@ Oktest.scope do
       spec "[!ajfgl] sets random string as boundary when boundary is nil." do
         arr = []
         1000.times do
-          mp = K8::Dev::MultiPartBuilder.new(nil)
+          mp = K8::Mock::MultiPartBuilder.new(nil)
           ok {mp.boundary} != nil
           ok {mp.boundary}.is_a?(String)
           arr << mp.boundary
@@ -1864,7 +1864,7 @@ Oktest.scope do
     topic '#add()' do
 
       spec "[!tp4bk] detects content type from filename when filename is not nil." do
-        mp = K8::Dev::MultiPartBuilder.new
+        mp = K8::Mock::MultiPartBuilder.new
         mp.add("name1", "value1")
         mp.add("name2", "value2", "foo.csv")
         mp.add("name3", "value3", "bar.csv", "text/plain")
@@ -1881,7 +1881,7 @@ Oktest.scope do
     topic '#to_s()' do
 
       spec "[!61gc4] returns multipart form string." do
-        mp = K8::Dev::MultiPartBuilder.new("abc123")
+        mp = K8::Mock::MultiPartBuilder.new("abc123")
         mp.add("name1", "value1")
         mp.add("name2", "value2", "foo.txt", "text/plain")
         s = mp.to_s
@@ -1915,7 +1915,7 @@ Oktest.scope do
   end
 
 
-  topic K8::Dev::TestApp do
+  topic K8::Mock::TestApp do
 
 
     topic '#request()' do
@@ -1929,7 +1929,7 @@ Oktest.scope do
           ]
           [200, {"Content-Type"=>"text/plain"}, body]
         }
-        http = K8::Dev::TestApp.new(rackapp)
+        http = K8::Mock::TestApp.new(rackapp)
         resp = http.GET('/foo', query: {"x"=>123}, cookie: {"k"=>"v"})
         ok {resp.status}  == 200
         ok {resp.headers} == {"Content-Type"=>"text/plain"}
@@ -1945,13 +1945,13 @@ Oktest.scope do
   end
 
 
-  topic K8::Dev::TestResponse do
+  topic K8::Mock::TestResponse do
 
 
     topic '#body_binary' do
 
       spec "[!mb0i4] returns body as binary string." do
-        resp = K8::Dev::TestResponse.new(200, {}, ["foo", "bar"])
+        resp = K8::Mock::TestResponse.new(200, {}, ["foo", "bar"])
         ok {resp.body_binary} == "foobar"
         #ok {resp.body_binary.encoding} == Encoding::UTF_8
       end
@@ -1962,35 +1962,35 @@ Oktest.scope do
     topic '#body_text' do
 
       spec "[!rr18d] error when 'Content-Type' header is missing." do
-        resp = K8::Dev::TestResponse.new(200, {}, ["foo", "bar"])
+        resp = K8::Mock::TestResponse.new(200, {}, ["foo", "bar"])
         pr = proc { resp.body_text }
         ok {pr}.raise?(RuntimeError, "body_text(): missing 'Content-Type' header.")
       end
 
       spec "[!dou1n] converts body text according to 'charset' in 'Content-Type' header." do
         ctype = "application/json;charset=us-ascii"
-        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
         ok {resp.body_text} == '{"a":123}'
         ok {resp.body_text.encoding} == Encoding::ASCII
       end
 
       spec "[!cxje7] assumes charset as 'utf-8' when 'Content-Type' is json." do
         ctype = "application/json"
-        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
         ok {resp.body_text} == '{"a":123}'
         ok {resp.body_text.encoding} == Encoding::UTF_8
       end
 
       spec "[!n4c71] error when non-json 'Content-Type' header has no 'charset'." do
         ctype = "text/plain"
-        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ["foo", "bar"])
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ["foo", "bar"])
         pr = proc { resp.body_text }
         ok {pr}.raise?(RuntimeError, "body_text(): missing 'charset' in 'Content-Type' header.")
       end
 
       spec "[!vkj9h] returns body as text string, according to 'charset' in 'Content-Type'." do
         ctype = "text/plain;charset=utf-8"
-        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ["foo", "bar"])
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ["foo", "bar"])
         ok {resp.body_text} == "foobar"
         ok {resp.body_text.encoding} == Encoding::UTF_8
       end
@@ -2002,7 +2002,7 @@ Oktest.scope do
 
       spec "[!qnic1] returns Hash object representing JSON string." do
         ctype = "application/json"
-        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
         ok {resp.body_json} == {"a"=>123}
       end
 
@@ -2013,7 +2013,7 @@ Oktest.scope do
 
       spec "[!40hcz] returns 'Content-Type' header value." do
         ctype = "application/json"
-        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
         ok {resp.content_type} == ctype
       end
 
@@ -2023,13 +2023,13 @@ Oktest.scope do
     topic '#content_length' do
 
       spec "[!5lb19] returns 'Content-Length' header value as integer." do
-        resp = K8::Dev::TestResponse.new(200, {'Content-Length'=>"0"}, [])
+        resp = K8::Mock::TestResponse.new(200, {'Content-Length'=>"0"}, [])
         ok {resp.content_length} == 0
         ok {resp.content_length}.is_a?(Fixnum)
       end
 
       spec "[!qjktz] returns nil when 'Content-Length' is not set." do
-        resp = K8::Dev::TestResponse.new(200, {}, [])
+        resp = K8::Mock::TestResponse.new(200, {}, [])
         ok {resp.content_length} == nil
       end
 
@@ -2039,7 +2039,7 @@ Oktest.scope do
     topic '#location' do
 
       spec "[!8y8lg] returns 'Location' header value." do
-        resp = K8::Dev::TestResponse.new(200, {'Location'=>'/top'}, [])
+        resp = K8::Mock::TestResponse.new(200, {'Location'=>'/top'}, [])
         ok {resp.location} == "/top"
       end
 

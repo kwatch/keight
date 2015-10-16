@@ -1199,7 +1199,7 @@ END
   end
 
 
-  module Dev
+  module Mock
 
 
     module_function
@@ -1228,7 +1228,7 @@ END
       end
       if multipart
         ! form  or  raise err.call('multipart', 'form')
-        input = multipart.is_a?(Util::Dev::MultiPartBuilder) ? multipart.to_s : multipart
+        input = multipart.is_a?(MultiPartBuilder) ? multipart.to_s : multipart
         boundary = /\A--(\S+)\r\n/.match(input)[1]
         ctype = "multipart/form-data; boundary=#{boundary}"
       end
@@ -1327,7 +1327,7 @@ END
     ## Wrapper class to test Rack application.
     ##
     ## ex:
-    ##   http = K8::Dev::TestApp.new(app)
+    ##   http = K8::Mock::TestApp.new(app)
     ##   resp = http.GET('/api/hello', query={'name'=>'World'})
     ##   assert_equal 200, resp.status
     ##   assert_equal "application/json", resp.headers['Content-Type']
@@ -1341,7 +1341,7 @@ END
 
       def request(meth, path, query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
         #; [!4xpwa] creates env object and calls app with it.
-        env = K8::Dev.new_env(meth, path, query: query, form: form, multipart: multipart, json: json, input: input, headers: headers, cookie: cookie, env: env)
+        env = K8::Mock.new_env(meth, path, query: query, form: form, multipart: multipart, json: json, input: input, headers: headers, cookie: cookie, env: env)
         status, headers, body = @app.call(env)
         return TestResponse.new(status, headers, body)
       end

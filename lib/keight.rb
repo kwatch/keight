@@ -1346,25 +1346,10 @@ END
         return TestResponse.new(status, headers, body)
       end
 
-      ##--
-      ##%w[GET POST PUT DELETE HEAD PATCH OPTIONS TRACE].each do |x|
-      ##  puts "def #{x}(path, query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)"
-      ##  puts "  request('#{x}', path, query: query, form: form, multipart: multipart, json: json, input: input, headers: headers, cookie: cookie, env: env)"
-      ##  puts "end"
-      ##end
-      ##++
-      def GET(path, query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
-        return request('GET', path, query: query, form: form, multipart: multipart, json: json, input: input, headers: headers, cookie: cookie, env: env)
-      end
-      def POST(path, query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
-        return request('POST', path, query: query, form: form, multipart: multipart, json: json, input: input, headers: headers, cookie: cookie, env: env)
-      end
-      def PUT(path, query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
-        return request('PUT', path, query: query, form: form, multipart: multipart, json: json, input: input, headers: headers, cookie: cookie, env: env)
-      end
-      def DELETE(path, query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
-        return request('DELETE', path, query: query, form: form, multipart: multipart, json: json, input: input, headers: headers, cookie: cookie, env: env)
-      end
+      def GET     path, kwargs={}; request('GET'    , path, kwargs); end
+      def POST    path, kwargs={}; request('POST'   , path, kwargs); end
+      def PUT     path, kwargs={}; request('PUT'    , path, kwargs); end
+      def DELETE  path, kwargs={}; request('DELETE' , path, kwargs); end
       def HEAD    path, kwargs={}; request('HEAD'   , path, kwargs); end
       def PATCH   path, kwargs={}; request('PATCH'  , path, kwargs); end
       def OPTIONS path, kwargs={}; request('OPTIONS', path, kwargs); end

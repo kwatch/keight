@@ -1798,24 +1798,26 @@ Oktest.scope do
 
       spec "[!u1g77] returns all mappings as YAML string." do
         |app|
-        ok {app.show_mappings()} == <<'END'
-- urlpath: /api/books/
-  class:   BooksAction
-  methods: {GET: do_index, POST: do_create}
+        yaml_str = <<-'END'
+    - urlpath: /api/books/
+      class:   BooksAction
+      methods: {GET: do_index, POST: do_create}
 
-- urlpath: /api/books/new
-  class:   BooksAction
-  methods: {GET: do_new}
+    - urlpath: /api/books/new
+      class:   BooksAction
+      methods: {GET: do_new}
 
-- urlpath: /api/books/{id}
-  class:   BooksAction
-  methods: {GET: do_show, PUT: do_update, DELETE: do_delete}
+    - urlpath: /api/books/{id}
+      class:   BooksAction
+      methods: {GET: do_show, PUT: do_update, DELETE: do_delete}
 
-- urlpath: /api/books/{id}/edit
-  class:   BooksAction
-  methods: {GET: do_edit}
+    - urlpath: /api/books/{id}/edit
+      class:   BooksAction
+      methods: {GET: do_edit}
 
-END
+        END
+        yaml_str.gsub!(/^    /, '')
+        ok {app.show_mappings()} == yaml_str
       end
 
     end

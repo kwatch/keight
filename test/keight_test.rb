@@ -1913,6 +1913,140 @@ END
   end
 
 
+  topic K8::Dev::TestApp do
+
+
+    topic '#request()' do
+
+      spec "[!4xpwa] creates env object and calls app with it." do
+        rackapp = proc {|env|
+          body = [
+            "PATH_INFO: #{env['PATH_INFO']}\n",
+            "QUERY_STRING: #{env['QUERY_STRING']}\n",
+            "HTTP_COOKIE: #{env['HTTP_COOKIE']}\n",
+          ]
+          [200, {"Content-Type"=>"text/plain"}, body]
+        }
+        http = K8::Dev::TestApp.new(rackapp)
+        resp = http.GET('/foo', query: {"x"=>123}, cookie: {"k"=>"v"})
+        ok {resp.status}  == 200
+        ok {resp.headers} == {"Content-Type"=>"text/plain"}
+        ok {resp.body}    == [
+          "PATH_INFO: /foo\n",
+          "QUERY_STRING: x=123\n",
+          "HTTP_COOKIE: k=v\n",
+        ]
+      end
+
+    end
+
+  end
+
+
+  topic K8::Dev::TestResponse do
+
+
+    topic '#body_binary' do
+
+      spec "[!mb0i4] returns body as binary string." do
+        resp = K8::Dev::TestResponse.new(200, {}, ["foo", "bar"])
+        ok {resp.body_binary} == "foobar"
+        #ok {resp.body_binary.encoding} == Encoding::UTF_8
+      end
+
+    end
+
+
+    topic '#body_text' do
+
+      spec "[!rr18d] error when 'Content-Type' header is missing." do
+        resp = K8::Dev::TestResponse.new(200, {}, ["foo", "bar"])
+        pr = proc { resp.body_text }
+        ok {pr}.raise?(RuntimeError, "body_text(): missing 'Content-Type' header.")
+      end
+
+      spec "[!dou1n] converts body text according to 'charset' in 'Content-Type' header." do
+        ctype = "application/json;charset=us-ascii"
+        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        ok {resp.body_text} == '{"a":123}'
+        ok {resp.body_text.encoding} == Encoding::ASCII
+      end
+
+      spec "[!cxje7] assumes charset as 'utf-8' when 'Content-Type' is json." do
+        ctype = "application/json"
+        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        ok {resp.body_text} == '{"a":123}'
+        ok {resp.body_text.encoding} == Encoding::UTF_8
+      end
+
+      spec "[!n4c71] error when non-json 'Content-Type' header has no 'charset'." do
+        ctype = "text/plain"
+        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ["foo", "bar"])
+        pr = proc { resp.body_text }
+        ok {pr}.raise?(RuntimeError, "body_text(): missing 'charset' in 'Content-Type' header.")
+      end
+
+      spec "[!vkj9h] returns body as text string, according to 'charset' in 'Content-Type'." do
+        ctype = "text/plain;charset=utf-8"
+        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ["foo", "bar"])
+        ok {resp.body_text} == "foobar"
+        ok {resp.body_text.encoding} == Encoding::UTF_8
+      end
+
+    end
+
+
+    topic '#body_json' do
+
+      spec "[!qnic1] returns Hash object representing JSON string." do
+        ctype = "application/json"
+        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        ok {resp.body_json} == {"a"=>123}
+      end
+
+    end
+
+
+    topic '#content_type' do
+
+      spec "[!40hcz] returns 'Content-Type' header value." do
+        ctype = "application/json"
+        resp = K8::Dev::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        ok {resp.content_type} == ctype
+      end
+
+    end
+
+
+    topic '#content_length' do
+
+      spec "[!5lb19] returns 'Content-Length' header value as integer." do
+        resp = K8::Dev::TestResponse.new(200, {'Content-Length'=>"0"}, [])
+        ok {resp.content_length} == 0
+        ok {resp.content_length}.is_a?(Fixnum)
+      end
+
+      spec "[!qjktz] returns nil when 'Content-Length' is not set." do
+        resp = K8::Dev::TestResponse.new(200, {}, [])
+        ok {resp.content_length} == nil
+      end
+
+    end
+
+
+    topic '#location' do
+
+      spec "[!8y8lg] returns 'Location' header value." do
+        resp = K8::Dev::TestResponse.new(200, {'Location'=>'/top'}, [])
+        ok {resp.location} == "/top"
+      end
+
+    end
+
+
+  end
+
+
 end
 
 

@@ -1323,6 +1323,101 @@ END
     end
 
 
+    ##
+    ## Wrapper class to test Rack application.
+    ##
+    ## ex:
+    ##   http = K8::Dev::TestApp.new(app)
+    ##   resp = http.GET('/api/hello', query={'name'=>'World'})
+    ##   assert_equal 200, resp.status
+    ##   assert_equal "application/json", resp.headers['Content-Type']
+    ##   assert_equal {"message"=>"Hello World!"}, resp.body_json
+    ##
+    class TestApp
+
+      def initialize(app=nil)
+        @app = app
+      end
+
+      def request(meth, path, kwargs={})
+        #; [!4xpwa] creates env object and calls app with it.
+        env = K8::Dev.new_env(meth, path, kwargs)
+        status, headers, body = @app.call(env)
+        return TestResponse.new(status, headers, body)
+      end
+
+      def GET     path, kwargs={}; request('GET'    , path, kwargs); end
+      def POST    path, kwargs={}; request('POST'   , path, kwargs); end
+      def PUT     path, kwargs={}; request('PUT'    , path, kwargs); end
+      def DELETE  path, kwargs={}; request('DELETE' , path, kwargs); end
+      def HEAD    path, kwargs={}; request('HEAD'   , path, kwargs); end
+      def PATCH   path, kwargs={}; request('PATCH'  , path, kwargs); end
+      def OPTIONS path, kwargs={}; request('OPTIONS', path, kwargs); end
+      def TRACE   path, kwargs={}; request('TRACE'  , path, kwargs); end
+
+    end
+
+
+    class TestResponse
+
+      def initialize(status, headers, body)
+        @status  = status
+        @headers = headers
+        @body    = body
+      end
+
+      attr_accessor :status, :headers, :body
+
+      def body_binary
+        #; [!mb0i4] returns body as binary string.
+        s = @body.join()
+        @body.close() if @body.respond_to?(:close)
+        return s
+      end
+
+      def body_text
+        #; [!rr18d] error when 'Content-Type' header is missing.
+        ctype = @headers['Content-Type']  or
+          raise "body_text(): missing 'Content-Type' header."
+        #; [!dou1n] converts body text according to 'charset' in 'Content-Type' header.
+        if ctype =~ /; *charset=(\w[-\w]*)/
+          charset = $1
+        #; [!cxje7] assumes charset as 'utf-8' when 'Content-Type' is json.
+        elsif ctype == "application/json"
+          charset = 'utf-8'
+        #; [!n4c71] error when non-json 'Content-Type' header has no 'charset'.
+        else
+          raise "body_text(): missing 'charset' in 'Content-Type' header."
+        end
+        #; [!vkj9h] returns body as text string, according to 'charset' in 'Content-Type'.
+        return body_binary().force_encoding(charset)
+      end
+
+      def body_json
+        #; [!qnic1] returns Hash object representing JSON string.
+        return JSON.parse(body_text())
+      end
+
+      def content_type
+        #; [!40hcz] returns 'Content-Type' header value.
+        return @headers['Content-Type']
+      end
+
+      def content_length
+        #; [!5lb19] returns 'Content-Length' header value as integer.
+        #; [!qjktz] returns nil when 'Content-Length' is not set.
+        len = @headers['Content-Length']
+        return len ? len.to_i : len
+      end
+
+      def location
+        #; [!8y8lg] returns 'Location' header value.p
+        return @headers['Location']
+      end
+
+    end
+
+
   end
 
 

@@ -1228,8 +1228,10 @@ END
       end
       if multipart
         ! form  or  raise err.call('multipart', 'form')
-        input = multipart.is_a?(MultiPartBuilder) ? multipart.to_s : multipart
-        boundary = /\A--(\S+)\r\n/.match(input)[1]
+        input = multipart.to_s
+        m = /\A--(\S+)\r\n/.match(input)  or
+          raise ArgumentError.new("invalid multipart format.")
+        boundary = $1
         ctype = "multipart/form-data; boundary=#{boundary}"
       end
       environ = {

@@ -1204,7 +1204,7 @@ END
 
     module_function
 
-    def new_env(meth="GET", path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
+    def new_env(meth=:GET, path="/", query: nil, form: nil, multipart: nil, json: nil, input: nil, headers: nil, cookie: nil, env: nil)
       #uri = "http://localhost:80#{path}"
       #opts["REQUEST_METHOD"] = meth
       #env = Rack::MockRequest.env_for(uri, opts)
@@ -1240,7 +1240,7 @@ END
         "rack.multiprocess" => true,
         "rack.run_once"     => false,
         "rack.url_scheme"   => https ? "https" : "http",
-        "REQUEST_METHOD"    => meth,
+        "REQUEST_METHOD"    => meth.to_s,
         "SERVER_NAME"       => "localhost",
         "SERVER_PORT"       => https ? "443" : "80",
         "QUERY_STRING"      => Util.build_query_string(query || ""),
@@ -1346,14 +1346,14 @@ END
         return TestResponse.new(status, headers, body)
       end
 
-      def GET     path, kwargs={}; request('GET'    , path, kwargs); end
-      def POST    path, kwargs={}; request('POST'   , path, kwargs); end
-      def PUT     path, kwargs={}; request('PUT'    , path, kwargs); end
-      def DELETE  path, kwargs={}; request('DELETE' , path, kwargs); end
-      def HEAD    path, kwargs={}; request('HEAD'   , path, kwargs); end
-      def PATCH   path, kwargs={}; request('PATCH'  , path, kwargs); end
-      def OPTIONS path, kwargs={}; request('OPTIONS', path, kwargs); end
-      def TRACE   path, kwargs={}; request('TRACE'  , path, kwargs); end
+      def GET     path, kwargs={}; request(:GET    , path, kwargs); end
+      def POST    path, kwargs={}; request(:POST   , path, kwargs); end
+      def PUT     path, kwargs={}; request(:PUT    , path, kwargs); end
+      def DELETE  path, kwargs={}; request(:DELETE , path, kwargs); end
+      def HEAD    path, kwargs={}; request(:HEAD   , path, kwargs); end
+      def PATCH   path, kwargs={}; request(:PATCH  , path, kwargs); end
+      def OPTIONS path, kwargs={}; request(:OPTIONS, path, kwargs); end
+      def TRACE   path, kwargs={}; request(:TRACE  , path, kwargs); end
 
     end
 

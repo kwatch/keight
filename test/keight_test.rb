@@ -78,7 +78,7 @@ end
 Oktest.scope do
 
   def new_env(meth="GET", path="/", opts={})
-    return K8::Util.new_env(meth, path, opts)
+    return K8::Mock.new_env(meth, path, opts)
   end
 
 
@@ -189,16 +189,6 @@ Oktest.scope do
     end
 
 
-    topic '.new_env()' do
-
-      spec "[!c779l] raises ArgumentError when both form and json are specified." do
-        pr = proc { K8::Util.new_env(form: "x=1", json: {"y": 2}) }
-        ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
-      end
-
-    end
-
-
     topic '.guess_content_type()' do
 
       spec "[!xw0js] returns content type guessed from filename." do
@@ -211,79 +201,6 @@ Oktest.scope do
       spec "[!dku5c] returns 'application/octet-stream' when failed to guess content type." do
         ok {K8::Util.guess_content_type("foo.rbc")}  == "application/octet-stream"
         ok {K8::Util.guess_content_type("foo")}      == "application/octet-stream"
-      end
-
-    end
-
-
-  end
-
-
-  topic K8::Util::MultiPartBuilder do
-
-
-    topic '#initialize()' do
-
-      spec "[!ajfgl] sets random string as boundary when boundary is nil." do
-        arr = []
-        1000.times do
-          mp = K8::Util::MultiPartBuilder.new(nil)
-          ok {mp.boundary} != nil
-          ok {mp.boundary}.is_a?(String)
-          arr << mp.boundary
-        end
-        ok {arr.sort.uniq.length} == 1000
-      end
-
-    end
-
-
-    topic '#add()' do
-
-      spec "[!tp4bk] detects content type from filename when filename is not nil." do
-        mp = K8::Util::MultiPartBuilder.new
-        mp.add("name1", "value1")
-        mp.add("name2", "value2", "foo.csv")
-        mp.add("name3", "value3", "bar.csv", "text/plain")
-        ok {mp.instance_variable_get('@params')} == [
-          ["name1", "value1", nil, nil],
-          ["name2", "value2", "foo.csv", "text/comma-separated-values"],
-          ["name3", "value3", "bar.csv", "text/plain"],
-        ]
-      end
-
-    end
-
-
-    topic '#to_s()' do
-
-      spec "[!61gc4] returns multipart form string." do
-        mp = K8::Util::MultiPartBuilder.new("abc123")
-        mp.add("name1", "value1")
-        mp.add("name2", "value2", "foo.txt", "text/plain")
-        s = mp.to_s
-        ok {s} == [
-          "--abc123\r\n",
-          "Content-Disposition: form-data; name=\"name1\"\r\n",
-          "\r\n",
-          "value1\r\n",
-          "--abc123\r\n",
-          "Content-Disposition: form-data; name=\"name2\"; filename=\"foo.txt\"\r\n",
-          "Content-Type: text/plain\r\n",
-          "\r\n",
-          "value2\r\n",
-          "--abc123--\r\n",
-        ].join()
-        #
-        params, files = K8::Util.parse_multipart(StringIO.new(s), "abc123", s.length)
-        begin
-          ok {params} == {'name1'=>"value1", 'name2'=>"foo.txt"}
-          ok {files.keys} == ['name2']
-          ok {files['name2'].filename} == "foo.txt"
-        ensure
-          fpath = files['name2'].tmp_filepath
-          File.unlink(fpath) if File.exist?(fpath)
-        end
       end
 
     end
@@ -1881,24 +1798,249 @@ Oktest.scope do
 
       spec "[!u1g77] returns all mappings as YAML string." do
         |app|
-        ok {app.show_mappings()} == <<'END'
-- urlpath: /api/books/
-  class:   BooksAction
-  methods: {GET: do_index, POST: do_create}
+        yaml_str = <<-'END'
+    - urlpath: /api/books/
+      class:   BooksAction
+      methods: {GET: do_index, POST: do_create}
 
-- urlpath: /api/books/new
-  class:   BooksAction
-  methods: {GET: do_new}
+    - urlpath: /api/books/new
+      class:   BooksAction
+      methods: {GET: do_new}
 
-- urlpath: /api/books/{id}
-  class:   BooksAction
-  methods: {GET: do_show, PUT: do_update, DELETE: do_delete}
+    - urlpath: /api/books/{id}
+      class:   BooksAction
+      methods: {GET: do_show, PUT: do_update, DELETE: do_delete}
 
-- urlpath: /api/books/{id}/edit
-  class:   BooksAction
-  methods: {GET: do_edit}
+    - urlpath: /api/books/{id}/edit
+      class:   BooksAction
+      methods: {GET: do_edit}
 
-END
+        END
+        yaml_str.gsub!(/^    /, '')
+        ok {app.show_mappings()} == yaml_str
+      end
+
+    end
+
+
+  end
+
+
+  topic K8::Mock do
+
+
+    topic '.new_env()' do
+
+      spec "[!c779l] raises ArgumentError when both form and json are specified." do
+        pr = proc { K8::Mock.new_env(form: "x=1", json: {"y": 2}) }
+        ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
+      end
+
+    end
+
+
+  end
+
+
+  topic K8::Mock::MultiPartBuilder do
+
+
+    topic '#initialize()' do
+
+      spec "[!ajfgl] sets random string as boundary when boundary is nil." do
+        arr = []
+        1000.times do
+          mp = K8::Mock::MultiPartBuilder.new(nil)
+          ok {mp.boundary} != nil
+          ok {mp.boundary}.is_a?(String)
+          arr << mp.boundary
+        end
+        ok {arr.sort.uniq.length} == 1000
+      end
+
+    end
+
+
+    topic '#add()' do
+
+      spec "[!tp4bk] detects content type from filename when filename is not nil." do
+        mp = K8::Mock::MultiPartBuilder.new
+        mp.add("name1", "value1")
+        mp.add("name2", "value2", "foo.csv")
+        mp.add("name3", "value3", "bar.csv", "text/plain")
+        ok {mp.instance_variable_get('@params')} == [
+          ["name1", "value1", nil, nil],
+          ["name2", "value2", "foo.csv", "text/comma-separated-values"],
+          ["name3", "value3", "bar.csv", "text/plain"],
+        ]
+      end
+
+    end
+
+
+    topic '#to_s()' do
+
+      spec "[!61gc4] returns multipart form string." do
+        mp = K8::Mock::MultiPartBuilder.new("abc123")
+        mp.add("name1", "value1")
+        mp.add("name2", "value2", "foo.txt", "text/plain")
+        s = mp.to_s
+        ok {s} == [
+          "--abc123\r\n",
+          "Content-Disposition: form-data; name=\"name1\"\r\n",
+          "\r\n",
+          "value1\r\n",
+          "--abc123\r\n",
+          "Content-Disposition: form-data; name=\"name2\"; filename=\"foo.txt\"\r\n",
+          "Content-Type: text/plain\r\n",
+          "\r\n",
+          "value2\r\n",
+          "--abc123--\r\n",
+        ].join()
+        #
+        params, files = K8::Util.parse_multipart(StringIO.new(s), "abc123", s.length)
+        begin
+          ok {params} == {'name1'=>"value1", 'name2'=>"foo.txt"}
+          ok {files.keys} == ['name2']
+          ok {files['name2'].filename} == "foo.txt"
+        ensure
+          fpath = files['name2'].tmp_filepath
+          File.unlink(fpath) if File.exist?(fpath)
+        end
+      end
+
+    end
+
+
+  end
+
+
+  topic K8::Mock::TestApp do
+
+
+    topic '#request()' do
+
+      spec "[!4xpwa] creates env object and calls app with it." do
+        rackapp = proc {|env|
+          body = [
+            "PATH_INFO: #{env['PATH_INFO']}\n",
+            "QUERY_STRING: #{env['QUERY_STRING']}\n",
+            "HTTP_COOKIE: #{env['HTTP_COOKIE']}\n",
+          ]
+          [200, {"Content-Type"=>"text/plain"}, body]
+        }
+        http = K8::Mock::TestApp.new(rackapp)
+        resp = http.GET('/foo', query: {"x"=>123}, cookie: {"k"=>"v"})
+        ok {resp.status}  == 200
+        ok {resp.headers} == {"Content-Type"=>"text/plain"}
+        ok {resp.body}    == [
+          "PATH_INFO: /foo\n",
+          "QUERY_STRING: x=123\n",
+          "HTTP_COOKIE: k=v\n",
+        ]
+      end
+
+    end
+
+  end
+
+
+  topic K8::Mock::TestResponse do
+
+
+    topic '#body_binary' do
+
+      spec "[!mb0i4] returns body as binary string." do
+        resp = K8::Mock::TestResponse.new(200, {}, ["foo", "bar"])
+        ok {resp.body_binary} == "foobar"
+        #ok {resp.body_binary.encoding} == Encoding::UTF_8
+      end
+
+    end
+
+
+    topic '#body_text' do
+
+      spec "[!rr18d] error when 'Content-Type' header is missing." do
+        resp = K8::Mock::TestResponse.new(200, {}, ["foo", "bar"])
+        pr = proc { resp.body_text }
+        ok {pr}.raise?(RuntimeError, "body_text(): missing 'Content-Type' header.")
+      end
+
+      spec "[!dou1n] converts body text according to 'charset' in 'Content-Type' header." do
+        ctype = "application/json;charset=us-ascii"
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        ok {resp.body_text} == '{"a":123}'
+        ok {resp.body_text.encoding} == Encoding::ASCII
+      end
+
+      spec "[!cxje7] assumes charset as 'utf-8' when 'Content-Type' is json." do
+        ctype = "application/json"
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        ok {resp.body_text} == '{"a":123}'
+        ok {resp.body_text.encoding} == Encoding::UTF_8
+      end
+
+      spec "[!n4c71] error when non-json 'Content-Type' header has no 'charset'." do
+        ctype = "text/plain"
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ["foo", "bar"])
+        pr = proc { resp.body_text }
+        ok {pr}.raise?(RuntimeError, "body_text(): missing 'charset' in 'Content-Type' header.")
+      end
+
+      spec "[!vkj9h] returns body as text string, according to 'charset' in 'Content-Type'." do
+        ctype = "text/plain;charset=utf-8"
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ["foo", "bar"])
+        ok {resp.body_text} == "foobar"
+        ok {resp.body_text.encoding} == Encoding::UTF_8
+      end
+
+    end
+
+
+    topic '#body_json' do
+
+      spec "[!qnic1] returns Hash object representing JSON string." do
+        ctype = "application/json"
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        ok {resp.body_json} == {"a"=>123}
+      end
+
+    end
+
+
+    topic '#content_type' do
+
+      spec "[!40hcz] returns 'Content-Type' header value." do
+        ctype = "application/json"
+        resp = K8::Mock::TestResponse.new(200, {'Content-Type'=>ctype}, ['{"a":123}'])
+        ok {resp.content_type} == ctype
+      end
+
+    end
+
+
+    topic '#content_length' do
+
+      spec "[!5lb19] returns 'Content-Length' header value as integer." do
+        resp = K8::Mock::TestResponse.new(200, {'Content-Length'=>"0"}, [])
+        ok {resp.content_length} == 0
+        ok {resp.content_length}.is_a?(Fixnum)
+      end
+
+      spec "[!qjktz] returns nil when 'Content-Length' is not set." do
+        resp = K8::Mock::TestResponse.new(200, {}, [])
+        ok {resp.content_length} == nil
+      end
+
+    end
+
+
+    topic '#location' do
+
+      spec "[!8y8lg] returns 'Location' header value." do
+        resp = K8::Mock::TestResponse.new(200, {'Location'=>'/top'}, [])
+        ok {resp.location} == "/top"
       end
 
     end

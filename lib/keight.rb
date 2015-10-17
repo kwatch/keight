@@ -341,14 +341,16 @@ module K8
       return @env['REQUEST_METHOD']
     end
 
-    def get?         ; @method == :GET           ; end
-    def post?        ; @method == :POST          ; end
-    def put?         ; @method == :PUT           ; end
-    def delete?      ; @method == :DELETE        ; end
-    def head?        ; @method == :HEAD          ; end
-    def patch?       ; @method == :PATCH         ; end
-    def options?     ; @method == :OPTIONS       ; end
-    def trace?       ; @method == :TRACE         ; end
+    ##--
+    #def get?         ; @method == :GET           ; end
+    #def post?        ; @method == :POST          ; end
+    #def put?         ; @method == :PUT           ; end
+    #def delete?      ; @method == :DELETE        ; end
+    #def head?        ; @method == :HEAD          ; end
+    #def patch?       ; @method == :PATCH         ; end
+    #def options?     ; @method == :OPTIONS       ; end
+    #def trace?       ; @method == :TRACE         ; end
+    ##++
 
     def script_name  ; @env['SCRIPT_NAME' ] || ''; end   # may be empty
     def path_info    ; @env['PATH_INFO'   ] || ''; end   # may be empty

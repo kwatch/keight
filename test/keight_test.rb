@@ -366,6 +366,18 @@ Oktest.scope do
     end
 
 
+    topic '#xhr?' do
+
+      spec "[!hsgkg] returns true when 'X-Requested-With' header is 'XMLHttpRequest'." do
+        env = new_env("GET", "/", headers: {'X-Requested-With'=>'XMLHttpRequest'})
+        ok {K8::Request.new(env).xhr?} == true
+        env = new_env("GET", "/", headers: {})
+        ok {K8::Request.new(env).xhr?} == false
+      end
+
+    end
+
+
     topic '#client_ip_addr' do
 
       spec "[!e1uvg] returns 'X-Real-IP' header value if provided." do

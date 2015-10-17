@@ -360,6 +360,11 @@ module K8
     def user_agent       ; @env['HTTP_USER_AGENT']      ; end
     def x_requested_with ; @env['HTTP_X_REQUESTED_WITH']; end
 
+    def xhr?
+      #; [!hsgkg] returns true when 'X-Requested-With' header is 'XMLHttpRequest'.
+      return self.x_requested_with == 'XMLHttpRequest'
+    end
+
     def client_ip_addr
       #; [!e1uvg] returns 'X-Real-IP' header value if provided.
       addr = @env['HTTP_X_REAL_IP']          # nginx

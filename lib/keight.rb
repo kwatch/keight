@@ -339,6 +339,12 @@ module K8
       return @env['REQUEST_METHOD']
     end
 
+    def script_name  ; @env['SCRIPT_NAME' ] || ''; end   # may be empty
+    def path_info    ; @env['PATH_INFO'   ] || ''; end   # may be empty
+    def query_string ; @env['QUERY_STRING'] || ''; end   # may be empty
+    def server_name  ; @env['SERVER_NAME' ]      ; end   # should NOT be empty
+    def server_port  ; @env['SERVER_PORT' ].to_i ; end   # should NOT be empty
+
     def content_type
       #; [!95g9o] returns env['CONTENT_TYPE'].
       return @env['CONTENT_TYPE']

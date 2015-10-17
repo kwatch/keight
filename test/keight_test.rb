@@ -317,6 +317,16 @@ Oktest.scope do
     end
 
 
+    topic '#request_method' do
+
+      spec "[!y8eos] returns env['REQUEST_METHOD'] as string." do
+        req = K8::Request.new(new_env(:POST, "/"))
+        ok {req.request_method} == "POST"
+      end
+
+    end
+
+
     topic '#content_type' do
 
       spec "[!95g9o] returns env['CONTENT_TYPE']." do

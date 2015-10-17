@@ -329,6 +329,11 @@ module K8
       return name.nil? ? @method : super(name)
     end
 
+    def request_method
+      #; [!y8eos] returns env['REQUEST_METHOD'] as string.
+      return @env['REQUEST_METHOD']
+    end
+
     def header(name)
       return @env["HTTP_#{name.upcase.sub('-', '_')}"]
     end

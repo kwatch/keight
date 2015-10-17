@@ -323,6 +323,12 @@ module K8
 
     attr_accessor :env, :method, :path
 
+    def method(name=nil)
+      #; [!tp595] returns :GET, :POST, :PUT, ... when argument is not passed.
+      #; [!49f51] returns Method object when argument is passed.
+      return name.nil? ? @method : super(name)
+    end
+
     def header(name)
       return @env["HTTP_#{name.upcase.sub('-', '_')}"]
     end

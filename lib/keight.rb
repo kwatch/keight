@@ -333,6 +333,17 @@ module K8
       return @env["HTTP_#{name.upcase.sub('-', '_')}"]
     end
 
+    def content_type
+      #; [!95g9o] returns env['CONTENT_TYPE'].
+      return @env['CONTENT_TYPE']
+    end
+
+    def content_length
+      #; [!0wbek] returns env['CONTENT_LENGHT'] as integer.
+      len = @env['CONTENT_LENGTH']
+      return len ? len.to_i : len
+    end
+
     def params_query
       #; [!6ezqw] parses QUERY_STRING and returns it as Hash object.
       #; [!o0ws7] unquotes both keys and values.

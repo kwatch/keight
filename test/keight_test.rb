@@ -317,6 +317,31 @@ Oktest.scope do
     end
 
 
+    topic '#content_type' do
+
+      spec "[!95g9o] returns env['CONTENT_TYPE']." do
+        ctype = "text/html"
+        req = K8::Request.new(new_env("GET", "/", env: {'CONTENT_TYPE'=>ctype}))
+        ok {req.content_type} == ctype
+        req = K8::Request.new(new_env("GET", "/", env: {}))
+        ok {req.content_type} == nil
+      end
+
+    end
+
+
+    topic '#content_length' do
+
+      spec "[!0wbek] returns env['CONTENT_LENGHT'] as integer." do
+        req = K8::Request.new(new_env("GET", "/", env: {'CONTENT_LENGTH'=>'0'}))
+        ok {req.content_length} == 0
+        req.env.delete('CONTENT_LENGTH')
+        ok {req.content_length} == nil
+      end
+
+    end
+
+
     topic '#params_query' do
 
       spec "[!6ezqw] parses QUERY_STRING and returns it as Hash object." do

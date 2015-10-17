@@ -1833,6 +1833,13 @@ Oktest.scope do
         end
       end
 
+      spec "[!9u978] cache_size keyword argument will be passed to router oubject." do
+        app = K8::RackApplication.new(cache_size: 100)
+        app.find('/')
+        x = app.instance_variable_get('@router').instance_variable_get('@cache_size')
+        ok {x} == 100
+      end
+
       spec "[!o0rnr] returns action class, action methods, urlpath names and values." do
         |app|
         ret = app.find('/api/books/')

@@ -1138,9 +1138,10 @@ module K8
 
   class RackApplication
 
-    def initialize
+    def initialize(cache_size: 0)
       @action_class_mapping = ActionClassMapping.new
       @router = nil
+      @cache_size = cache_size
       @default_patterns = DefaultPatterns.new
       init_default_param_patterns(@default_patterns)
     end
@@ -1182,7 +1183,8 @@ module K8
 
     def find(req_path)
       #; [!vnxoo] creates router object from action class mapping if router is nil.
-      @router ||= ActionRouter.new(@action_class_mapping, @default_patterns)
+      #; [!9u978] cache_size keyword argument will be passed to router oubject.
+      @router ||= ActionRouter.new(@action_class_mapping, @default_patterns, cache_size: @cache_size)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
       return @router.find(req_path)
     end

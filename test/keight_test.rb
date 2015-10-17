@@ -299,6 +299,20 @@ Oktest.scope do
     end
 
 
+    topic '#header()' do
+
+      spec "[!1z7wj] returns http header value from environment." do
+        env = new_env("GET", "/",
+                      headers: {'Accept-Encoding'=>'gzip,deflate'},
+                      env:     {'HTTP_ACCEPT_LANGUAGE'=>'en,ja'})
+        req = K8::Request.new(env)
+        ok {req.header('Accept-Encoding')} == 'gzip,deflate'
+        ok {req.header('Accept-Language')} == 'en,ja'
+      end
+
+    end
+
+
     topic '#method()' do
 
       spec "[!tp595] returns :GET, :POST, :PUT, ... when argument is not passed." do

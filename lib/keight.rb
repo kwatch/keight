@@ -323,6 +323,11 @@ module K8
 
     attr_accessor :env, :method, :path
 
+    def header(name)
+      #; [!1z7wj] returns http header value from environment.
+      return @env["HTTP_#{name.upcase.sub('-', '_')}"]
+    end
+
     def method(name=nil)
       #; [!tp595] returns :GET, :POST, :PUT, ... when argument is not passed.
       #; [!49f51] returns Method object when argument is passed.
@@ -332,10 +337,6 @@ module K8
     def request_method
       #; [!y8eos] returns env['REQUEST_METHOD'] as string.
       return @env['REQUEST_METHOD']
-    end
-
-    def header(name)
-      return @env["HTTP_#{name.upcase.sub('-', '_')}"]
     end
 
     def content_type

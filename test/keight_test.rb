@@ -342,6 +342,31 @@ Oktest.scope do
     end
 
 
+    topic '#client_ip_addr' do
+
+      spec "[!e1uvg] returns 'X-Real-IP' header value if provided." do
+        env = new_env("GET", "/",
+                      headers: {'X-Real-IP'=>'192.168.1.23'},
+                      env: {'REMOTE_ADDR'=>'192.168.0.1'})
+        ok {K8::Request.new(env).client_ip_addr} == '192.168.1.23'
+      end
+
+      spec "[!qdlyl] returns first item of 'X-Forwarded-For' header if provided." do
+        env = new_env("GET", "/",
+                      headers: {'X-Forwarded-For'=>'192.168.1.1, 192.168.1.2, 192.168.1.3'},
+                      env: {'REMOTE_ADDR'=>'192.168.0.1'})
+        ok {K8::Request.new(env).client_ip_addr} == '192.168.1.1'
+      end
+
+      spec "[!8nzjh] returns 'REMOTE_ADDR' if neighter 'X-Real-IP' nor 'X-Forwarded-For' provided." do
+        env = new_env("GET", "/",
+                      env: {'REMOTE_ADDR'=>'192.168.0.1'})
+        ok {K8::Request.new(env).client_ip_addr} == '192.168.0.1'
+      end
+
+    end
+
+
     topic '#params_query' do
 
       spec "[!6ezqw] parses QUERY_STRING and returns it as Hash object." do

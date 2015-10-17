@@ -344,6 +344,18 @@ module K8
       return len ? len.to_i : len
     end
 
+    def client_ip_addr
+      #; [!e1uvg] returns 'X-Real-IP' header value if provided.
+      addr = @env['HTTP_X_REAL_IP']          # nginx
+      return addr if addr
+      #; [!qdlyl] returns first item of 'X-Forwarded-For' header if provided.
+      addr = @env['HTTP_X_FORWARDED_FOR']    # apache, squid, etc
+      return addr.split(',').first if addr
+      #; [!8nzjh] returns 'REMOTE_ADDR' if neighter 'X-Real-IP' nor 'X-Forwarded-For' provided.
+      addr = @env['REMOTE_ADDR']             # http standard
+      return addr
+    end
+
     def params_query
       #; [!6ezqw] parses QUERY_STRING and returns it as Hash object.
       #; [!o0ws7] unquotes both keys and values.

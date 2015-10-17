@@ -1444,7 +1444,7 @@ Oktest.scope do
   topic K8::ActionRouter do
 
     fixture :router do |class_mapping, default_patterns|
-      K8::ActionRouter.new(class_mapping, default_patterns)
+      K8::ActionRouter.new(class_mapping, default_patterns, cache_size: 0)
     end
 
     fixture :class_mapping do

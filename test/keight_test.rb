@@ -296,6 +296,136 @@ Oktest.scope do
         ok {req1.path} == "/123"
       end
 
+      spec "[!ae8ws] uses SCRIPT_NAME as urlpath when PATH_INFO is not provided." do
+        env = new_env("GET", "/123", env: {'SCRIPT_NAME'=>'/index.cgi'})
+        env['PATH_INFO'] = ''
+        ok {K8::Request.new(env).path} == "/index.cgi"
+        env.delete('PATH_INFO')
+        ok {K8::Request.new(env).path} == "/index.cgi"
+      end
+
+    end
+
+
+    topic '#header()' do
+
+      spec "[!1z7wj] returns http header value from environment." do
+        env = new_env("GET", "/",
+                      headers: {'Accept-Encoding'=>'gzip,deflate'},
+                      env:     {'HTTP_ACCEPT_LANGUAGE'=>'en,ja'})
+        req = K8::Request.new(env)
+        ok {req.header('Accept-Encoding')} == 'gzip,deflate'
+        ok {req.header('Accept-Language')} == 'en,ja'
+      end
+
+    end
+
+
+    topic '#method()' do
+
+      spec "[!tp595] returns :GET, :POST, :PUT, ... when argument is not passed." do
+        ok {K8::Request.new(new_env('GET',    '/')).method} == :GET
+        ok {K8::Request.new(new_env('POST',   '/')).method} == :POST
+        ok {K8::Request.new(new_env('PUT',    '/')).method} == :PUT
+        ok {K8::Request.new(new_env('DELETE', '/')).method} == :DELETE
+      end
+
+      spec "[!49f51] returns Method object when argument is passed." do
+        req = K8::Request.new(new_env('GET', '/'))
+        ok {req.method('env')}.is_a?(Method)
+        ok {req.method('env').call()}.same?(req.env)
+      end
+
+    end
+
+
+    topic '#request_method' do
+
+      spec "[!y8eos] returns env['REQUEST_METHOD'] as string." do
+        req = K8::Request.new(new_env(:POST, "/"))
+        ok {req.request_method} == "POST"
+      end
+
+    end
+
+
+    topic '#content_type' do
+
+      spec "[!95g9o] returns env['CONTENT_TYPE']." do
+        ctype = "text/html"
+        req = K8::Request.new(new_env("GET", "/", env: {'CONTENT_TYPE'=>ctype}))
+        ok {req.content_type} == ctype
+        req = K8::Request.new(new_env("GET", "/", env: {}))
+        ok {req.content_type} == nil
+      end
+
+    end
+
+
+    topic '#content_length' do
+
+      spec "[!0wbek] returns env['CONTENT_LENGHT'] as integer." do
+        req = K8::Request.new(new_env("GET", "/", env: {'CONTENT_LENGTH'=>'0'}))
+        ok {req.content_length} == 0
+        req.env.delete('CONTENT_LENGTH')
+        ok {req.content_length} == nil
+      end
+
+    end
+
+
+    topic '#xhr?' do
+
+      spec "[!hsgkg] returns true when 'X-Requested-With' header is 'XMLHttpRequest'." do
+        env = new_env("GET", "/", headers: {'X-Requested-With'=>'XMLHttpRequest'})
+        ok {K8::Request.new(env).xhr?} == true
+        env = new_env("GET", "/", headers: {})
+        ok {K8::Request.new(env).xhr?} == false
+      end
+
+    end
+
+
+    topic '#client_ip_addr' do
+
+      spec "[!e1uvg] returns 'X-Real-IP' header value if provided." do
+        env = new_env("GET", "/",
+                      headers: {'X-Real-IP'=>'192.168.1.23'},
+                      env: {'REMOTE_ADDR'=>'192.168.0.1'})
+        ok {K8::Request.new(env).client_ip_addr} == '192.168.1.23'
+      end
+
+      spec "[!qdlyl] returns first item of 'X-Forwarded-For' header if provided." do
+        env = new_env("GET", "/",
+                      headers: {'X-Forwarded-For'=>'192.168.1.1, 192.168.1.2, 192.168.1.3'},
+                      env: {'REMOTE_ADDR'=>'192.168.0.1'})
+        ok {K8::Request.new(env).client_ip_addr} == '192.168.1.1'
+      end
+
+      spec "[!8nzjh] returns 'REMOTE_ADDR' if neighter 'X-Real-IP' nor 'X-Forwarded-For' provided." do
+        env = new_env("GET", "/",
+                      env: {'REMOTE_ADDR'=>'192.168.0.1'})
+        ok {K8::Request.new(env).client_ip_addr} == '192.168.0.1'
+      end
+
+    end
+
+
+    topic '#scheme' do
+
+      spec "[!jytwy] returns 'https' when env['HTTPS'] is 'on'." do
+        env = new_env("GET", "/", env: {'HTTPS'=>'on'})
+        ok {K8::Request.new(env).scheme} == 'https'
+      end
+
+      spec "[!zg8r2] returns env['rack.url_scheme'] ('http' or 'https')." do
+        env = new_env("GET", "/", env: {'HTTPS'=>'off'})
+        env['rack.url_scheme'] = 'http'
+        ok {K8::Request.new(env).scheme} == 'http'
+        env['rack.url_scheme'] = 'https'
+        ok {K8::Request.new(env).scheme} == 'https'
+      end
+
     end
 
 

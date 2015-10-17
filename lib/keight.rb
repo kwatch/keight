@@ -318,14 +318,97 @@ module K8
       @method = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
         raise HTTPException.new(400, "#{env['REQUEST_METHOD'].inspect}: unknown request method.")
       #; [!twgmi] sets @path.
-      @path = env['PATH_INFO']
+      @path = (x = env['PATH_INFO'])
+      #; [!ae8ws] uses SCRIPT_NAME as urlpath when PATH_INFO is not provided.
+      @path = env['SCRIPT_NAME'] if x.nil? || x.empty?
     end
 
-    attr_accessor :env, :method, :path
+    attr_reader :env, :method, :path
 
     def header(name)
+      #; [!1z7wj] returns http header value from environment.
       return @env["HTTP_#{name.upcase.sub('-', '_')}"]
     end
+
+    def method(name=nil)
+      #; [!tp595] returns :GET, :POST, :PUT, ... when argument is not passed.
+      #; [!49f51] returns Method object when argument is passed.
+      return name.nil? ? @method : super(name)
+    end
+
+    def request_method
+      #; [!y8eos] returns env['REQUEST_METHOD'] as string.
+      return @env['REQUEST_METHOD']
+    end
+
+    ##--
+    #def get?         ; @method == :GET           ; end
+    #def post?        ; @method == :POST          ; end
+    #def put?         ; @method == :PUT           ; end
+    #def delete?      ; @method == :DELETE        ; end
+    #def head?        ; @method == :HEAD          ; end
+    #def patch?       ; @method == :PATCH         ; end
+    #def options?     ; @method == :OPTIONS       ; end
+    #def trace?       ; @method == :TRACE         ; end
+    ##++
+
+    def script_name  ; @env['SCRIPT_NAME' ] || ''; end   # may be empty
+    def path_info    ; @env['PATH_INFO'   ] || ''; end   # may be empty
+    def query_string ; @env['QUERY_STRING'] || ''; end   # may be empty
+    def server_name  ; @env['SERVER_NAME' ]      ; end   # should NOT be empty
+    def server_port  ; @env['SERVER_PORT' ].to_i ; end   # should NOT be empty
+
+    def content_type
+      #; [!95g9o] returns env['CONTENT_TYPE'].
+      return @env['CONTENT_TYPE']
+    end
+
+    def content_length
+      #; [!0wbek] returns env['CONTENT_LENGHT'] as integer.
+      len = @env['CONTENT_LENGTH']
+      return len ? len.to_i : len
+    end
+
+    def referer          ; @env['HTTP_REFERER']         ; end
+    def user_agent       ; @env['HTTP_USER_AGENT']      ; end
+    def x_requested_with ; @env['HTTP_X_REQUESTED_WITH']; end
+
+    def xhr?
+      #; [!hsgkg] returns true when 'X-Requested-With' header is 'XMLHttpRequest'.
+      return self.x_requested_with == 'XMLHttpRequest'
+    end
+
+    def client_ip_addr
+      #; [!e1uvg] returns 'X-Real-IP' header value if provided.
+      addr = @env['HTTP_X_REAL_IP']          # nginx
+      return addr if addr
+      #; [!qdlyl] returns first item of 'X-Forwarded-For' header if provided.
+      addr = @env['HTTP_X_FORWARDED_FOR']    # apache, squid, etc
+      return addr.split(',').first if addr
+      #; [!8nzjh] returns 'REMOTE_ADDR' if neighter 'X-Real-IP' nor 'X-Forwarded-For' provided.
+      addr = @env['REMOTE_ADDR']             # http standard
+      return addr
+    end
+
+    def scheme
+      #; [!jytwy] returns 'https' when env['HTTPS'] is 'on'.
+      return 'https' if @env['HTTPS'] == 'on'
+      #; [!zg8r2] returns env['rack.url_scheme'] ('http' or 'https').
+      return @env['rack.url_scheme']
+    end
+
+    def rack_version      ; @env['rack.version']      ; end  # ex: [1, 3]
+    def rack_url_scheme   ; @env['rack.url_scheme']   ; end  # ex: 'http' or 'https'
+    def rack_input        ; @env['rack.input']        ; end  # ex: $stdout
+    def rack_errors       ; @env['rack.errors']       ; end  # ex: $stderr
+    def rack_multithread  ; @env['rack.multithread']  ; end  # ex: true
+    def rack_multiprocess ; @env['rack.multiprocess'] ; end  # ex: true
+    def rack_run_once     ; @env['rack.run_once']     ; end  # ex: false
+    def rack_session      ; @env['rack.session']      ; end  # ex: {}
+    def rack_logger       ; @env['rack.logger']       ; end  # ex: Logger.new
+    def rack_hijack       ; @env['rack.hijack']       ; end  # ex: callable object
+    def rack_hijack?      ; @env['rack.hijack?']      ; end  # ex: true or false
+    def rack_hijack_io    ; @env['rack.hijack_io']    ; end  # ex: socket object
 
     def params_query
       #; [!6ezqw] parses QUERY_STRING and returns it as Hash object.

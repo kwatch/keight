@@ -932,11 +932,11 @@ module K8
 
   class ActionRouter
 
-    def initialize(action_class_mapping, default_patterns=nil, cache_size: 0)
+    def initialize(action_class_mapping, default_patterns=nil, urlpath_cache_size: 0)
       @default_patterns = default_patterns || K8::DefaultPatterns.new
-      @cache_size = cache_size
-      #; [!wb9l8] enables urlpath cache when cache_size > 0.
-      @urlpath_cache = cache_size > 0 ? {} : nil   # LRU cache of variable urlpath
+      @urlpath_cache_size = urlpath_cache_size
+      #; [!wb9l8] enables urlpath cache when urlpath_cache_size > 0.
+      @urlpath_cache = urlpath_cache_size > 0 ? {} : nil   # LRU cache of variable urlpath
       #; [!dnu4q] calls '#_construct()'.
       _construct(action_class_mapping)
     end
@@ -1124,7 +1124,7 @@ module K8
         #; [!v2zbx] caches variable urlpath into LRU cache if cache is enabled.
         #; [!nczw6] LRU cache size doesn't growth over max cache size.
         if cache
-          cache.shift() if cache.length > @cache_size - 1
+          cache.shift() if cache.length > @urlpath_cache_size - 1
           cache[req_path] = [action_class, action_methods, param_names, param_values]
         end
       end
@@ -1138,10 +1138,10 @@ module K8
 
   class RackApplication
 
-    def initialize(cache_size: 0)
+    def initialize(urlpath_cache_size: 0)
       @action_class_mapping = ActionClassMapping.new
       @router = nil
-      @cache_size = cache_size
+      @urlpath_cache_size = urlpath_cache_size
       @default_patterns = DefaultPatterns.new
       init_default_param_patterns(@default_patterns)
     end
@@ -1183,8 +1183,8 @@ module K8
 
     def find(req_path)
       #; [!vnxoo] creates router object from action class mapping if router is nil.
-      #; [!9u978] cache_size keyword argument will be passed to router oubject.
-      @router ||= ActionRouter.new(@action_class_mapping, @default_patterns, cache_size: @cache_size)
+      #; [!9u978] urlpath_cache_size keyword argument will be passed to router oubject.
+      @router ||= ActionRouter.new(@action_class_mapping, @default_patterns, urlpath_cache_size: @urlpath_cache_size)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
       return @router.find(req_path)
     end

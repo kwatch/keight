@@ -1444,7 +1444,7 @@ Oktest.scope do
   topic K8::ActionRouter do
 
     fixture :router do |class_mapping, default_patterns|
-      K8::ActionRouter.new(class_mapping, default_patterns, cache_size: 0)
+      K8::ActionRouter.new(class_mapping, default_patterns, urlpath_cache_size: 0)
     end
 
     fixture :class_mapping do
@@ -1484,12 +1484,12 @@ Oktest.scope do
         ok {router.instance_variable_get('@dict')} != nil
       end
 
-      spec "[!wb9l8] enables urlpath cache when cache_size > 0." do
+      spec "[!wb9l8] enables urlpath cache when urlpath_cache_size > 0." do
         |class_mapping, default_patterns|
         args = [class_mapping, default_patterns]
-        router = K8::ActionRouter.new(*args, cache_size: 1)
+        router = K8::ActionRouter.new(*args, urlpath_cache_size: 1)
         ok {router.instance_variable_get('@urlpath_cache')} == {}
-        router = K8::ActionRouter.new(*args, cache_size: 0)
+        router = K8::ActionRouter.new(*args, urlpath_cache_size: 0)
         ok {router.instance_variable_get('@urlpath_cache')} == nil
       end
 
@@ -1702,7 +1702,7 @@ Oktest.scope do
 
       spec "[!gzy2w] fetches variable urlpath from LRU cache if LRU cache is enabled." do
         |class_mapping, default_patterns|
-        router = K8::ActionRouter.new(class_mapping, default_patterns, cache_size: 3)
+        router = K8::ActionRouter.new(class_mapping, default_patterns, urlpath_cache_size: 3)
         router.instance_exec(self) do |_|
           arr1 = find('/api/books/1')
           arr2 = find('/api/books/2')
@@ -1718,7 +1718,7 @@ Oktest.scope do
 
       spec "[!v2zbx] caches variable urlpath into LRU cache if cache is enabled." do
         |class_mapping, default_patterns|
-        router = K8::ActionRouter.new(class_mapping, default_patterns, cache_size: 3)
+        router = K8::ActionRouter.new(class_mapping, default_patterns, urlpath_cache_size: 3)
         router.instance_exec(self) do |_|
           arr1 = find('/api/books/1')
           arr2 = find('/api/books/2')
@@ -1730,7 +1730,7 @@ Oktest.scope do
 
       spec "[!nczw6] LRU cache size doesn't growth over max cache size." do
         |class_mapping, default_patterns|
-        router = K8::ActionRouter.new(class_mapping, default_patterns, cache_size: 3)
+        router = K8::ActionRouter.new(class_mapping, default_patterns, urlpath_cache_size: 3)
         router.instance_exec(self) do |_|
           arr1 = find('/api/books/1')
           arr2 = find('/api/books/2')
@@ -1833,10 +1833,10 @@ Oktest.scope do
         end
       end
 
-      spec "[!9u978] cache_size keyword argument will be passed to router oubject." do
-        app = K8::RackApplication.new(cache_size: 100)
+      spec "[!9u978] urlpath_cache_size keyword argument will be passed to router oubject." do
+        app = K8::RackApplication.new(urlpath_cache_size: 100)
         app.find('/')
-        x = app.instance_variable_get('@router').instance_variable_get('@cache_size')
+        x = app.instance_variable_get('@router').instance_variable_get('@urlpath_cache_size')
         ok {x} == 100
       end
 

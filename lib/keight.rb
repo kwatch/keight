@@ -356,6 +356,10 @@ module K8
       return len ? len.to_i : len
     end
 
+    def referer          ; @env['HTTP_REFERER']         ; end
+    def user_agent       ; @env['HTTP_USER_AGENT']      ; end
+    def x_requested_with ; @env['HTTP_X_REQUESTED_WITH']; end
+
     def client_ip_addr
       #; [!e1uvg] returns 'X-Real-IP' header value if provided.
       addr = @env['HTTP_X_REAL_IP']          # nginx

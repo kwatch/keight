@@ -411,6 +411,24 @@ Oktest.scope do
     end
 
 
+    topic '#scheme' do
+
+      spec "[!jytwy] returns 'https' when env['HTTPS'] is 'on'." do
+        env = new_env("GET", "/", env: {'HTTPS'=>'on'})
+        ok {K8::Request.new(env).scheme} == 'https'
+      end
+
+      spec "[!zg8r2] returns env['rack.url_scheme'] ('http' or 'https')." do
+        env = new_env("GET", "/", env: {'HTTPS'=>'off'})
+        env['rack.url_scheme'] = 'http'
+        ok {K8::Request.new(env).scheme} == 'http'
+        env['rack.url_scheme'] = 'https'
+        ok {K8::Request.new(env).scheme} == 'https'
+      end
+
+    end
+
+
     topic '#params_query' do
 
       spec "[!6ezqw] parses QUERY_STRING and returns it as Hash object." do

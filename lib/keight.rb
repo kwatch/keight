@@ -390,6 +390,13 @@ module K8
       return addr
     end
 
+    def scheme
+      #; [!jytwy] returns 'https' when env['HTTPS'] is 'on'.
+      return 'https' if @env['HTTPS'] == 'on'
+      #; [!zg8r2] returns env['rack.url_scheme'] ('http' or 'https').
+      return @env['rack.url_scheme']
+    end
+
     def params_query
       #; [!6ezqw] parses QUERY_STRING and returns it as Hash object.
       #; [!o0ws7] unquotes both keys and values.

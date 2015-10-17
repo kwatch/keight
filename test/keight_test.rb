@@ -2021,6 +2021,248 @@ Oktest.scope do
   end
 
 
+  topic K8::BaseConfig do
+
+
+    topic '#initialize()' do
+
+      spec "[!vvd1n] copies key and values from class object." do
+        class C01 < K8::BaseConfig
+          add :haruhi  , 'C'   , "Suzumiya"
+          add :mikuru  , 'E'   , "Asahina"
+          add :yuki    , 'A'   , "Nagato"
+        end
+        c = C01.new
+        c.instance_exec(self) do |_|
+          _.ok {@haruhi} == 'C'
+          _.ok {@mikuru} == 'E'
+          _.ok {@yuki}   == 'A'
+        end
+      end
+
+      spec "[!6dilv] freezes self and class object if 'freeze:' is true." do
+        class C02 < K8::BaseConfig
+          add :haruhi  , 'C'   , "Suzumiya"
+          add :mikuru  , 'E'   , "Asahina"
+          add :yuki    , 'A'   , "Nagato"
+        end
+        ## when freeze: false
+        c = C02.new(freeze: false)
+        pr = proc { c.instance_variable_set('@yuki', 'B') }
+        ok {pr}.NOT.raise?(Exception)
+        pr = proc { C02.class_eval { put :yuki, 'B' } }
+        ok {pr}.NOT.raise?(Exception)
+        ## when freeze: true
+        c = C02.new
+        pr = proc { c.instance_variable_set('@yuki', 'B') }
+        ok {pr}.raise?(RuntimeError, "can't modify frozen C02")
+        pr = proc { C02.class_eval { put :yuki, 'B' } }
+        ok {pr}.raise?(RuntimeError, "can't modify frozen class")
+      end
+
+    end
+
+
+    topic '.has?()' do
+
+      spec "[!dv87n] returns true iff key is set." do
+        class C11 < K8::BaseConfig
+          @result1 = has? :foo
+          put :foo, 1
+          @result2 = has? :foo
+        end
+        ok {C11.instance_variable_get('@result1')} == false
+        ok {C11.instance_variable_get('@result2')} == true
+      end
+
+    end
+
+
+    topic '.put()' do
+
+      spec "[!h9b47] defines getter method." do
+        class C21 < K8::BaseConfig
+          put :hom, 123, "HomHom"
+        end
+        ok {C21.instance_methods}.include?(:hom)
+        ok {C21.new.hom} == 123
+      end
+
+      spec "[!ncwzt] stores key, value and description." do
+        class C22 < K8::BaseConfig
+          put :hom, 123, "HomHom"
+        end
+        ok {C22.instance_variable_get('@__all')} == {:hom=>[123, "HomHom"]}
+      end
+
+    end
+
+
+    topic '.add()' do
+
+      spec "[!envke] raises error when already added." do
+        class C31 < K8::BaseConfig
+          add :hom, 123, "HomHom"
+          @ex = nil
+          begin
+            add :hom, 456, "HomHom"
+          rescue => ex
+            @ex = ex
+          end
+        end
+        ex = C31.instance_variable_get('@ex')
+        ok {ex} != nil
+        ok {ex}.is_a?(K8::ConfigError)
+        ok {ex.message} == "add(:hom, 456): cannot add because already added; use set() or put() instead."
+      end
+
+      spec "[!6cmb4] adds new key, value and desc." do
+        class C32 < K8::BaseConfig
+          add :hom, 123, "HomHom"
+          add :hom2, 'HOM'
+        end
+        all = C32.instance_variable_get('@__all')
+        ok {all} == {:hom=>[123, "HomHom"], :hom2=>['HOM', nil]}
+      end
+
+    end
+
+
+    topic '.set()' do
+
+      spec "[!2yis0] raises error when not added yet." do
+        class C41 < K8::BaseConfig
+          @ex = nil
+          begin
+            set :hom, 123, "HomHom"
+          rescue => ex
+            @ex = ex
+          end
+        end
+        ex = C41.instance_variable_get('@ex')
+        ok {ex} != nil
+        ok {ex}.is_a?(K8::ConfigError)
+        ok {ex.message} == "add(:hom, 123): cannot set because not added yet; use add() or put() instead."
+      end
+
+      spec "[!3060g] sets key, value and desc." do
+        class C42 < K8::BaseConfig
+          add :hom, 123, "HomHom"
+        end
+        class C42
+          set :hom, 456
+        end
+        all = C42.instance_variable_get('@__all')
+        ok {all} == {:hom=>[456, "HomHom"]}
+      end
+
+    end
+
+
+    topic '.each()' do
+
+      spec "[!iu88i] yields with key, value and desc." do
+        class C51 < K8::BaseConfig
+          add :haruhi  , 'C'   , "Suzumiya"
+          add :mikuru  , 'E'   , "Asahina"
+          add :yuki    , 'A'   , "Nagato"
+        end
+        class C51
+          set :mikuru  , 'F'
+          add :sasaki  , 'B'
+        end
+        #
+        arr = []
+        C51.each {|*args| arr << args }
+        ok {arr} == [
+          [:haruhi, 'C', "Suzumiya"],
+          [:mikuru, 'F', "Asahina"],
+          [:yuki,   'A', "Nagato"],
+          [:sasaki, 'B', nil],
+        ]
+      end
+
+    end
+
+
+    topic '.get()' do
+
+      spec "[!zlhnp] returns value corresponding to key." do
+        class C61 < K8::BaseConfig
+          add :haruhi  , 'C'   , "Suzumiya"
+          add :mikuru  , 'E'   , "Asahina"
+          add :yuki    , 'A'   , "Nagato"
+        end
+        class C61
+          set :mikuru  , 'F'
+          add :sasaki  , 'B'
+        end
+        ok {C61.get(:haruhi)} == 'C'
+        ok {C61.get(:mikuru)} == 'F'
+        ok {C61.get(:yuki)}   == 'A'
+        ok {C61.get(:sasaki)} == 'B'
+      end
+
+      spec "[!o0k05] returns default value (=nil) when key is not added." do
+        class C62 < K8::BaseConfig
+          add :haruhi  , 'C'   , "Suzumiya"
+          add :mikuru  , 'E'   , "Asahina"
+          add :yuki    , 'A'   , "Nagato"
+        end
+        ok {C62.get(:sasaki)}     == nil
+        ok {C62.get(:sasaki, "")} == ""
+      end
+
+    end
+
+
+    topic '[](key)' do
+
+      spec "[!jn9l5] returns value corresponding to key." do
+        class C71 < K8::BaseConfig
+          add :haruhi  , 'C'   , "Suzumiya"
+          add :mikuru  , 'E'   , "Asahina"
+          add :yuki    , 'A'   , "Nagato"
+        end
+        class C71
+          set :mikuru  , 'F'
+          add :sasaki  , 'B'
+        end
+        c = C71.new
+        ok {c[:haruhi]} == 'C'
+        ok {c[:mikuru]} == 'F'
+        ok {c[:yuki]}   == 'A'
+        ok {c[:sasaki]} == 'B'
+      end
+
+    end
+
+
+    topic '#get_all()' do
+
+      spec "[!4ik3c] returns all keys and values which keys start with prefix as hash object." do
+        class C81 < K8::BaseConfig
+          add :session_cookie_name     , 'rack.sess'
+          add :session_cookie_expires  , 30*60*60
+          add :session_cookie_secure   , true
+          add :name    , 'Homhom'
+          add :secure  , false
+        end
+        #
+        c = C81.new
+        ok {c.get_all(:session_cookie_)} == {
+          :name     => 'rack.sess',
+          :expires  => 30*60*60,
+          :secure   => true,
+        }
+      end
+
+    end
+
+
+  end
+
+
   topic K8::Mock do
 
 

@@ -1297,58 +1297,84 @@ END
   end
 
 
-  class BaseConfig
+  class BaseConfig < Object
 
-    SECRET = Object.new
-    def SECRET.inspect; '<SECRET>'; end
-
-    def self.add(name, value, desc=nil)
-      ! instance_variable_defined?("@#{name}")  or
-        raise K8::ConfigError.new("add(#{name.inspect}, #{value.inspect}): cannot add because already defined; use set() or put() instead.")
-      self.put(name, value, desc)
-      self
+    def initialize(freeze: true)
+      #; [!vvd1n] copies key and values from class object.
+      self.class.each do |key, val, _|
+        instance_variable_set("@#{key}", val)
+      end
+      #; [!6dilv] freezes self and class object if 'freeze:' is true.
+      self.class.freeze if freeze
+      self.freeze       if freeze
     end
 
-    def self.set(name, value, desc=nil)
-      instance_variable_defined?("@#{name}")  or
-        raise K8::ConfigError.new("add(#{name.inspect}, #{value.inspect}): cannot set because not defined yet; use add() or put() instead.")
-      self.put(name, value, desc)
-      self
+    def self.has?(key)
+      #; [!dv87n] returns true iff key is set.
+      return (@__all ||= {}).key?(key)
     end
 
-    def self.put(name, value, desc=nil)
-      instance_variable_set("@#{name}", value)
-      #attr_reader name
-      (class << self; self; end).class_eval { attr_reader name }
-      d = (@__descriptions ||= {})
-      d[name] = desc if desc || d[name].nil?
-      self
+    def self.put(key, value, desc=nil)
+      #; [!h9b47] defines getter method.
+      attr_reader key
+      #; [!ncwzt] stores key, value and description.
+      d = (@__all ||= {})
+      desc ||= d[key].last if d[key]
+      d[key] = [value, desc]
+      nil
     end
 
-    def self.get(name)
-      return instance_variable_get("@#{name}")
+    def self.add(key, value, desc=nil)
+      #; [!envke] raises error when already added.
+      ! self.has?(key)  or
+        raise K8::ConfigError.new("add(#{key.inspect}, #{value.inspect}): cannot add because already added; use set() or put() instead.")
+      #; [!6cmb4] adds new key, value and desc.
+      self.put(key, value, desc)
     end
 
-    def self.get_all(prefix_key)
-      prefix = prefix_key.to_s
-      prefix = "@#{prefix}" unless prefix.start_with?('@')
+    def self.set(key, value, desc=nil)
+      #; [!2yis0] raises error when not added yet.
+      self.has?(key)  or
+        raise K8::ConfigError.new("add(#{key.inspect}, #{value.inspect}): cannot set because not added yet; use add() or put() instead.")
+      #; [!3060g] sets key, value and desc.
+      self.put(key, value, desc)
+    end
+
+    def self.each
+      #; [!iu88i] yields with key, value and desc.
+      (@__all || {}).each do |key, (value, desc)|
+        yield key, value, desc
+      end
+      nil
+    end
+
+    def self.get(key, default=nil)
+      #; [!zlhnp] returns value corresponding to key.
+      #; [!o0k05] returns default value (=nil) when key is not added.
+      tuple = (@__all || {})[key]
+      return tuple ? tuple.first : default
+    end
+
+    def [](key)
+      #; [!jn9l5] returns value corresponding to key.
+      return __send__(key)
+    end
+
+    def get_all(prefix_key)
+      #; [!4ik3c] returns all keys and values which keys start with prefix as hash object.
+      prefix = "@#{prefix_key}"
+      symbol_p = prefix_key.is_a?(Symbol)
+      range = prefix.length..-1
       d = {}
-      self.instance_variables.each do |name|
-        name = name.to_s
-        if name.start_with?(prefix)
-          val = self.instance_variable_get(name)
-          key = name[prefix.length..-1]
-          key = key.intern if prefix_key.is_a?(Symbol)
+      self.instance_variables.each do |ivar|
+        if ivar.to_s.start_with?(prefix)
+          val = self.instance_variable_get(ivar)
+          key = ivar[range].intern
+          key = key.intern if symbol_p
           d[key] = val
         end
       end
       return d
-    end
-
-    def self.each
-      (@__descriptions || {}).each do |key, desc|
-        yield key, get(key), desc
-      end
     end
 
   end

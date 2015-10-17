@@ -1093,6 +1093,10 @@ module K8
         #; [!p18w0] urlpath params are empty when matched to fixed urlpath pattern.
         param_names  = []
         param_values = []
+      #; [!gzy2w] fetches variable urlpath from LRU cache if LRU cache is enabled.
+      elsif (cache = @urlpath_cache) && (tuple = cache.delete(req_path))
+        cache[req_path] = tuple   # Hash in Ruby >=1.9 keeps keys' order!
+        action_class, action_methods, param_names, param_values = tuple
       else
         #; [!ps5jm] returns nil when not matched to any urlpath patterns.
         m = @rexp.match(req_path)      or return nil
@@ -1117,6 +1121,12 @@ module K8
                      pr1 ? pr1.call(values[1]) : values[1]]
             else  ; procs.zip(values).map {|pr, v| pr ? pr.call(v) : v }
             end    # ex: ["123"] -> [123]
+        #; [!v2zbx] caches variable urlpath into LRU cache if cache is enabled.
+        #; [!nczw6] LRU cache size doesn't growth over max cache size.
+        if cache
+          cache.shift() if cache.length > @cache_size - 1
+          cache[req_path] = [action_class, action_methods, param_names, param_values]
+        end
       end
       #; [!ndktw] returns action class, action methods, urlpath names and values.
       ## ex: [BooksAction, {:GET=>:do_show}, ["id"], [123]]

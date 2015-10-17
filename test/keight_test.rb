@@ -1700,6 +1700,48 @@ Oktest.scope do
         ok {router.find('/admin/authors')} == nil
       end
 
+      spec "[!gzy2w] fetches variable urlpath from LRU cache if LRU cache is enabled." do
+        |class_mapping, default_patterns|
+        router = K8::ActionRouter.new(class_mapping, default_patterns, cache_size: 3)
+        router.instance_exec(self) do |_|
+          arr1 = find('/api/books/1')
+          arr2 = find('/api/books/2')
+          arr3 = find('/api/books/3')
+          _.ok {@urlpath_cache.keys} == ['/api/books/1', '/api/books/2', '/api/books/3']
+          #
+          _.ok {find('/api/books/2')} == arr2
+          _.ok {@urlpath_cache.keys} == ['/api/books/1', '/api/books/3', '/api/books/2']
+          _.ok {find('/api/books/1')} == arr1
+          _.ok {@urlpath_cache.keys} == ['/api/books/3', '/api/books/2', '/api/books/1']
+        end
+      end
+
+      spec "[!v2zbx] caches variable urlpath into LRU cache if cache is enabled." do
+        |class_mapping, default_patterns|
+        router = K8::ActionRouter.new(class_mapping, default_patterns, cache_size: 3)
+        router.instance_exec(self) do |_|
+          arr1 = find('/api/books/1')
+          arr2 = find('/api/books/2')
+          _.ok {@urlpath_cache.keys} == ['/api/books/1', '/api/books/2']
+          _.ok {find('/api/books/1')} == arr1
+          _.ok {find('/api/books/2')} == arr2
+        end
+      end
+
+      spec "[!nczw6] LRU cache size doesn't growth over max cache size." do
+        |class_mapping, default_patterns|
+        router = K8::ActionRouter.new(class_mapping, default_patterns, cache_size: 3)
+        router.instance_exec(self) do |_|
+          arr1 = find('/api/books/1')
+          arr2 = find('/api/books/2')
+          arr3 = find('/api/books/3')
+          arr3 = find('/api/books/4')
+          arr3 = find('/api/books/5')
+          _.ok {@urlpath_cache.length} == 3
+          _.ok {@urlpath_cache.keys} == ['/api/books/3', '/api/books/4', '/api/books/5']
+        end
+      end
+
     end
 
 

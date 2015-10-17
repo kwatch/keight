@@ -1312,9 +1312,11 @@ END
 
   class BaseConfig < Object
 
+    SECRET = SecretValue.new
+
     def initialize(freeze: true)
       #; [!vvd1n] copies key and values from class object.
-      self.class.each do |key, val, _|
+      self.class.each do |key, val, _, _|
         instance_variable_set("@#{key}", val)
       end
       #; [!6dilv] freezes self and class object if 'freeze:' is true.
@@ -1330,10 +1332,15 @@ END
     def self.put(key, value, desc=nil)
       #; [!h9b47] defines getter method.
       attr_reader key
-      #; [!ncwzt] stores key, value and description.
       d = (@__all ||= {})
-      desc ||= d[key].last if d[key]
-      d[key] = [value, desc]
+      if d[key]
+        desc ||= d[key][1]
+        secret = d[key][2]
+      else
+        secret = value == SECRET
+      end
+      #; [!ncwzt] stores key with value, description and secret flag.
+      d[key] = [value, desc, secret]
       nil
     end
 
@@ -1354,9 +1361,9 @@ END
     end
 
     def self.each
-      #; [!iu88i] yields with key, value and desc.
-      (@__all || {}).each do |key, (value, desc)|
-        yield key, value, desc
+      #; [!iu88i] yields with key, value, desc and secret flag.
+      (@__all || {}).each do |key, (value, desc, secret)|
+        yield key, value, desc, secret
       end
       nil
     end

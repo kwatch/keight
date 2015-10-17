@@ -2112,11 +2112,15 @@ Oktest.scope do
         ok {C21.new.hom} == 123
       end
 
-      spec "[!ncwzt] stores key, value and description." do
+      spec "[!ncwzt] stores key with value, description and secret flag." do
         class C22 < K8::BaseConfig
-          put :hom, 123, "HomHom"
+          put :hom,  123,    "HomHom"
+          put :hom2, SECRET, "Secret HomHom"
         end
-        ok {C22.instance_variable_get('@__all')} == {:hom=>[123, "HomHom"]}
+        ok {C22.instance_variable_get('@__all')} == {
+          :hom  => [123, "HomHom", false],
+          :hom2 => [K8::BaseConfig::SECRET, "Secret HomHom", true],
+        }
       end
 
     end
@@ -2146,7 +2150,7 @@ Oktest.scope do
           add :hom2, 'HOM'
         end
         all = C32.instance_variable_get('@__all')
-        ok {all} == {:hom=>[123, "HomHom"], :hom2=>['HOM', nil]}
+        ok {all} == {:hom=>[123, "HomHom", false], :hom2=>['HOM', nil, false]}
       end
 
     end
@@ -2177,7 +2181,7 @@ Oktest.scope do
           set :hom, 456
         end
         all = C42.instance_variable_get('@__all')
-        ok {all} == {:hom=>[456, "HomHom"]}
+        ok {all} == {:hom=>[456, "HomHom", false]}
       end
 
     end
@@ -2185,10 +2189,10 @@ Oktest.scope do
 
     topic '.each()' do
 
-      spec "[!iu88i] yields with key, value and desc." do
+      spec "[!iu88i] yields with key, value, desc and secret flag." do
         class C51 < K8::BaseConfig
           add :haruhi  , 'C'   , "Suzumiya"
-          add :mikuru  , 'E'   , "Asahina"
+          add :mikuru  , SECRET, "Asahina"
           add :yuki    , 'A'   , "Nagato"
         end
         class C51
@@ -2199,10 +2203,10 @@ Oktest.scope do
         arr = []
         C51.each {|*args| arr << args }
         ok {arr} == [
-          [:haruhi, 'C', "Suzumiya"],
-          [:mikuru, 'F', "Asahina"],
-          [:yuki,   'A', "Nagato"],
-          [:sasaki, 'B', nil],
+          [:haruhi, 'C', "Suzumiya", false],
+          [:mikuru, 'F', "Asahina", true],
+          [:yuki,   'A', "Nagato", false],
+          [:sasaki, 'B', nil, false],
         ]
       end
 

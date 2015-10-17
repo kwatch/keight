@@ -1324,15 +1324,23 @@ END
       self.freeze       if freeze
     end
 
+    private
+
+    def self.__all
+      return @__all ||= {}
+    end
+
+    public
+
     def self.has?(key)
       #; [!dv87n] returns true iff key is set.
-      return (@__all ||= {}).key?(key)
+      return __all().key?(key)
     end
 
     def self.put(key, value, desc=nil)
       #; [!h9b47] defines getter method.
       attr_reader key
-      d = (@__all ||= {})
+      d = __all()
       if d[key]
         desc ||= d[key][1]
         secret = d[key][2]
@@ -1362,7 +1370,7 @@ END
 
     def self.each
       #; [!iu88i] yields with key, value, desc and secret flag.
-      (@__all || {}).each do |key, (value, desc, secret)|
+      __all().each do |key, (value, desc, secret)|
         yield key, value, desc, secret
       end
       nil
@@ -1371,7 +1379,7 @@ END
     def self.get(key, default=nil)
       #; [!zlhnp] returns value corresponding to key.
       #; [!o0k05] returns default value (=nil) when key is not added.
-      tuple = (@__all || {})[key]
+      tuple = __all()[key]
       return tuple ? tuple.first : default
     end
 

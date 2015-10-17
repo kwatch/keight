@@ -397,6 +397,19 @@ module K8
       return @env['rack.url_scheme']
     end
 
+    def rack_version      ; @env['rack.version']      ; end  # ex: [1, 3]
+    def rack_url_scheme   ; @env['rack.url_scheme']   ; end  # ex: 'http' or 'https'
+    def rack_input        ; @env['rack.input']        ; end  # ex: $stdout
+    def rack_errors       ; @env['rack.errors']       ; end  # ex: $stderr
+    def rack_multithread  ; @env['rack.multithread']  ; end  # ex: true
+    def rack_multiprocess ; @env['rack.multiprocess'] ; end  # ex: true
+    def rack_run_once     ; @env['rack.run_once']     ; end  # ex: false
+    def rack_session      ; @env['rack.session']      ; end  # ex: {}
+    def rack_logger       ; @env['rack.logger']       ; end  # ex: Logger.new
+    def rack_hijack       ; @env['rack.hijack']       ; end  # ex: callable object
+    def rack_hijack?      ; @env['rack.hijack?']      ; end  # ex: true or false
+    def rack_hijack_io    ; @env['rack.hijack_io']    ; end  # ex: socket object
+
     def params_query
       #; [!6ezqw] parses QUERY_STRING and returns it as Hash object.
       #; [!o0ws7] unquotes both keys and values.

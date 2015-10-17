@@ -1297,6 +1297,19 @@ END
   end
 
 
+  class SecretValue < Object
+
+    def to_s
+      #; [!hlz4y] just returns '<SECRET>'.
+      return '<SECRET>'
+    end
+
+    #; [!j27ji] 'inspect()' is alias of 'to_s()'.
+    alias inspect to_s
+
+  end
+
+
   class BaseConfig < Object
 
     def initialize(freeze: true)

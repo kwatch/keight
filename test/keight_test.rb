@@ -2021,6 +2021,30 @@ Oktest.scope do
   end
 
 
+  topic K8::SecretValue do
+
+
+    topic '#to_s()' do
+
+      spec "[!hlz4y] just returns '<SECRET>'." do
+        ok {K8::SecretValue.new.to_s} == '<SECRET>'
+      end
+
+    end
+
+
+    topic '#inspect()' do
+
+      spec "[!j27ji] 'inspect()' is alias of 'to_s()'." do
+        ok {K8::SecretValue.new.inspect} == '<SECRET>'
+      end
+
+    end
+
+
+  end
+
+
   topic K8::BaseConfig do
 
 

@@ -1477,6 +1477,14 @@ Oktest.scope do
         ok {router.instance_variable_get('@dict')} != nil
       end
 
+      spec "[!wb9l8] enables urlpath cache when cache_size > 0." do
+        args = [K8::ActionClassMapping.new, K8::DefaultPatterns.new]
+        router = K8::ActionRouter.new(*args, cache_size: 100)
+        ok {router.instance_variable_get('@urlpath_cache')} == {}
+        router = K8::ActionRouter.new(*args, cache_size: 0)
+        ok {router.instance_variable_get('@urlpath_cache')} == nil
+      end
+
     end
 
 

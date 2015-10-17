@@ -932,8 +932,11 @@ module K8
 
   class ActionRouter
 
-    def initialize(action_class_mapping, default_patterns=nil)
+    def initialize(action_class_mapping, default_patterns=nil, cache_size: 0)
       @default_patterns = default_patterns || K8::DefaultPatterns.new
+      @cache_size = cache_size
+      #; [!wb9l8] enables urlpath cache when cache_size > 0.
+      @urlpath_cache = cache_size > 0 ? {} : nil   # LRU cache of variable urlpath
       #; [!dnu4q] calls '#_construct()'.
       _construct(action_class_mapping)
     end

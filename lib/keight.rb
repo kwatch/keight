@@ -932,8 +932,11 @@ module K8
 
   class ActionRouter
 
-    def initialize(action_class_mapping, default_patterns=nil)
+    def initialize(action_class_mapping, default_patterns=nil, urlpath_cache_size: 0)
       @default_patterns = default_patterns || K8::DefaultPatterns.new
+      @urlpath_cache_size = urlpath_cache_size
+      #; [!wb9l8] enables urlpath cache when urlpath_cache_size > 0.
+      @urlpath_cache = urlpath_cache_size > 0 ? {} : nil   # LRU cache of variable urlpath
       #; [!dnu4q] calls '#_construct()'.
       _construct(action_class_mapping)
     end
@@ -1090,6 +1093,10 @@ module K8
         #; [!p18w0] urlpath params are empty when matched to fixed urlpath pattern.
         param_names  = []
         param_values = []
+      #; [!gzy2w] fetches variable urlpath from LRU cache if LRU cache is enabled.
+      elsif (cache = @urlpath_cache) && (tuple = cache.delete(req_path))
+        cache[req_path] = tuple   # Hash in Ruby >=1.9 keeps keys' order!
+        action_class, action_methods, param_names, param_values = tuple
       else
         #; [!ps5jm] returns nil when not matched to any urlpath patterns.
         m = @rexp.match(req_path)      or return nil
@@ -1114,6 +1121,12 @@ module K8
                      pr1 ? pr1.call(values[1]) : values[1]]
             else  ; procs.zip(values).map {|pr, v| pr ? pr.call(v) : v }
             end    # ex: ["123"] -> [123]
+        #; [!v2zbx] caches variable urlpath into LRU cache if cache is enabled.
+        #; [!nczw6] LRU cache size doesn't growth over max cache size.
+        if cache
+          cache.shift() if cache.length > @urlpath_cache_size - 1
+          cache[req_path] = [action_class, action_methods, param_names, param_values]
+        end
       end
       #; [!ndktw] returns action class, action methods, urlpath names and values.
       ## ex: [BooksAction, {:GET=>:do_show}, ["id"], [123]]
@@ -1125,9 +1138,10 @@ module K8
 
   class RackApplication
 
-    def initialize
+    def initialize(urlpath_cache_size: 0)
       @action_class_mapping = ActionClassMapping.new
       @router = nil
+      @urlpath_cache_size = urlpath_cache_size
       @default_patterns = DefaultPatterns.new
       init_default_param_patterns(@default_patterns)
     end
@@ -1169,7 +1183,8 @@ module K8
 
     def find(req_path)
       #; [!vnxoo] creates router object from action class mapping if router is nil.
-      @router ||= ActionRouter.new(@action_class_mapping, @default_patterns)
+      #; [!9u978] urlpath_cache_size keyword argument will be passed to router oubject.
+      @router ||= ActionRouter.new(@action_class_mapping, @default_patterns, urlpath_cache_size: @urlpath_cache_size)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
       return @router.find(req_path)
     end

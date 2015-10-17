@@ -296,6 +296,14 @@ Oktest.scope do
         ok {req1.path} == "/123"
       end
 
+      spec "[!ae8ws] uses SCRIPT_NAME as urlpath when PATH_INFO is not provided." do
+        env = new_env("GET", "/123", env: {'SCRIPT_NAME'=>'/index.cgi'})
+        env['PATH_INFO'] = ''
+        ok {K8::Request.new(env).path} == "/index.cgi"
+        env.delete('PATH_INFO')
+        ok {K8::Request.new(env).path} == "/index.cgi"
+      end
+
     end
 
 

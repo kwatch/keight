@@ -318,7 +318,9 @@ module K8
       @method = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
         raise HTTPException.new(400, "#{env['REQUEST_METHOD'].inspect}: unknown request method.")
       #; [!twgmi] sets @path.
-      @path = env['PATH_INFO']
+      @path = (x = env['PATH_INFO'])
+      #; [!ae8ws] uses SCRIPT_NAME as urlpath when PATH_INFO is not provided.
+      @path = env['SCRIPT_NAME'] if x.nil? || x.empty?
     end
 
     attr_accessor :env, :method, :path

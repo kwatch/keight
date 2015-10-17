@@ -1297,6 +1297,67 @@ END
   end
 
 
+  class BaseConfig
+
+    SECRET = Object.new
+    def SECRET.inspect; '<SECRET>'; end
+
+    def self.add(name, value, desc=nil)
+      ! instance_variable_defined?("@#{name}")  or
+        raise K8::ConfigError.new("add(#{name.inspect}, #{value.inspect}): cannot add because already defined; use set() or put() instead.")
+      self.put(name, value, desc)
+      self
+    end
+
+    def self.set(name, value, desc=nil)
+      instance_variable_defined?("@#{name}")  or
+        raise K8::ConfigError.new("add(#{name.inspect}, #{value.inspect}): cannot set because not defined yet; use add() or put() instead.")
+      self.put(name, value, desc)
+      self
+    end
+
+    def self.put(name, value, desc=nil)
+      instance_variable_set("@#{name}", value)
+      #attr_reader name
+      (class << self; self; end).class_eval { attr_reader name }
+      d = (@__descriptions ||= {})
+      d[name] = desc if desc || d[name].nil?
+      self
+    end
+
+    def self.get(name)
+      return instance_variable_get("@#{name}")
+    end
+
+    def self.get_all(prefix_key)
+      prefix = prefix_key.to_s
+      prefix = "@#{prefix}" unless prefix.start_with?('@')
+      d = {}
+      self.instance_variables.each do |name|
+        name = name.to_s
+        if name.start_with?(prefix)
+          val = self.instance_variable_get(name)
+          key = name[prefix.length..-1]
+          key = key.intern if prefix_key.is_a?(Symbol)
+          d[key] = val
+        end
+      end
+      return d
+    end
+
+    def self.each
+      (@__descriptions || {}).each do |key, desc|
+        yield key, get(key), desc
+      end
+    end
+
+  end
+
+
+  class ConfigError < StandardError
+  end
+
+
   module Mock
 
 

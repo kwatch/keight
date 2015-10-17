@@ -1341,6 +1341,7 @@ END
       #; [!h9b47] defines getter method.
       attr_reader key
       d = __all()
+      #; [!mun1v] keeps secret flag.
       if d[key]
         desc ||= d[key][1]
         secret = d[key][2]

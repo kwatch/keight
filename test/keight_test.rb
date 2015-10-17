@@ -2123,6 +2123,22 @@ Oktest.scope do
         }
       end
 
+      spec "[!mun1v] keeps secret flag." do
+        class C23 < K8::BaseConfig
+          put :haruhi  , 'C'   , "Suzumiya"
+          put :mikuru  , SECRET, "Asahina"
+          put :yuki    , SECRET, "Nagato"
+        end
+        class C23
+          put :mikuru  , 'F'
+        end
+        ok {C23.instance_variable_get('@__all')} == {
+          :haruhi => ['C', "Suzumiya", false],
+          :mikuru => ['F', "Asahina", true],
+          :yuki   => [K8::BaseConfig::SECRET, "Nagato", true],
+        }
+      end
+
     end
 
 

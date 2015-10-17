@@ -323,7 +323,7 @@ module K8
       @path = env['SCRIPT_NAME'] if x.nil? || x.empty?
     end
 
-    attr_accessor :env, :method, :path
+    attr_reader :env, :method, :path
 
     def header(name)
       #; [!1z7wj] returns http header value from environment.

@@ -1443,15 +1443,11 @@ Oktest.scope do
 
   topic K8::ActionRouter do
 
-    fixture :proc_obj1 do
-      proc {|x| x.to_i }
+    fixture :router do |class_mapping, default_patterns|
+      K8::ActionRouter.new(class_mapping, default_patterns)
     end
 
-    fixture :proc_obj2 do
-      proc {|x| x.to_i }
-    end
-
-    fixture :router do |proc_obj1, proc_obj2|
+    fixture :class_mapping do
       mapping = K8::ActionClassMapping.new
       mapping.mount '/api', [
         ['/books', BooksAction],
@@ -1460,11 +1456,22 @@ Oktest.scope do
       mapping.mount '/admin', [
         ['/books', AdminBooksAction],
       ]
+      mapping
+    end
+
+    fixture :default_patterns do |proc_obj1, proc_obj2|
       default_patterns = K8::DefaultPatterns.new
       default_patterns.register('id',    '\d+', &proc_obj1)
       default_patterns.register(/_id\z/, '\d+', &proc_obj2)
-      router = K8::ActionRouter.new(mapping, default_patterns)
-      router
+      default_patterns
+    end
+
+    fixture :proc_obj1 do
+      proc {|x| x.to_i }
+    end
+
+    fixture :proc_obj2 do
+      proc {|x| x.to_i }
     end
 
 
@@ -1478,8 +1485,9 @@ Oktest.scope do
       end
 
       spec "[!wb9l8] enables urlpath cache when cache_size > 0." do
-        args = [K8::ActionClassMapping.new, K8::DefaultPatterns.new]
-        router = K8::ActionRouter.new(*args, cache_size: 100)
+        |class_mapping, default_patterns|
+        args = [class_mapping, default_patterns]
+        router = K8::ActionRouter.new(*args, cache_size: 1)
         ok {router.instance_variable_get('@urlpath_cache')} == {}
         router = K8::ActionRouter.new(*args, cache_size: 0)
         ok {router.instance_variable_get('@urlpath_cache')} == nil

@@ -48,23 +48,33 @@ class K8::Main
   end
 
 
+  ###
+
+  def initialize(script_name=nil)
+    @script_name = script_name || File.basename($0)   # ex: 'k8rb'
+  end
+
+  attr_reader :script_name
+
+
   ### actions
 
   @action.(:help, "show help")
   def do_help(action_name=nil)
+    script = self.script_name
     sb = []
     if action_name.nil?
       sb <<   "Usage:"
-      sb <<   "  k8rb ACTION [..OPTIONS..]"
+      sb <<   "  #{script} ACTION [..OPTIONS..]"
       sb <<   ""
       sb <<   "Actions:"
       self.class.each_action do |action_name, desc, options, _|
         next unless desc
         help = desc.lines.first.chomp()
-        sb << "  k8rb %-15s # #{help}" % [action_name, help]
+        sb << "  #{script} %-15s # #{help}" % [action_name, help]
       end
       sb <<   ""
-      sb <<   "(Tips: try 'k8rb help ACTION' for details of each action.)"
+      sb <<   "(Tips: try '#{script} help ACTION' for details of each action.)"
     else
       tuple = self.class.find_action(action_name)  or
         raise OptionError.new("help #{action_name}: no such action.")
@@ -81,13 +91,13 @@ class K8::Main
       }.compact()
       pnames.unshift('') unless pnames.empty?
       argstr = pnames.join(' ')
-      sb <<   "k8rb #{action_name}  - #{desc}"
+      sb <<   "#{script} #{action_name}  - #{desc}"
       sb <<   ""
       sb <<   "Usage:"
       if options.empty?
-        sb << "  k8rb #{action_name}#{argstr}"
+        sb << "  #{script} #{action_name}#{argstr}"
       else
-        sb << "  k8rb #{action_name} [options]#{argstr}"
+        sb << "  #{script} #{action_name} [options]#{argstr}"
         sb << ""
         sb << "Options:"
         options.each do |optdef_str, optdesc|
@@ -174,7 +184,7 @@ class K8::Main
   def run(*cmd_args)
     action_name = cmd_args.shift() || 'help'
     tuple = self.class.find_action(action_name)  or
-      raise OptionError.new("ERROR: k8rb #{action_name}: unknown action.")
+      raise OptionError.new("ERROR: #{self.script_name} #{action_name}: unknown action.")
     action_name, desc, options, method_name = tuple
     optdefs = options.collect {|arr| OptionDefinition.new(*arr) }
     optparser = OptionParser.new(optdefs)
@@ -218,8 +228,9 @@ class K8::Main
 
   def self.main
     status = 0
+    obj = self.new()
     begin
-      output = self.new().run(*ARGV)
+      output = obj.run(*ARGV)
       case output
       when nil     ;
       when String  ; puts output
@@ -227,7 +238,7 @@ class K8::Main
       else         ; raise "** output=#{output.inspect}"
       end
     rescue OptionError => ex
-      $stderr.puts "ERROR (k8rb): #{ex}"
+      $stderr.puts "ERROR (#{obj.script_name}): #{ex}"
       output = nil
       status = 1
     end

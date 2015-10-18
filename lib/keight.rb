@@ -327,9 +327,8 @@ module K8
     def guess_content_type(filename)
       #; [!xw0js] returns content type guessed from filename.
       #; [!dku5c] returns 'application/octet-stream' when failed to guess content type.
-      require 'mime/types' unless defined?(MIME::Types)
-      mtype = MIME::Types.type_for(filename).first
-      return mtype ? mtype.content_type : 'application/octet-stream'
+      ext = File.extname(filename)
+      return MIME_TYPES[ext] || 'application/octet-stream'
     end
 
   end

@@ -195,7 +195,7 @@ Oktest.scope do
         ok {K8::Util.guess_content_type("foo.html")} == "text/html"
         ok {K8::Util.guess_content_type("foo.jpg")}  == "image/jpeg"
         ok {K8::Util.guess_content_type("foo.json")} == "application/json"
-        ok {K8::Util.guess_content_type("foo.xls")}  == "application/excel"
+        ok {K8::Util.guess_content_type("foo.xls")}  == "application/vnd.ms-excel"
       end
 
       spec "[!dku5c] returns 'application/octet-stream' when failed to guess content type." do

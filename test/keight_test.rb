@@ -1321,6 +1321,34 @@ Oktest.scope do
 
     topic '#mount()' do
 
+      fixture :testapi_books do
+        Dir.mkdir 'testapi' unless File.exist? 'testapi'
+        at_end do
+          Dir.glob('testapi/*').each {|f| File.unlink f }
+          Dir.rmdir 'testapi'
+        end
+        File.open('testapi/books.rb', 'w') do |f|
+          f << <<-'END'
+          require 'keight'
+          #
+          class MyBooksAPI < K8::Action
+            mapping '', :GET=>:do_index
+            def do_index; ''; end
+            class MyError < Exception
+            end
+          end
+          #
+          module Admin
+            class Admin::BooksAPI < K8::Action
+              mapping '', :GET=>:do_index
+              def do_index; ''; end
+            end
+          end
+          END
+        end
+        './testapi/books:BooksAction'
+      end
+
       spec "[!flb11] mounts action class to urlpath." do
         |mapping|
         mapping.mount '/books', BooksAction
@@ -1344,6 +1372,54 @@ Oktest.scope do
               ['/books', BooksAction],
             ]],
         ]
+      end
+
+      case_when "[!ne804] when target class name is string..." do
+
+        spec "[!9brqr] raises error when string format is invalid." do
+          |mapping, testapi_books|
+          pr = proc { mapping.mount '/books', 'books.MyBooksAPI' }
+          ok {pr}.raise?(ArgumentError, "mount('books.MyBooksAPI'): expected 'file/path:ClassName'.")
+        end
+
+        spec "[!jpg56] loads file." do
+          |mapping, testapi_books|
+          pr = proc { mapping.mount '/books', './testapi/books:MyBooksAPI' }
+          ok {pr}.NOT.raise?(Exception)
+          ok {MyBooksAPI}.is_a?(Class)
+        end
+
+        spec "[!vaazw] raises error when failed to load file." do
+          |mapping, testapi_books|
+          pr = proc { mapping.mount '/books', './testapi/books999:MyBooksAPI' }
+          ok {pr}.raise?(ArgumentError, "mount('./testapi/books999:MyBooksAPI'): failed to require './testapi/books999'.")
+        end
+
+        spec "[!au27n] finds target class." do
+          |mapping, testapi_books|
+          pr = proc { mapping.mount '/books', './testapi/books:MyBooksAPI' }
+          ok {pr}.NOT.raise?(Exception)
+          ok {MyBooksAPI}.is_a?(Class)
+          ok {MyBooksAPI} < K8::Action
+          #
+          pr = proc { mapping.mount '/books', './testapi/books:Admin::BooksAPI' }
+          ok {pr}.NOT.raise?(Exception)
+          ok {Admin::BooksAPI}.is_a?(Class)
+          ok {Admin::BooksAPI} < K8::Action
+        end
+
+        spec "[!k9bpm] raises error when target class not found." do
+          |mapping, testapi_books|
+          pr = proc { mapping.mount '/books', './testapi/books:MyBooksAPI999' }
+          ok {pr}.raise?(ArgumentError, "mount('./testapi/books:MyBooksAPI999'): no such action class.")
+        end
+
+        spec "[!t6key] raises error when target class is not an action class." do
+          |mapping, testapi_books|
+          pr = proc { mapping.mount '/books', './testapi/books:MyBooksAPI::MyError' }
+          ok {pr}.raise?(ArgumentError, "mount('./testapi/books:MyBooksAPI::MyError'): not an action class.")
+        end
+
       end
 
       spec "[!lvxyx] raises error when not an action class." do

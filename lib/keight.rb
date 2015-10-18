@@ -885,27 +885,7 @@ module K8
       #; [!ne804] when target class name is string...
       elsif action_class.is_a?(String)
         str = action_class
-        #; [!9brqr] raises error when string format is invalid.
-        filepath, classname = str.split(/:/, 2)
-        classname  or
-          raise ArgumentError.new("mount('#{str}'): expected 'file/path:ClassName'.")
-        #; [!jpg56] loads file.
-        #; [!vaazw] raises error when failed to load file.
-        begin
-          require filepath
-        rescue LoadError
-          raise ArgumentError.new("mount('#{str}'): failed to require '#{filepath}'.")
-        end
-        #; [!au27n] finds target class.
-        #; [!k9bpm] raises error when target class not found.
-        begin
-          action_class = classname.split(/::/).inject(Object) {|c, x| c.const_get(x) }
-        rescue NameError
-          raise ArgumentError.new("mount('#{str}'): no such action class.")
-        end
-        #; [!t6key] raises error when target class is not an action class.
-        action_class.is_a?(Class) && action_class < BaseAction  or
-          raise ArgumentError.new("mount('#{str}'): not an action class.")
+        action_class = _load_action_class(str, "mount('#{str}')")
       #; [!lvxyx] raises error when not an action class.
       else
         action_class.is_a?(Class) && action_class < BaseAction  or
@@ -915,6 +895,32 @@ module K8
       mappings << [urlpath_pattern, action_class]
     end
     private :_mount
+
+    def _load_action_class(str, error)
+      #; [!9brqr] raises error when string format is invalid.
+      filepath, classname = str.split(/:/, 2)
+      classname  or
+        raise ArgumentError.new("#{error}: expected 'file/path:ClassName'.")
+      #; [!jpg56] loads file.
+      #; [!vaazw] raises error when failed to load file.
+      begin
+        require filepath
+      rescue LoadError
+        raise ArgumentError.new("#{error}: failed to require file.")
+      end
+      #; [!au27n] finds target class.
+      #; [!k9bpm] raises error when target class not found.
+      begin
+        action_class = classname.split(/::/).inject(Object) {|c, x| c.const_get(x) }
+      rescue NameError
+        raise ArgumentError.new("#{error}: no such action class.")
+      end
+      #; [!t6key] raises error when target class is not an action class.
+      action_class.is_a?(Class) && action_class < BaseAction  or
+        raise ArgumentError.new("#{error}: not an action class.")
+      return action_class
+    end
+    private :_load_action_class
 
     def traverse(&block)
       _traverse(@mappings, "", &block)

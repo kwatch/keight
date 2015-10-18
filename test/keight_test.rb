@@ -1392,7 +1392,7 @@ Oktest.scope do
         spec "[!vaazw] raises error when failed to load file." do
           |mapping, testapi_books|
           pr = proc { mapping.mount '/books', './testapi/books999:MyBooksAPI' }
-          ok {pr}.raise?(ArgumentError, "mount('./testapi/books999:MyBooksAPI'): failed to require './testapi/books999'.")
+          ok {pr}.raise?(ArgumentError, "mount('./testapi/books999:MyBooksAPI'): failed to require file.")
         end
 
         spec "[!au27n] finds target class." do

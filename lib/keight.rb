@@ -1362,9 +1362,13 @@ module K8
     protected
 
     def handle_request(req, resp)
-      #; [!l6kmc] uses 'GET' method to find action when request method is 'HEAD'.
       req_meth = HTTP_REQUEST_METHODS[req.env['REQUEST_METHOD']]
-      req_meth_ = req_meth == :HEAD ? :GET : req_meth
+      #; [!l6kmc] uses 'GET' method to find action when request method is 'HEAD'.
+      if req_meth == :HEAD
+        req_meth_ = :GET
+      else
+        req_meth_ = req_meth
+      end
       begin
         #; [!rz13i] returns HTTP 404 when urlpath not found.
         tuple = find(req.path)  or

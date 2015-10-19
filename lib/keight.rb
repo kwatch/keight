@@ -1265,6 +1265,48 @@ module K8
   end
 
 
+  class ActionRouter
+
+    def initialize(urlpath_cache_size: 0)
+      @mapping = ActionClassMapping.new
+      @default_patterns = DefaultPatterns.new
+      @finder  = nil
+      #; [!l1elt] saves finder options.
+      @finder_opts = {:urlpath_cache_size=>urlpath_cache_size}
+    end
+
+    attr_reader :default_patterns
+
+    def register(urlpath_param_name, default_pattern='[^/]*?', &converter)
+      #; [!boq80] registers urlpath param pattern and converter.
+      @default_patterns.register(urlpath_param_name, default_pattern, &converter)
+      self
+    end
+
+    def mount(urlpath_pattern, action_class)
+      #; [!uc996] mouts action class to urlpath.
+      @mapping.mount(urlpath_pattern, action_class)
+      #; [!trs6w] removes finder object.
+      @finder = nil
+      self
+    end
+
+    def each_mapping(&block)
+      #; [!2kq9h] yields with full urlpath pattern, action class and action methods.
+      @mapping.each_mapping(&block)
+    end
+
+    def find(req_path)
+      #; [!zsuzg] creates finder object automatically if necessary.
+      #; [!9u978] urlpath_cache_size keyword argument will be passed to router oubject.
+      @finder ||= ActionFinder.new(@mapping, @default_patterns, @finder_opts)
+      #; [!m9klu] returns action class, action methods, urlpath param names and values.
+      return @finder.find(req_path)
+    end
+
+  end
+
+
   class RackApplication
 
     def initialize(urlpath_cache_size: 0)

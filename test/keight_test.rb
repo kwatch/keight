@@ -85,6 +85,15 @@ Oktest.scope do
   topic K8::Util do
 
 
+    topic '.escape_html()' do
+
+      spec "[!90jx8] escapes '& < > \" \'' into '&amp; &lt; &gt; &quot; &#39;'." do
+        ok {K8::Util.escape_html('& < > " \'')} == '&amp; &lt; &gt; &quot; &#39;'
+      end
+
+    end
+
+
     topic '.percent_encode()' do
 
       spec "[!a96jo] encodes string into percent encoding format." do

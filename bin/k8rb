@@ -1,0 +1,610 @@
+#!/usr/bin/env ruby
+# -*- coding: utf-8 -*-
+
+###
+### $Release: 0.0.0 $
+### $Copyright: copyright(c) 2014-2015 kuwata-lab.com all rights reserved $
+### $License: MIT License $
+###
+
+
+require 'digest/sha1'
+
+require 'keight'
+
+
+class K8::Main
+
+  @__current = nil
+  @__actions = []
+
+  @action = proc do |action_name, desc|
+    options = []
+    method_name = nil
+    tuple = [action_name, desc, options, method_name]
+    @__current = tuple
+    @__actions << tuple
+  end
+
+  @option = proc do |optdef_str, desc|
+    tuple = @__current  or
+      raise "@option.() is called without @action.()"
+    tuple[2] << [optdef_str, desc]
+  end
+
+  def self.method_added(method_name)
+    tuple = @__current  or return
+    tuple[3] = method_name
+    @__current = nil
+  end
+
+  def self.find_action(name)
+    name = name.to_s
+    return @__actions.find {|tuple| tuple[0].to_s == name }
+  end
+
+  def self.each_action(&block)
+    @__actions.each(&block)
+  end
+
+
+  ###
+
+  def initialize(script_name=nil)
+    @script_name = script_name || File.basename($0)   # ex: 'k8rb'
+  end
+
+  attr_reader :script_name
+
+
+  ### actions
+
+  @action.(:help, "show help")
+  def do_help(action_name=nil)
+    script = self.script_name
+    sb = []
+    if action_name.nil?
+      sb <<   "Usage:"
+      sb <<   "  #{script} ACTION [..OPTIONS..]"
+      sb <<   ""
+      sb <<   "Actions:"
+      self.class.each_action do |action_name, desc, options, _|
+        next unless desc
+        help = desc.lines.first.chomp()
+        sb << "  #{script} %-15s # #{help}" % [action_name, help]
+      end
+      sb <<   ""
+      sb <<   "(Tips: try '#{script} help ACTION' for details of each action.)"
+    else
+      tuple = self.class.find_action(action_name)  or
+        raise OptionError.new("help #{action_name}: no such action.")
+      action_name, desc, options, method_name = tuple
+      pnames = self.method(method_name).parameters.collect {|kind, pname|
+        case kind
+        when :req  ;  pname
+        when :opt  ;  "[#{pname}]"
+        when :rest ;  "[#{pname}...]"
+        when :key  ;  nil
+        else
+          raise "** kind=#{kind.inspect}, pname=#{pname.inspect}"
+        end
+      }.compact()
+      pnames.unshift('') unless pnames.empty?
+      argstr = pnames.join(' ')
+      sb <<   "#{script} #{action_name}  - #{desc}"
+      sb <<   ""
+      sb <<   "Usage:"
+      if options.empty?
+        sb << "  #{script} #{action_name}#{argstr}"
+      else
+        sb << "  #{script} #{action_name} [options]#{argstr}"
+        sb << ""
+        sb << "Options:"
+        options.each do |optdef_str, optdesc|
+          optstr = optdef_str.sub(/\A\s*--/, '    --').sub(/\s+\#\w+\s*\z/, '')
+          sb << "  %-20s # %s" % [optstr, optdesc] if optdesc
+        end
+      end
+    end
+    sb << ""
+    sb << ""
+    return sb.join("\n")
+  end
+
+  @action.(:init, "create project files")
+  def do_init(project_name)
+    o = FileTool.new
+    o.mkdir  project_name            , "project directory" do
+      o.mkfile "config.ru"           , "for 'rackup' command", CONFIG_RU
+      o.mkdir  "configs"             , "config files"      do
+        o.mkfile "config.rb"         , "main"            , CONFIG_RB
+        o.mkfile "config_common.rb"  , "common"          , CONFIG_COMMON_RB
+        o.mkfile "config_mapping.rb" , "action class mapping", CONFIG_MAPPING_RB
+        o.mkfile "config_dev.rb"     , "for development" , CONFIG_DEV_RB
+        o.mkfile "config_dev.secret" , ""                , CONFIG_DEV_SECRET
+        o.mkfile "config_prod.rb"    , "for production"  , CONFIG_PROD_RB
+        o.mkfile "config_prod.secret", ""                , CONFIG_PROD_SECRET
+        o.mkfile "config_stg.rb"     , "for staging"     , CONFIG_STG_RB
+        o.mkfile "config_stg.secret" , ""                , CONFIG_STG_SECRET
+        o.mkfile "config_test.rb"    , "for test"        , CONFIG_TEST_RB
+        o.mkfile "config_test.secret", ""                , CONFIG_TEST_SECRET
+      end
+      o.mkdir "my"                   , "example files" do
+        o.mkdir "page"               , "" do
+          o.mkfile "welcome.rb"      , "example action"  , WELCOME_RB
+        end
+        o.mkdir "api"                , "" do
+          o.mkfile "hello.rb"        , "example action"  , HELLO_RB
+        end
+      end
+    end
+    0
+  end
+
+  @action.(:mapping, "show action mappings")
+  def do_mapping()
+    ENV['APP_MODE'] ||= 'dev'
+    require "./configs/config"
+    app = K8::RackApplication.new
+    $config.action_mapping.each do |urlpath, children|
+      app.mount(urlpath, children)
+    end
+    return app.show_mappings()
+  end
+
+  if ENV['DEBUG']
+    @action.(:debug, "debug")
+    @option.("-h, --help"       , "show help message")
+    @option.("--version"        , "print version")
+    #@option.("-f, --file=FILE"  , "filename")
+    @option.("-f FILE  #file"  , "filename")
+    @option.("-i, --indent[=N]" , "indent depth (default 2)")
+    @option.("-s"               , "be silent")
+    @option.("-S      #silent"  , "be silent")
+    @option.("-d[N]   #dbg1"    , "debug level #1")
+    @option.("  --dbg2[=N]"     , "debug level #2")
+    def do_debug(argmnt=nil, help: nil, version: nil, file: nil, indent: nil, s: nil, silent: false, dbg1: nil, dbg2: nil)
+      sb = []
+      sb << "** argmnt  = #{argmnt.inspect}"
+      sb << "** help:     #{help.inspect}"
+      sb << "** version:  #{version.inspect}"
+      sb << "** file:     #{file.inspect}"
+      sb << "** indent:   #{indent.inspect}"
+      sb << "** s:        #{s.inspect}"
+      sb << "** silent:   #{silent.inspect}"
+      sb << "** dbg1:     #{dbg1.inspect}"
+      sb << "** dbg2:     #{dbg2.inspect}"
+      return sb.join("\n")
+    end
+  end
+
+
+  ###
+
+  def run(*cmd_args)
+    action_name = cmd_args.shift() || 'help'
+    tuple = self.class.find_action(action_name)  or
+      raise OptionError.new("ERROR: #{self.script_name} #{action_name}: unknown action.")
+    action_name, desc, options, method_name = tuple
+    optdefs = options.collect {|arr| OptionDefinition.new(*arr) }
+    optparser = OptionParser.new(optdefs)
+    cmd_opts = optparser.parse(cmd_args)
+    func_args = []
+    func_kwds = {}
+    method_params = self.method(method_name).parameters
+    method_params.each do |param_info|
+      kind, pname = param_info
+      case kind
+      when :req
+        ! cmd_args.empty?  or
+          raise OptionError.new("#{action_name}: argument '#{pname}' required.")
+        func_args << cmd_args.shift()
+      when :opt
+        func_args << cmd_args.shift()   # may be nil
+      when :rest
+        func_args.concat(cmd_args)
+        cmd_args.clear()
+      when :key
+        k = pname.to_s
+        func_kwds[pname] = cmd_opts.delete(k) if cmd_opts.key?(k)
+        if cmd_opts.key?(pname.to_s)
+          func_kwds[pname] = cmd_opts.delete(pname.to_s)
+        end
+      else
+        $stderr.puts "*** internal error: kind=#{kind.inspect}, pname=#{pname.inspect}"
+      end
+    end
+    cmd_args.empty?  or
+      raise OptionError.new("#{action_name}: too many argument.")
+    cmd_opts.empty?  or
+      raise OptionError.new("#{action_name}: keyword arg not defined (#{cmd_opts.inspect}).")
+    if func_kwds.empty?
+      output = __send__(method_name, *func_args)
+    else
+      output = __send__(method_name, *func_args, func_kwds)
+    end
+    return output
+  end
+
+  def self.main
+    status = 0
+    obj = self.new()
+    begin
+      output = obj.run(*ARGV)
+      case output
+      when nil     ;
+      when String  ; puts output
+      when Integer ; status = output
+      else         ; raise "** output=#{output.inspect}"
+      end
+    rescue OptionError => ex
+      $stderr.puts "ERROR (#{obj.script_name}): #{ex}"
+      output = nil
+      status = 1
+    end
+    exit status
+  end
+
+  def self._randstr
+    binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
+    return [binary].pack('m').chomp("=\n").tr('+/', '-_')
+  end
+
+
+  class OptionDefinition
+
+    def initialize(defstr, desc)
+      @defstr = defstr
+      @desc   = desc
+      parse(defstr)
+    end
+
+    attr_reader :defstr, :name, :desc, :short, :long, :argstr, :arg_required
+
+    def parse(defstr)
+      case defstr
+      when /\A\s*-(\w),\s+--(\w[-\w]*)(?:=(\S*)|\[=(\S+)\])?(?:\s+\#(\w+))?\z/
+        short, long, arg1, arg2, optname = $1, $2, $3, $4, $5
+      when /\A\s*--(\w[-\w]*)(?:=(\S*)|\[=(\S+)\])?(?:\s+\#(\w+))?\z/
+        short, long, arg1, arg2, optname = nil, $1, $2, $3, $4
+      when /\A\s*-(\w)(?:\s+(\S+)|\[(\S+)\])?(?:\s+\#(\w+))?\z/
+        short, long, arg1, arg2, optname = $1, nil, $2, $3, $4
+      else
+        raise "#{defstr.inspect}: invalid option definition."
+      end
+      @short    = short
+      @long     = long
+      @argstr   = arg1 || arg2
+      @arg_required = !! arg1       # true when option argument is required
+      @name     = optname || long || short
+    end
+
+  end
+
+
+  class OptionParser
+
+    def initialize(optdefs)
+      @optdefs = optdefs
+    end
+
+    def parse(cmd_args)
+      options = {}
+      while cmd_args.length > 0 && cmd_args.first.start_with?('-')
+        optstr = cmd_args.shift()
+        if optstr == '--'
+          break
+        elsif optstr.start_with?('--')
+          optstr =~ /\A--(\w+)(?:=(.*))?\z/  or
+            raise OptionError.new("#{optstr}: invalid option.")
+          long, optarg = $1, $2
+          optdef = @optdefs.find {|x| x.long == long }  or
+            raise OptionError.new("#{optstr}: unknown option.")
+          if ! optdef.argstr && optarg
+            raise OptionError.new("#{optstr}: unexpected argument.")
+          elsif optdef.arg_required && ! optarg
+            raise OptionError.new("#{optstr}: argument required.")
+          end
+          options[optdef.name] = optarg || true
+        else
+          i = 0; len = optstr.length
+          while (i += 1) < len
+            ch = optstr[i]
+            optdef = @optdefs.find {|x| x.short == ch }  or
+              raise OptionError.new("-#{ch}: unknown option.")
+            if ! optdef.argstr             # no arg
+              optarg = true
+            elsif ! optdef.arg_required    # optional arg
+              optarg = i + 1 < len ? optstr[(i+1)..-1] : true
+              i = len - 1
+            else                           # required arg
+              optarg = optstr[(i+1)..-1]
+              if optarg.empty?
+                optarg = cmd_args.shift()  or
+                  raise OptionError.new("-#{ch}: argument required.")
+              end
+              i = len - 1
+            end
+            options[optdef.name] = optarg
+          end
+        end
+      end
+      return options
+    end
+
+  end
+
+
+  class OptionError < StandardError
+  end
+
+
+  class FileTool
+
+    def initialize(width=30)
+      @width = width
+      @depth = 0
+    end
+
+    def report(s, desc)
+      indent = '  ' * @depth
+      puts "%s%-#{@width - indent.length}s # %s" % [indent, s, desc]
+    end
+
+    def mkdir(dirname, desc)
+      report("+ #{dirname}/", desc)
+      Dir.mkdir dirname
+      Dir.chdir dirname do
+        @depth += 1
+        yield
+        @depth -= 1
+      end if block_given?
+    end
+
+    def mkfile(filename, desc, content)
+      report("- #{filename}", desc)
+      File.open(filename, 'w') {|f| f.write(content) }
+    end
+
+  end
+
+
+  CONFIG_RB = <<'END'
+# -*- coding: utf-8 -*-
+
+app_mode = ENV['APP_MODE']
+if app_mode.nil? || app_mode.empty?
+  $stderr << '
+**
+** ERROR: Set $APP_MODE environment variable at first.
+**
+** Example (MacOSX, UNIX):
+**    $ export APP_MODE=dev       # development mode
+**    $ export APP_MODE=prod      # production mode
+**    $ export APP_MODE=stg       # staging mode
+**
+'
+  exit 1
+end
+
+if defined?(Config)     # Ruby < 2.2 has obsoleted 'Config' object
+  Object.class_eval do
+    remove_const :Config
+  end
+end
+
+require 'keight'
+class Config < K8::BaseConfig
+end
+
+require_relative "config_common"
+require_relative "config_mapping"
+require_relative "config_#{app_mode}"
+load File.join(File.dirname(__FILE__), "config_#{app_mode}.secret")
+$config = Config.new
+END
+
+  CONFIG_COMMON_RB = <<'END'
+# -*- coding: utf-8 -*-
+
+class Config
+
+  ## database
+  add :db_host      , "localhost"     , "DB host name"
+  add :db_port      , 5432            , "DB port number"
+  add :db_name      , "xxxx"          , "DB database"
+  add :db_user      , "xxxx"          , "DB user name"
+  add :db_pass      , SECRET          , "DB password"
+
+  ## Rack::Session::Cookie
+  add :session_key           , 'rack.session'   , "cookie name"
+  add :session_domain        , nil              , "cookie domain"
+  add :session_path          , '/'              , "cookie path"
+  add :session_expire_after  , 24 * 60 * 60     , "cookie expires"
+  add :session_secret        , SECRET           , "secret key"
+  add :session_old_secret    , SECRET           , "old secret key"
+
+  ## K8::RackApplication
+  add :k8_rackapp_urlpath_cache_size , 0        , "0: cache disabled"
+
+  ## add your own configs here
+
+end
+END
+
+  CONFIG_DEV_RB = <<'END'
+# -*- coding: utf-8 -*-
+
+class Config
+  set :db_user      , ::ENV['USER']
+end
+END
+
+  CONFIG_DEV_SECRET = <<"END"
+# -*- coding: utf-8 -*-
+
+class Config
+  set :db_pass              , SECRET
+  set :session_secret       , "#{_randstr()}"
+  set :session_old_secret   , ""
+end
+END
+
+  CONFIG_PROD_RB = <<'END'
+# -*- coding: utf-8 -*-
+
+class Config
+
+end
+END
+
+  CONFIG_PROD_SECRET = <<"END"
+# -*- coding: utf-8 -*-
+
+class Config
+  set :db_pass              , SECRET
+  set :session_secret       , "#{_randstr()}"
+  set :session_old_secret   , ""
+end
+END
+
+  CONFIG_STG_RB = <<'END'
+# -*- coding: utf-8 -*-
+
+class Config
+
+end
+END
+
+  CONFIG_STG_SECRET = <<"END"
+# -*- coding: utf-8 -*-
+
+class Config
+  set :db_pass              , SECRET
+  set :session_secret       , "#{_randstr()}"
+  set :session_old_secret   , ""
+end
+END
+
+  CONFIG_TEST_RB = <<'END'
+# -*- coding: utf-8 -*-
+
+class Config
+
+end
+END
+
+  CONFIG_TEST_SECRET = <<"END"
+# -*- coding: utf-8 -*-
+
+class Config
+  set :db_pass              , SECRET
+  set :session_secret       , "#{_randstr()}"
+  set :session_old_secret   , ""
+end
+END
+
+  CONFIG_MAPPING_RB = <<"END"
+# -*- coding: utf-8 -*-
+
+class Config
+
+  add :action_mapping, [
+    ['/',                            "./my/page/welcome:WelcomePage"],
+    ['/api', [
+      ['/hello',                     "./my/api/hello:HelloAPI"],
+     #['/books',                     "./my/api/books:BooksAPI"],
+     #['/books/{book_id}/comments',  "./my/api/books:BookCommentsAPI"],
+     #['/orders',                    "./my/api/orders:OrdersAPI"],
+    ]],
+    ['/admin', [
+     #['/books',                     "./my/admin/books:AdminBooksPage"],
+     #['/orders',                    "./my/admin/orders:AdminOrdersPage"],
+    ]],
+  ], nil
+
+end
+END
+
+  CONFIG_RU = <<'END'
+# -*- coding: utf-8 -*-
+
+require 'keight'
+
+require_relative 'configs/config'
+
+opts = $config.get_all(:k8_rackapp_)   # ex: {urlpath_cache_size: 1000}
+app = K8::RackApplication.new(opts)
+$config.action_mapping.each do |urlpath, children|
+  app.mount(urlpath, children)
+end
+
+require 'rack/session/cookie'
+use Rack::Session::Cookie, $config.get_all(:session_)
+
+run app
+END
+
+  WELCOME_RB = <<'END'
+# -*- coding: utf-8 -*-
+
+require 'keight'
+
+
+class WelcomePage < K8::Action
+
+  mapping ''        , :GET=>:do_index
+
+  def do_index
+    "<h1>Welcome!</h1>"
+  end
+
+end
+END
+
+  HELLO_RB = <<'END'
+# -*- coding: utf-8 -*-
+
+require 'keight'
+
+
+class HelloAPI < K8::Action
+
+  mapping ''        , :GET=>:do_index, :POST=>:do_create
+  mapping '/{id}'   , :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
+  ## or if you want support '/hello.json' and '/hello/123.json'...
+  #mapping '{ext}'        , :GET=>:do_index, :POST=>:do_create
+  #mapping '/{id}{ext}'   , :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
+
+  def do_index()
+    query = @req.params_query   # QUERY_STRING
+    {"action"=>"index", "query"=>query}
+  end
+
+  def do_create()
+    form = @req.params_form   # or @req.params_json
+    {"action"=>"create", "form"=>form}
+  end
+
+  def do_show(id)
+    {"action"=>"show", "id"=>id}
+  end
+
+  def do_update(id)
+    form = @req.params_form   # or @req.params_json
+    {"action"=>"update", "form"=>form}
+  end
+
+  def do_delete(id)
+    {"action"=>"delete", "id"=>id}
+  end
+
+end
+END
+
+end
+
+
+if __FILE__ == $0
+  K8::Main.main()
+end

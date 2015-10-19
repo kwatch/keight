@@ -1535,10 +1535,10 @@ Oktest.scope do
   end
 
 
-  topic K8::ActionRouter do
+  topic K8::ActionFinder do
 
     fixture :router do |class_mapping, default_patterns|
-      K8::ActionRouter.new(class_mapping, default_patterns, urlpath_cache_size: 0)
+      K8::ActionFinder.new(class_mapping, default_patterns, urlpath_cache_size: 0)
     end
 
     fixture :class_mapping do
@@ -1581,9 +1581,9 @@ Oktest.scope do
       spec "[!wb9l8] enables urlpath cache when urlpath_cache_size > 0." do
         |class_mapping, default_patterns|
         args = [class_mapping, default_patterns]
-        router = K8::ActionRouter.new(*args, urlpath_cache_size: 1)
+        router = K8::ActionFinder.new(*args, urlpath_cache_size: 1)
         ok {router.instance_variable_get('@urlpath_cache')} == {}
-        router = K8::ActionRouter.new(*args, urlpath_cache_size: 0)
+        router = K8::ActionFinder.new(*args, urlpath_cache_size: 0)
         ok {router.instance_variable_get('@urlpath_cache')} == nil
       end
 
@@ -1796,7 +1796,7 @@ Oktest.scope do
 
       spec "[!gzy2w] fetches variable urlpath from LRU cache if LRU cache is enabled." do
         |class_mapping, default_patterns|
-        router = K8::ActionRouter.new(class_mapping, default_patterns, urlpath_cache_size: 3)
+        router = K8::ActionFinder.new(class_mapping, default_patterns, urlpath_cache_size: 3)
         router.instance_exec(self) do |_|
           arr1 = find('/api/books/1')
           arr2 = find('/api/books/2')
@@ -1812,7 +1812,7 @@ Oktest.scope do
 
       spec "[!v2zbx] caches variable urlpath into LRU cache if cache is enabled." do
         |class_mapping, default_patterns|
-        router = K8::ActionRouter.new(class_mapping, default_patterns, urlpath_cache_size: 3)
+        router = K8::ActionFinder.new(class_mapping, default_patterns, urlpath_cache_size: 3)
         router.instance_exec(self) do |_|
           arr1 = find('/api/books/1')
           arr2 = find('/api/books/2')
@@ -1824,7 +1824,7 @@ Oktest.scope do
 
       spec "[!nczw6] LRU cache size doesn't growth over max cache size." do
         |class_mapping, default_patterns|
-        router = K8::ActionRouter.new(class_mapping, default_patterns, urlpath_cache_size: 3)
+        router = K8::ActionFinder.new(class_mapping, default_patterns, urlpath_cache_size: 3)
         router.instance_exec(self) do |_|
           arr1 = find('/api/books/1')
           arr2 = find('/api/books/2')
@@ -1834,6 +1834,140 @@ Oktest.scope do
           _.ok {@urlpath_cache.length} == 3
           _.ok {@urlpath_cache.keys} == ['/api/books/3', '/api/books/4', '/api/books/5']
         end
+      end
+
+    end
+
+
+  end
+
+
+  topic K8::ActionRouter do
+
+
+    topic '#initialize()' do
+
+      spec "[!l1elt] saves finder options." do
+        router = K8::ActionRouter.new(urlpath_cache_size: 100)
+        router.instance_exec(self) do |_|
+          _.ok {@finder_opts} == {:urlpath_cache_size=>100}
+        end
+      end
+
+    end
+
+
+    topic '#register()' do
+
+      spec "[!boq80] registers urlpath param pattern and converter." do
+        router = K8::ActionRouter.new()
+        router.register(/_hex\z/, '[a-f0-9]+') {|x| x.to_i(16) }
+        router.instance_exec(self) do |_|
+          ret = @default_patterns.lookup('code_hex')
+          _.ok {ret.length} == 2
+          _.ok {ret[0]} == '[a-f0-9]+'
+          _.ok {ret[1]}.is_a?(Proc)
+          _.ok {ret[1].call('ff')} == 255
+        end
+      end
+
+    end
+
+
+    topic '#mount()' do
+
+      spec "[!uc996] mouts action class to urlpath." do
+        router = K8::ActionRouter.new()
+        router.mount('/api/books', BooksAction)
+        ret = router.find('/api/books/')
+        ok {ret} != nil
+        ok {ret[0]} == BooksAction
+      end
+
+      spec "[!trs6w] removes finder object." do
+        router = K8::ActionRouter.new()
+        router.instance_exec(self) do |_|
+          @finder = true
+          _.ok {@finder} == true
+          mount('/api/books', BooksAction)
+          _.ok {@finder} == nil
+        end
+      end
+
+    end
+
+
+    topic '#each_mapping()' do
+
+      spec "[!2kq9h] yields with full urlpath pattern, action class and action methods." do
+        router = K8::ActionRouter.new()
+        router.mount '/api', [
+          ['/books', BooksAction],
+          ['/books/{book_id}', BookCommentsAction],
+        ]
+        router.mount '/admin', [
+          ['/books', AdminBooksAction],
+        ]
+        arr = []
+        router.each_mapping do |*args|
+          arr << args
+        end
+        ok {arr} == [
+          ["/api/books/",          BooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          ["/api/books/new",       BooksAction, {:GET=>:do_new}],
+          ["/api/books/{id}",      BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}],
+          ["/api/books/{id}/edit", BooksAction, {:GET=>:do_edit}],
+          ["/api/books/{book_id}/comments",              BookCommentsAction, {:GET=>:do_comments}],
+          ["/api/books/{book_id}/comments/{comment_id}", BookCommentsAction, {:GET=>:do_comment}],
+          ["/admin/books/",          AdminBooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          ["/admin/books/new",       AdminBooksAction, {:GET=>:do_new}],
+          ["/admin/books/{id}",      AdminBooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}],
+          ["/admin/books/{id}/edit", AdminBooksAction, {:GET=>:do_edit}],
+        ]
+      end
+
+    end
+
+
+    topic '#find()' do
+
+      spec "[!zsuzg] creates finder object automatically if necessary." do
+        router = K8::ActionRouter.new(urlpath_cache_size: 99)
+        router.mount '/api/books', BooksAction
+        router.instance_exec(self) do |_|
+          _.ok {@finder} == nil
+          find('/api/books/123')
+          _.ok {@finder} != nil
+          _.ok {@finder}.is_a?(K8::ActionFinder)
+        end
+      end
+
+      spec "[!9u978] urlpath_cache_size keyword argument will be passed to router oubject." do
+        router = K8::ActionRouter.new(urlpath_cache_size: 99)
+        router.mount '/api/books', BooksAction
+        router.instance_exec(self) do |_|
+          find('/api/books/123')
+          _.ok {@finder.instance_variable_get('@urlpath_cache_size')} == 99
+        end
+      end
+
+      spec "[!m9klu] returns action class, action methods, urlpath param names and values." do
+        router = K8::ActionRouter.new(urlpath_cache_size: 99)
+        router.register('id', '\d+') {|x| x.to_i }
+        router.mount '/api', [
+          ['/books', BooksAction],
+          ['/books/{book_id}', BookCommentsAction],
+        ]
+        router.mount '/admin', [
+          ['/books', AdminBooksAction],
+        ]
+        ret = router.find('/admin/books/123')
+        ok {ret} == [
+          AdminBooksAction,
+          {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+          ["id"],
+          [123],
+        ]
       end
 
     end
@@ -1858,10 +1992,10 @@ Oktest.scope do
       spec "[!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/." do
         |app|
         app.instance_exec(self) do |_|
-          pat, proc_ = @default_patterns.lookup('id')
+          pat, proc_ = @router.default_patterns.lookup('id')
           _.ok {pat} == '\d+'
           _.ok {proc_.call("123")} == 123
-          pat, proc_ = @default_patterns.lookup('book_id')
+          pat, proc_ = @router.default_patterns.lookup('book_id')
           _.ok {pat} == '\d+'
           _.ok {proc_.call("123")} == 123
         end
@@ -1870,7 +2004,7 @@ Oktest.scope do
       spec "[!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'." do
         |app|
         app.instance_exec(self) do |_|
-          pat, proc_ = @default_patterns.lookup('ext')
+          pat, proc_ = @router.default_patterns.lookup('ext')
           _.ok {pat} == '(?:\.\w+)?'
           _.ok {proc_} == nil
         end
@@ -1879,10 +2013,10 @@ Oktest.scope do
       spec "[!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/." do
         |app|
         app.instance_exec(self) do |_|
-          pat, proc_ = @default_patterns.lookup('date')
+          pat, proc_ = @router.default_patterns.lookup('date')
           _.ok {pat} == '\d\d\d\d-\d\d-\d\d'
           _.ok {proc_.call("2014-12-24")} == Date.new(2014, 12, 24)
-          pat, proc_ = @default_patterns.lookup('birth_date')
+          pat, proc_ = @router.default_patterns.lookup('birth_date')
           _.ok {pat} == '\d\d\d\d-\d\d-\d\d'
           _.ok {proc_.call("2015-02-14")} == Date.new(2015, 2, 14)
         end
@@ -1891,7 +2025,7 @@ Oktest.scope do
       spec "[!wg9vl] raises 404 error when invalid date (such as 2012-02-30)." do
         |app|
         app.instance_exec(self) do |_|
-          pat, proc_ = @default_patterns.lookup('date')
+          pat, proc_ = @router.default_patterns.lookup('date')
           pr = proc { proc_.call('2012-02-30') }
           _.ok {pr}.raise?(K8::HttpException, "2012-02-30: invalid date.")
           _.ok {pr.exception.status_code} == 404
@@ -1903,36 +2037,22 @@ Oktest.scope do
 
     topic '#mount()' do
 
-      spec "[!fm8mh] clears router object." do
+      spec "[!zwva6] mounts action class to urlpath pattern." do
         |app|
-        app.instance_exec(self) do |_|
-          @router = true
-          mount '/admin', AdminBooksAction
-          _.ok {@router} == nil
-        end
+        app.mount('/admin/books', AdminBooksAction)
+        ret = app.find('/admin/books/123')
+        ok {ret} == [
+          AdminBooksAction,
+          {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+          ["id"],
+          [123],
+        ]
       end
 
     end
 
 
     topic '#find()' do
-
-      spec "[!vnxoo] creates router object from action class mapping if router is nil." do
-        |app|
-        app.instance_exec(self) do |_|
-          _.ok {@router} == nil
-          find('/')
-          _.ok {@router} != nil
-          _.ok {@router}.is_a?(K8::ActionRouter)
-        end
-      end
-
-      spec "[!9u978] urlpath_cache_size keyword argument will be passed to router oubject." do
-        app = K8::RackApplication.new(urlpath_cache_size: 100)
-        app.find('/')
-        x = app.instance_variable_get('@router').instance_variable_get('@urlpath_cache_size')
-        ok {x} == 100
-      end
 
       spec "[!o0rnr] returns action class, action methods, urlpath names and values." do
         |app|
@@ -2407,7 +2527,7 @@ Oktest.scope do
     topic '.new_env()' do
 
       spec "[!c779l] raises ArgumentError when both form and json are specified." do
-        pr = proc { K8::Mock.new_env(form: "x=1", json: {"y": 2}) }
+        pr = proc { K8::Mock.new_env(form: "x=1", json: {"y"=>2}) }
         ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
       end
 

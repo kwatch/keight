@@ -181,6 +181,12 @@ module K8
       return str.gsub(/[&<>"']/, ESCAPE_HTML)
     end
 
+    #; [!649wt] 'h()' is alias of 'escape_html()'
+    alias h escape_html
+    class << self
+      alias h escape_html
+    end
+
     def percent_encode(str)
       #; [!a96jo] encodes string into percent encoding format.
       return URI.encode_www_form_component(str)

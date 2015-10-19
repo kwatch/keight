@@ -94,6 +94,15 @@ Oktest.scope do
     end
 
 
+    topic '.h()' do
+
+      spec "[!649wt] 'h()' is alias of 'escape_html()'" do
+        ok {K8::Util.h('& < > " \'')} == '&amp; &lt; &gt; &quot; &#39;'
+      end
+
+    end
+
+
     topic '.percent_encode()' do
 
       spec "[!a96jo] encodes string into percent encoding format." do

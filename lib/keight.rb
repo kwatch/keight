@@ -1059,7 +1059,7 @@ module K8
   end
 
 
-  class ActionRouter
+  class ActionFinder
 
     def initialize(action_class_mapping, default_patterns=nil, urlpath_cache_size: 0)
       @default_patterns = default_patterns || K8::DefaultPatterns.new
@@ -1313,7 +1313,7 @@ module K8
     def find(req_path)
       #; [!vnxoo] creates router object from action class mapping if router is nil.
       #; [!9u978] urlpath_cache_size keyword argument will be passed to router oubject.
-      @router ||= ActionRouter.new(@action_class_mapping, @default_patterns, urlpath_cache_size: @urlpath_cache_size)
+      @router ||= ActionFinder.new(@action_class_mapping, @default_patterns, urlpath_cache_size: @urlpath_cache_size)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
       return @router.find(req_path)
     end

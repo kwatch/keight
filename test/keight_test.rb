@@ -2249,10 +2249,36 @@ Oktest.scope do
   topic K8::SecretValue do
 
 
+    topic '#initialize()' do
+
+      spec "[!fbwnh] takes environment variable name." do
+        obj = K8::SecretValue.new('DB_PASS')
+        ok {obj.name} == 'DB_PASS'
+      end
+
+    end
+
+
+    topic '#value()' do
+
+      spec "[!gg06v] returns environment variable value." do
+        obj = K8::SecretValue.new('TEST_HOMHOM')
+        ok {obj.value} == nil
+        ENV['TEST_HOMHOM'] = 'homhom'
+        ok {obj.value} == 'homhom'
+      end
+
+    end
+
+
     topic '#to_s()' do
 
-      spec "[!hlz4y] just returns '<SECRET>'." do
-        ok {K8::SecretValue.new.to_s} == '<SECRET>'
+      spec "[!7ymqq] returns 'SECRET' string when name not eixst." do
+        ok {K8::SecretValue.new.to_s} == "SECRET"
+      end
+
+      spec "[!x6edf] returns 'SECRET[<name>]' string when name exists." do
+        ok {K8::SecretValue.new('DB_PASS').to_s} == "SECRET['DB_PASS']"
       end
 
     end
@@ -2261,7 +2287,18 @@ Oktest.scope do
     topic '#inspect()' do
 
       spec "[!j27ji] 'inspect()' is alias of 'to_s()'." do
-        ok {K8::SecretValue.new.inspect} == '<SECRET>'
+        ok {K8::SecretValue.new('DB_PASS').inspect} == "SECRET['DB_PASS']"
+      end
+
+    end
+
+
+    topic '#[](name)' do
+
+      spec "[!jjqmn] creates new instance object with name." do
+        obj = K8::SecretValue.new['DB_PASSWORD']
+        ok {obj}.is_a?(K8::SecretValue)
+        ok {obj.name} == 'DB_PASSWORD'
       end
 
     end

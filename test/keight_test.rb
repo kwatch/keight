@@ -1992,10 +1992,10 @@ Oktest.scope do
       spec "[!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/." do
         |app|
         app.instance_exec(self) do |_|
-          pat, proc_ = @default_patterns.lookup('id')
+          pat, proc_ = @router.default_patterns.lookup('id')
           _.ok {pat} == '\d+'
           _.ok {proc_.call("123")} == 123
-          pat, proc_ = @default_patterns.lookup('book_id')
+          pat, proc_ = @router.default_patterns.lookup('book_id')
           _.ok {pat} == '\d+'
           _.ok {proc_.call("123")} == 123
         end
@@ -2004,7 +2004,7 @@ Oktest.scope do
       spec "[!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'." do
         |app|
         app.instance_exec(self) do |_|
-          pat, proc_ = @default_patterns.lookup('ext')
+          pat, proc_ = @router.default_patterns.lookup('ext')
           _.ok {pat} == '(?:\.\w+)?'
           _.ok {proc_} == nil
         end
@@ -2013,10 +2013,10 @@ Oktest.scope do
       spec "[!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/." do
         |app|
         app.instance_exec(self) do |_|
-          pat, proc_ = @default_patterns.lookup('date')
+          pat, proc_ = @router.default_patterns.lookup('date')
           _.ok {pat} == '\d\d\d\d-\d\d-\d\d'
           _.ok {proc_.call("2014-12-24")} == Date.new(2014, 12, 24)
-          pat, proc_ = @default_patterns.lookup('birth_date')
+          pat, proc_ = @router.default_patterns.lookup('birth_date')
           _.ok {pat} == '\d\d\d\d-\d\d-\d\d'
           _.ok {proc_.call("2015-02-14")} == Date.new(2015, 2, 14)
         end
@@ -2025,7 +2025,7 @@ Oktest.scope do
       spec "[!wg9vl] raises 404 error when invalid date (such as 2012-02-30)." do
         |app|
         app.instance_exec(self) do |_|
-          pat, proc_ = @default_patterns.lookup('date')
+          pat, proc_ = @router.default_patterns.lookup('date')
           pr = proc { proc_.call('2012-02-30') }
           _.ok {pr}.raise?(K8::HttpException, "2012-02-30: invalid date.")
           _.ok {pr.exception.status_code} == 404
@@ -2037,36 +2037,22 @@ Oktest.scope do
 
     topic '#mount()' do
 
-      spec "[!fm8mh] clears router object." do
+      spec "[!zwva6] mounts action class to urlpath pattern." do
         |app|
-        app.instance_exec(self) do |_|
-          @router = true
-          mount '/admin', AdminBooksAction
-          _.ok {@router} == nil
-        end
+        app.mount('/admin/books', AdminBooksAction)
+        ret = app.find('/admin/books/123')
+        ok {ret} == [
+          AdminBooksAction,
+          {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+          ["id"],
+          [123],
+        ]
       end
 
     end
 
 
     topic '#find()' do
-
-      spec "[!vnxoo] creates router object from action class mapping if router is nil." do
-        |app|
-        app.instance_exec(self) do |_|
-          _.ok {@router} == nil
-          find('/')
-          _.ok {@router} != nil
-          _.ok {@router}.is_a?(K8::ActionFinder)
-        end
-      end
-
-      spec "[!9u978] urlpath_cache_size keyword argument will be passed to router oubject." do
-        app = K8::RackApplication.new(urlpath_cache_size: 100)
-        app.find('/')
-        x = app.instance_variable_get('@router').instance_variable_get('@urlpath_cache_size')
-        ok {x} == 100
-      end
 
       spec "[!o0rnr] returns action class, action methods, urlpath names and values." do
         |app|
@@ -2541,7 +2527,7 @@ Oktest.scope do
     topic '.new_env()' do
 
       spec "[!c779l] raises ArgumentError when both form and json are specified." do
-        pr = proc { K8::Mock.new_env(form: "x=1", json: {"y": 2}) }
+        pr = proc { K8::Mock.new_env(form: "x=1", json: {"y"=>2}) }
         ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
       end
 

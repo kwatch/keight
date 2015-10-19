@@ -1310,11 +1310,8 @@ module K8
   class RackApplication
 
     def initialize(urlpath_cache_size: 0)
-      @action_class_mapping = ActionClassMapping.new
-      @router = nil
-      @urlpath_cache_size = urlpath_cache_size
-      @default_patterns = DefaultPatterns.new
-      init_default_param_patterns(@default_patterns)
+      @router = ActionRouter.new(urlpath_cache_size: urlpath_cache_size)
+      init_default_param_patterns(@router.default_patterns)
     end
 
     def init_default_param_patterns(default_patterns)
@@ -1346,16 +1343,12 @@ module K8
     ##         ]
     ##
     def mount(urlpath_pattern, action_class_or_array)
-      @action_class_mapping.mount(urlpath_pattern, action_class_or_array)
-      #; [!fm8mh] clears router object.
-      @router = nil
+      #; [!zwva6] mounts action class to urlpath pattern.
+      @router.mount(urlpath_pattern, action_class_or_array)
       return self
     end
 
     def find(req_path)
-      #; [!vnxoo] creates router object from action class mapping if router is nil.
-      #; [!9u978] urlpath_cache_size keyword argument will be passed to router oubject.
-      @router ||= ActionFinder.new(@action_class_mapping, @default_patterns, urlpath_cache_size: @urlpath_cache_size)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
       return @router.find(req_path)
     end
@@ -1444,7 +1437,7 @@ END
 
     def each_mapping(&block)
       #; [!cgjyv] yields full urlpath pattern, action class and action methods.
-      @action_class_mapping.each_mapping(&block)
+      @router.each_mapping(&block)
       self
     end
 

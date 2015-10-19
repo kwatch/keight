@@ -2124,6 +2124,17 @@ Oktest.scope do
         end
       end
 
+      spec "[!4vmd3] uses '_method' value of query string as request method when 'POST' method." do
+        |app|
+        env = new_env("POST", "/api/books/123", query: {"_method"=>"DELETE"})
+        app.instance_exec(self) do |_|
+          tuple = handle_request(K8::Request.new(env), K8::Response.new)
+          status, headers, body = tuple
+          _.ok {status}  == 200
+          _.ok {body}    == ["<delete:123(Fixnum)>"]  # do_delete() caled
+        end
+      end
+
       spec "[!vdllr] clears request and response if possible." do
         |app|
         req  = K8::Request.new(new_env("GET", "/"))

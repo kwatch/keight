@@ -1366,6 +1366,9 @@ module K8
       #; [!l6kmc] uses 'GET' method to find action when request method is 'HEAD'.
       if req_meth == :HEAD
         req_meth_ = :GET
+      #; [!4vmd3] uses '_method' value of query string as request method when 'POST' method.
+      elsif req_meth == :POST && /\A_method=(\w+)/.match(req.env['QUERY_STRING'])
+        req_meth_ = HTTP_REQUEST_METHODS[$1] || $1
       else
         req_meth_ = req_meth
       end

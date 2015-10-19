@@ -387,6 +387,12 @@ if app_mode.nil? || app_mode.empty?
   exit 1
 end
 
+if defined?(Config)     # Ruby < 2.2 has obsoleted 'Config' object
+  Object.class_eval do
+    remove_const :Config
+  end
+end
+
 require 'keight'
 class Config < K8::BaseConfig
 end

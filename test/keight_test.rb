@@ -2346,6 +2346,41 @@ Oktest.scope do
         ok {pr}.raise?(RuntimeError, "can't modify frozen class")
       end
 
+      case_when "[!xok12] when value is SECRET..." do
+
+        spec "[!a4a4p] raises error when key not specified." do
+          class C03 < K8::BaseConfig
+            add :db_pass    , SECRET,   "db password"
+          end
+          pr = proc { C03.new }
+          ok {pr}.raise?(K8::ConfigError, "config 'db_pass' should be set, but not.")
+        end
+
+        spec "[!w4yl7] raises error when ENV value not specified." do
+          class C04 < K8::BaseConfig
+            add :db_pass1    , SECRET['DB_PASS1'],   "db password"
+          end
+          ok {ENV['DB_PASS1']} == nil
+          pr = proc { C04.new }
+          ok {pr}.raise?(K8::ConfigError, )
+        end
+
+        spec "[!he20d] get value from ENV." do
+          class C05 < K8::BaseConfig
+            add :db_pass1    , SECRET['DB_PASS1'],   "db password"
+          end
+          begin
+            ENV['DB_PASS1'] = 'homhom'
+            pr = proc { C05.new }
+            ok {pr}.NOT.raise?(Exception)
+            ok {C05.new.db_pass1} == 'homhom'
+          ensure
+            ENV['DB_PASS1'] = nil
+          end
+        end
+
+      end
+
     end
 
 

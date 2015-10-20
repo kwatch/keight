@@ -1483,9 +1483,9 @@ END
     end
 
     def to_s
-      #; [!7ymqq] returns 'SECRET' string when name not eixst.
-      #; [!x6edf] returns 'SECRET[<name>]' string when name exists.
-      return @name ? "SECRET['#{@name}']" : "SECRET"
+      #; [!7ymqq] returns '<SECRET>' string when name not eixst.
+      #; [!x6edf] returns 'ENV[<name>]' string when name exists.
+      return @name ? "ENV['#{@name}']" : "<SECRET>"
     end
 
     #; [!j27ji] 'inspect()' is alias of 'to_s()'.

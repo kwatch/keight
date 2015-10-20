@@ -2273,12 +2273,12 @@ Oktest.scope do
 
     topic '#to_s()' do
 
-      spec "[!7ymqq] returns 'SECRET' string when name not eixst." do
-        ok {K8::SecretValue.new.to_s} == "SECRET"
+      spec "[!7ymqq] returns '<SECRET>' string when name not eixst." do
+        ok {K8::SecretValue.new.to_s} == "<SECRET>"
       end
 
-      spec "[!x6edf] returns 'SECRET[<name>]' string when name exists." do
-        ok {K8::SecretValue.new('DB_PASS').to_s} == "SECRET['DB_PASS']"
+      spec "[!x6edf] returns 'ENV[<name>]' string when name exists." do
+        ok {K8::SecretValue.new('DB_PASS').to_s} == "ENV['DB_PASS']"
       end
 
     end
@@ -2287,7 +2287,7 @@ Oktest.scope do
     topic '#inspect()' do
 
       spec "[!j27ji] 'inspect()' is alias of 'to_s()'." do
-        ok {K8::SecretValue.new('DB_PASS').inspect} == "SECRET['DB_PASS']"
+        ok {K8::SecretValue.new('DB_PASS').inspect} == "ENV['DB_PASS']"
       end
 
     end

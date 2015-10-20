@@ -690,7 +690,13 @@ module K8
         #; [!aqa4e] returns content.
         return handle_content(content)
       rescue => ex
-        raise
+        #; [!l942j] when exception raised, calls exception handler with it.
+        content = handle_exception(ex)
+        #; [!yac0n] re-raises exception when exception handler returns nil.
+        raise ex if content.nil?
+        #; [!040cj] ignores exception when exception handler handled it.
+        ex = nil
+        return handle_content(content)
       ensure
         #; [!67awf] calls '#after_action()' after handling request.
         #; [!alpka] calls '#after_action()' even when error raised.
@@ -708,6 +714,10 @@ module K8
 
     def handle_content(content)
       return content
+    end
+
+    def handle_exception(ex)
+      return nil    # nil means re-raise exception
     end
 
     ##

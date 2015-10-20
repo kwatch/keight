@@ -2249,10 +2249,36 @@ Oktest.scope do
   topic K8::SecretValue do
 
 
+    topic '#initialize()' do
+
+      spec "[!fbwnh] takes environment variable name." do
+        obj = K8::SecretValue.new('DB_PASS')
+        ok {obj.name} == 'DB_PASS'
+      end
+
+    end
+
+
+    topic '#value()' do
+
+      spec "[!gg06v] returns environment variable value." do
+        obj = K8::SecretValue.new('TEST_HOMHOM')
+        ok {obj.value} == nil
+        ENV['TEST_HOMHOM'] = 'homhom'
+        ok {obj.value} == 'homhom'
+      end
+
+    end
+
+
     topic '#to_s()' do
 
-      spec "[!hlz4y] just returns '<SECRET>'." do
-        ok {K8::SecretValue.new.to_s} == '<SECRET>'
+      spec "[!7ymqq] returns '<SECRET>' string when name not eixst." do
+        ok {K8::SecretValue.new.to_s} == "<SECRET>"
+      end
+
+      spec "[!x6edf] returns 'ENV[<name>]' string when name exists." do
+        ok {K8::SecretValue.new('DB_PASS').to_s} == "ENV['DB_PASS']"
       end
 
     end
@@ -2261,7 +2287,18 @@ Oktest.scope do
     topic '#inspect()' do
 
       spec "[!j27ji] 'inspect()' is alias of 'to_s()'." do
-        ok {K8::SecretValue.new.inspect} == '<SECRET>'
+        ok {K8::SecretValue.new('DB_PASS').inspect} == "ENV['DB_PASS']"
+      end
+
+    end
+
+
+    topic '#[](name)' do
+
+      spec "[!jjqmn] creates new instance object with name." do
+        obj = K8::SecretValue.new['DB_PASSWORD']
+        ok {obj}.is_a?(K8::SecretValue)
+        ok {obj.name} == 'DB_PASSWORD'
       end
 
     end
@@ -2307,6 +2344,41 @@ Oktest.scope do
         ok {pr}.raise?(RuntimeError, "can't modify frozen C02")
         pr = proc { C02.class_eval { put :yuki, 'B' } }
         ok {pr}.raise?(RuntimeError, "can't modify frozen class")
+      end
+
+      case_when "[!xok12] when value is SECRET..." do
+
+        spec "[!a4a4p] raises error when key not specified." do
+          class C03 < K8::BaseConfig
+            add :db_pass    , SECRET,   "db password"
+          end
+          pr = proc { C03.new }
+          ok {pr}.raise?(K8::ConfigError, "config 'db_pass' should be set, but not.")
+        end
+
+        spec "[!w4yl7] raises error when ENV value not specified." do
+          class C04 < K8::BaseConfig
+            add :db_pass1    , SECRET['DB_PASS1'],   "db password"
+          end
+          ok {ENV['DB_PASS1']} == nil
+          pr = proc { C04.new }
+          ok {pr}.raise?(K8::ConfigError, )
+        end
+
+        spec "[!he20d] get value from ENV." do
+          class C05 < K8::BaseConfig
+            add :db_pass1    , SECRET['DB_PASS1'],   "db password"
+          end
+          begin
+            ENV['DB_PASS1'] = 'homhom'
+            pr = proc { C05.new }
+            ok {pr}.NOT.raise?(Exception)
+            ok {C05.new.db_pass1} == 'homhom'
+          ensure
+            ENV['DB_PASS1'] = nil
+          end
+        end
+
       end
 
     end

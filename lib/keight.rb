@@ -1470,13 +1470,31 @@ END
 
   class SecretValue < Object
 
+    def initialize(name=nil)
+      #; [!fbwnh] takes environment variable name.
+      @name = name
+    end
+
+    attr_reader :name
+
+    def value
+      #; [!gg06v] returns environment variable value.
+      return @name ? ENV[@name] : nil
+    end
+
     def to_s
-      #; [!hlz4y] just returns '<SECRET>'.
-      return '<SECRET>'
+      #; [!7ymqq] returns '<SECRET>' string when name not eixst.
+      #; [!x6edf] returns 'ENV[<name>]' string when name exists.
+      return @name ? "ENV['#{@name}']" : "<SECRET>"
     end
 
     #; [!j27ji] 'inspect()' is alias of 'to_s()'.
     alias inspect to_s
+
+    def [](name)
+      #; [!jjqmn] creates new instance object with name.
+      self.class.new(name)
+    end
 
   end
 
@@ -1488,6 +1506,17 @@ END
     def initialize(freeze: true)
       #; [!vvd1n] copies key and values from class object.
       self.class.each do |key, val, _, _|
+        #; [!xok12] when value is SECRET...
+        if val.is_a?(SecretValue)
+          #; [!a4a4p] raises error when key not specified.
+          val.name  or
+            raise ConfigError.new("config '#{key}' should be set, but not.")
+          #; [!w4yl7] raises error when ENV value not specified.
+          ENV[val.name]  or
+            raise ConfigError.new("config '#{key}' depends on ENV['#{val.name}'], but not set.")
+          #; [!he20d] get value from ENV.
+          val = ENV[val.name]
+        end
         instance_variable_set("@#{key}", val)
       end
       #; [!6dilv] freezes self and class object if 'freeze:' is true.

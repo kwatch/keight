@@ -152,6 +152,91 @@ class K8::Main
     return app.show_mappings()
   end
 
+  @action.(:configs, "list config keys and values")
+  @option.("--getenv", "show actual ENV value")
+  def do_configs(getenv: false)
+    ENV['APP_MODE'] ||= 'dev'
+    require "./configs/config" rescue K8::ConfigError
+    s = ""
+    ::Config.each do |key, val, desc, secret|
+      kv = "%-20s = %s" % [key, __var_dump(val, secret, getenv)]
+      s << ("%-43s # %s\n" % [kv, desc]) if desc
+    end
+    return s
+  end
+
+  @action.(:config, "show config value")
+  @option.("--getenv", "show actual ENV value")
+  def do_config(key, getenv: false)
+    key_name = key
+    ENV['APP_MODE'] ||= 'dev'
+    require "./configs/config" rescue K8::ConfigError
+    ::Config.each do |key, val, desc, secret|
+      if key.to_s == key_name
+        return __var_dump(val, secret, getenv)
+      end
+    end
+    $stderr.puts "#{key_name}: no such config key."
+    return 1
+  end
+
+  @action.(:'config:check', "check config values")
+  def do_config_check()
+    ENV['APP_MODE'] ||= 'dev'
+    require "./configs/config" rescue K8::ConfigError
+    not_set = []
+    not_env = []
+    ::Config.each do |key, val, desc, secret|
+      if val.is_a?(K8::SecretValue)
+        if ! val.name
+          not_set << [key, val, desc]
+        elsif ! ENV[val.name]
+          not_env << [key, val, desc]
+        end
+      end
+    end
+    if not_set.empty? && not_env.empty?
+      puts "ok."
+      return 0
+    else
+      sb = []
+      sb <<     "**"
+      sb <<     "** NG!"
+      unless not_set.empty?
+        sb <<   "**"
+        sb <<   "** The following configs should be set, but not."
+        sb <<   "**"
+        not_set.each do |key, val, desc|
+          sb << "**   %-20s = %s" % [key, val.inspect]
+        end
+      end
+      unless not_env.empty?
+        sb <<   "**"
+        sb <<   "** The following configs expect environment variable, but not set."
+        sb <<   "**"
+        not_env.each do |key, val, desc|
+          sb << "**   %-20s = %s" % [key, val.inspect]
+        end
+      end
+      sb <<     "**"
+      puts sb.join("\n")
+      return 1
+    end
+  end
+
+  def __var_dump(val, secret, getenv)
+    if ! val.is_a?(K8::SecretValue)
+      #secret ? '<secret>' : val.inspect
+      val.inspect
+    elsif val.name
+      getenv ? ENV[val.name].inspect : "ENV['#{val.name}']"
+    else
+      '<SECRET>'
+    end
+  end
+  private :__var_dump
+
+
   if ENV['DEBUG']
     @action.(:debug, "debug")
     @option.("-h, --help"       , "show help message")

@@ -79,6 +79,15 @@ class TestBaseAction < K8::BaseAction
 end
 
 
+class TestExceptionAction < K8::Action
+
+  def do_create
+    1/0   #=> ZeroDivisionError
+  end
+
+end
+
+
 Oktest.scope do
 
   def new_env(meth="GET", path="/", opts={})
@@ -735,35 +744,6 @@ Oktest.scope do
         ok {action._called[-1]} == ["after_action", [pr.exception]]
       end
 
-      spec "[!l942j] when exception raised, calls exception handler with it." do
-        |action|
-        pr = proc { action.handle_action(:do_create, []) }
-        ok {pr}.raise?(ZeroDivisionError)
-        ok {action._called[-2]} == ["handle_exception", [pr.exception]]
-      end
-
-      spec "[!yac0n] re-raises exception when exception handler returns nil." do
-        |action|
-        def action.handle_exception(ex)
-          nil
-        end
-        pr = proc { action.handle_action(:do_create, []) }
-        ok {pr}.raise?(ZeroDivisionError)
-      end
-
-      spec "[!040cj] ignores exception when exception handler handled it." do
-        |action|
-        def action.handle_exception(ex)
-          super
-          "error!"
-        end
-        pr = proc { action.handle_action(:do_create, []) }
-        ok {pr}.NOT.raise?(Exception)
-        ok {action._called[-1]} == ["after_action", [nil]]  # without exception object!
-        ok {action._called[-2]} == ["handle_content", ["error!"]]
-        ok {action._called[-3][0]} == "handle_exception"
-      end
-
     end
 
 
@@ -842,6 +822,31 @@ Oktest.scope do
           pr = proc { after_action(nil) }
           _.ok {pr}.raise?(K8::ContentTypeRequiredError)
         end
+      end
+
+    end
+
+
+    topic '#invoke_action()' do
+
+      spec "[!d5v0l] handles exception when handler method defined." do
+        env = new_env("POST", "/", env: {'rack.session'=>{}})
+        action_obj = TestExceptionAction.new(K8::Request.new(env), K8::Response.new())
+        result = nil
+        pr = proc { result = action_obj.handle_action(:do_create, []) }
+        ok {pr}.raise?(ZeroDivisionError)
+        #
+        action_obj.instance_exec(self) do |_|
+          def on_ZeroDivisionError(ex)
+            @_called = ex
+            "<h1>Yes</h1>"
+          end
+        end
+        ok {action_obj}.respond_to?('on_ZeroDivisionError')
+        ok {pr}.NOT.raise?(ZeroDivisionError)
+        ok {action_obj.instance_variable_get('@_called')} != nil
+        ok {action_obj.instance_variable_get('@_called')}.is_a?(ZeroDivisionError)
+        ok {result} == ["<h1>Yes</h1>"]
       end
 
     end

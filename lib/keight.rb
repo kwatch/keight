@@ -686,17 +686,11 @@ module K8
         #; [!5jnx6] calls '#before_action()' before handling request.
         before_action()
         #; [!ddgx3] invokes action method with urlpath params.
-        content = self.__send__(action_method, *urlpath_params)
+        content = invoke_action(action_method, urlpath_params)
         #; [!aqa4e] returns content.
         return handle_content(content)
-      rescue => ex
-        #; [!l942j] when exception raised, calls exception handler with it.
-        content = handle_exception(ex)
-        #; [!yac0n] re-raises exception when exception handler returns nil.
-        raise ex if content.nil?
-        #; [!040cj] ignores exception when exception handler handled it.
-        ex = nil
-        return handle_content(content)
+      rescue Exception => ex
+        raise
       ensure
         #; [!67awf] calls '#after_action()' after handling request.
         #; [!alpka] calls '#after_action()' even when error raised.
@@ -712,12 +706,12 @@ module K8
     def after_action(ex)
     end
 
-    def handle_content(content)
-      return content
+    def invoke_action(action_method, urlpath_params)
+      return self.__send__(action_method, *urlpath_params)
     end
 
-    def handle_exception(ex)
-      return nil    # nil means re-raise exception
+    def handle_content(content)
+      return content
     end
 
     ##
@@ -757,6 +751,17 @@ module K8
       #; [!qsz2z] raises ContentTypeRequiredError when content type is not set.
       @resp.headers['Content-Type']  or
         raise ContentTypeRequiredError.new("Response header 'Content-Type' expected, but not provided.")
+    end
+
+    def invoke_action(action_method, urlpath_params)
+      begin
+        return super
+      #; [!d5v0l] handles exception when handler method defined.
+      rescue => ex
+        handler = "on_#{ex.class}"
+        return __send__(handler, ex) if respond_to?(handler)
+        raise
+      end
     end
 
     def handle_content(content)

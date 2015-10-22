@@ -735,35 +735,6 @@ Oktest.scope do
         ok {action._called[-1]} == ["after_action", [pr.exception]]
       end
 
-      spec "[!l942j] when exception raised, calls exception handler with it." do
-        |action|
-        pr = proc { action.handle_action(:do_create, []) }
-        ok {pr}.raise?(ZeroDivisionError)
-        ok {action._called[-2]} == ["handle_exception", [pr.exception]]
-      end
-
-      spec "[!yac0n] re-raises exception when exception handler returns nil." do
-        |action|
-        def action.handle_exception(ex)
-          nil
-        end
-        pr = proc { action.handle_action(:do_create, []) }
-        ok {pr}.raise?(ZeroDivisionError)
-      end
-
-      spec "[!040cj] ignores exception when exception handler handled it." do
-        |action|
-        def action.handle_exception(ex)
-          super
-          "error!"
-        end
-        pr = proc { action.handle_action(:do_create, []) }
-        ok {pr}.NOT.raise?(Exception)
-        ok {action._called[-1]} == ["after_action", [nil]]  # without exception object!
-        ok {action._called[-2]} == ["handle_content", ["error!"]]
-        ok {action._called[-3][0]} == "handle_exception"
-      end
-
     end
 
 

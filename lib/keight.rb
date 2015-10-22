@@ -1655,7 +1655,7 @@ END
         #; [!gko8g] 'multipart:' kwarg accepts Hash object (which is converted into multipart data).
         if multipart.is_a?(Hash)
           dict = multipart
-          multipart = dict.each_with_object(MultiPartBuilder.new) do |(k, v), mp|
+          multipart = dict.each_with_object(MultipartBuilder.new) do |(k, v), mp|
             v.is_a?(File) ? mp.add_file(k, v) : mp.add(k, v.to_s)
           end
         end
@@ -1716,7 +1716,7 @@ END
     end
 
 
-    class MultiPartBuilder
+    class MultipartBuilder
 
       def initialize(boundary=nil)
         #; [!ajfgl] sets random string as boundary when boundary is nil.

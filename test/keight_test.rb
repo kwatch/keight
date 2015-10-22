@@ -2647,6 +2647,17 @@ Oktest.scope do
         ok {pr}.raise?(ArgumentError, "new_env(): not allowed both 'form' and 'json' at a time.")
       end
 
+      spec "[!gko8g] 'multipart:' kwarg accepts Hash object (which is converted into multipart data)." do
+        env = K8::Mock.new_env(multipart: {"a"=>10, "b"=>20})
+        ok {env['CONTENT_TYPE']} =~ /\Amultipart\/form-data; *boundary=/
+        env['CONTENT_TYPE'] =~ /\Amultipart\/form-data; *boundary=(.+)/
+        boundary = $1
+        cont_len = Integer(env['CONTENT_LENGTH'])
+        params, files = K8::Util.parse_multipart(env['rack.input'], boundary, cont_len)
+        ok {params} == {"a"=>"10", "b"=>"20"}
+        ok {files} == {}
+      end
+
     end
 
 

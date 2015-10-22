@@ -1652,6 +1652,13 @@ END
       end
       if multipart
         ! form  or raise err.call('multipart', 'form')
+        #; [!gko8g] 'multipart:' kwarg accepts Hash object (which is converted into multipart data).
+        if multipart.is_a?(Hash)
+          dict = multipart
+          multipart = dict.each_with_object(MultiPartBuilder.new) do |(k, v), mp|
+            v.is_a?(File) ? mp.add_file(k, v) : mp.add(k, v.to_s)
+          end
+        end
         input = multipart.to_s
         m = /\A--(\S+)\r\n/.match(input)  or
           raise ArgumentError.new("invalid multipart format.")

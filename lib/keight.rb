@@ -686,7 +686,7 @@ module K8
         #; [!5jnx6] calls '#before_action()' before handling request.
         before_action()
         #; [!ddgx3] invokes action method with urlpath params.
-        content = self.__send__(action_method, *urlpath_params)
+        content = invoke_action(action_method, urlpath_params)
         #; [!aqa4e] returns content.
         return handle_content(content)
       rescue => ex
@@ -710,6 +710,10 @@ module K8
     end
 
     def after_action(ex)
+    end
+
+    def invoke_action(action_method, urlpath_params)
+      return self.__send__(action_method, *urlpath_params)
     end
 
     def handle_content(content)

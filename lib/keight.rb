@@ -1739,7 +1739,7 @@ END
       def to_s
         #; [!61gc4] returns multipart form string.
         boundary = @boundary
-        s = ""
+        s = "".force_encoding('ASCII-8BIT')
         @params.each do |name, value, filename, content_type|
           s <<   "--#{boundary}\r\n"
           if filename
@@ -1749,7 +1749,7 @@ END
           end
           s <<   "Content-Type: #{content_type}\r\n" if content_type
           s <<   "\r\n"
-          s <<   value
+          s <<   value.force_encoding('ASCII-8BIT')
           s <<   "\r\n"
         end
         s <<     "--#{boundary}--\r\n"

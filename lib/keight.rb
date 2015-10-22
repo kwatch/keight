@@ -280,7 +280,7 @@ module K8
       separator  = "\r\n--#{boundary}\r\n"
       s = stdin.read(first_line.bytesize)
       s == first_line  or
-        raise _mp_err("invalid first line.")
+        raise _mp_err("invalid first line. exected=#{first_line.inspect}, actual=#{s.inspect}")
       len = content_length - first_line.bytesize - last_line.bytesize
       len > 0  or
         raise _mp_err("invalid content length.")
@@ -1652,6 +1652,13 @@ END
       end
       if multipart
         ! form  or raise err.call('multipart', 'form')
+        #; [!gko8g] 'multipart:' kwarg accepts Hash object (which is converted into multipart data).
+        if multipart.is_a?(Hash)
+          dict = multipart
+          multipart = dict.each_with_object(MultipartBuilder.new) do |(k, v), mp|
+            v.is_a?(File) ? mp.add_file(k, v) : mp.add(k, v.to_s)
+          end
+        end
         input = multipart.to_s
         m = /\A--(\S+)\r\n/.match(input)  or
           raise ArgumentError.new("invalid multipart format.")
@@ -1709,7 +1716,7 @@ END
     end
 
 
-    class MultiPartBuilder
+    class MultipartBuilder
 
       def initialize(boundary=nil)
         #; [!ajfgl] sets random string as boundary when boundary is nil.
@@ -1726,10 +1733,20 @@ END
         self
       end
 
+      def add_file(name, file, content_type=nil)
+        #; [!uafqa] detects content type from filename when content type is not provided.
+        content_type ||= Util.guess_content_type(file.path)
+        #; [!b5811] reads file content and adds it as param value.
+        add(name, file.read(), File.basename(file.path), content_type)
+        #; [!36bsu] closes opened file automatically.
+        file.close()
+        self
+      end
+
       def to_s
         #; [!61gc4] returns multipart form string.
         boundary = @boundary
-        s = ""
+        s = "".force_encoding('ASCII-8BIT')
         @params.each do |name, value, filename, content_type|
           s <<   "--#{boundary}\r\n"
           if filename
@@ -1739,7 +1756,7 @@ END
           end
           s <<   "Content-Type: #{content_type}\r\n" if content_type
           s <<   "\r\n"
-          s <<   value
+          s <<   value.force_encoding('ASCII-8BIT')
           s <<   "\r\n"
         end
         s <<     "--#{boundary}--\r\n"

@@ -2689,6 +2689,73 @@ Oktest.scope do
     end
 
 
+    topic '#add_file()' do
+
+      fixture :data_dir do
+        File.join(File.dirname(__FILE__), 'data')
+      end
+
+      fixture :filename1 do |data_dir|
+        File.join(data_dir, 'example1.png')
+      end
+
+      fixture :filename2 do |data_dir|
+        File.join(data_dir, 'example1.jpg')
+      end
+
+      fixture :multipart_data do |data_dir|
+        fname = File.join(data_dir, 'multipart.form')
+        File.open(fname, 'rb') {|f| f.read }
+      end
+
+
+      spec "[!uafqa] detects content type from filename when content type is not provided." do
+        |filename1, filename2|
+        file1 = File.open(filename1)
+        file2 = File.open(filename2)
+        at_end { [file1, file2].each {|f| f.close() unless f.closed? } }
+        mp = K8::Mock::MultiPartBuilder.new
+        mp.add_file('image1', file1)
+        mp.add_file('image2', file2)
+        mp.instance_exec(self) do |_|
+          _.ok {@params[0][2]} == "example1.png"
+          _.ok {@params[0][3]} == "image/png"
+          _.ok {@params[1][2]} == "example1.jpg"
+          _.ok {@params[1][3]} == "image/jpeg"
+        end
+      end
+
+      spec "[!b5811] reads file content and adds it as param value." do
+        |filename1, filename2, multipart_data|
+        file1 = File.open(filename1)
+        file2 = File.open(filename2)
+        at_end { [file1, file2].each {|f| f.close() unless f.closed? } }
+        boundary = '---------------------------68927884511827559971471404947'
+        mp = K8::Mock::MultiPartBuilder.new(boundary)
+        mp.add('text1', "test1")
+        mp.add('text2', "日本語\r\nあいうえお\r\n")
+        mp.add_file('file1', file1)
+        mp.add_file('file2', file2)
+        ok {mp.to_s} == multipart_data
+      end
+
+      spec "[!36bsu] closes opened file automatically." do
+        |filename1, filename2, multipart_data|
+        file1 = File.open(filename1)
+        file2 = File.open(filename2)
+        at_end { [file1, file2].each {|f| f.close() unless f.closed? } }
+        ok {file1.closed?} == false
+        ok {file2.closed?} == false
+        mp = K8::Mock::MultiPartBuilder.new()
+        mp.add_file('file1', file1)
+        mp.add_file('file2', file2)
+        ok {file1.closed?} == true
+        ok {file2.closed?} == true
+      end
+
+    end
+
+
     topic '#to_s()' do
 
       spec "[!61gc4] returns multipart form string." do

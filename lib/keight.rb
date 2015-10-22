@@ -1726,6 +1726,16 @@ END
         self
       end
 
+      def add_file(name, file, content_type=nil)
+        #; [!uafqa] detects content type from filename when content type is not provided.
+        content_type ||= Util.guess_content_type(file.path)
+        #; [!b5811] reads file content and adds it as param value.
+        add(name, file.read(), File.basename(file.path), content_type)
+        #; [!36bsu] closes opened file automatically.
+        file.close()
+        self
+      end
+
       def to_s
         #; [!61gc4] returns multipart form string.
         boundary = @boundary

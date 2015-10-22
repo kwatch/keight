@@ -280,7 +280,7 @@ module K8
       separator  = "\r\n--#{boundary}\r\n"
       s = stdin.read(first_line.bytesize)
       s == first_line  or
-        raise _mp_err("invalid first line.")
+        raise _mp_err("invalid first line. exected=#{first_line.inspect}, actual=#{s.inspect}")
       len = content_length - first_line.bytesize - last_line.bytesize
       len > 0  or
         raise _mp_err("invalid content length.")

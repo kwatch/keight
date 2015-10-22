@@ -808,7 +808,7 @@ module K8
       #; [!zamnv] returns nil when text starts with neight '<' nor '{'.
       case text
       when /\A\s*</ ; return "text/html; charset=utf-8"  # probably HTML
-      when /\A\s*\{/ ; return "application/json"          # probably JSON
+      when /\A\s*\{/; return "application/json"          # probably JSON
       else          ; return nil
       end
     end

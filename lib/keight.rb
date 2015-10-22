@@ -753,6 +753,17 @@ module K8
         raise ContentTypeRequiredError.new("Response header 'Content-Type' expected, but not provided.")
     end
 
+    def invoke_action(action_method, urlpath_params)
+      begin
+        return super
+      #; [!d5v0l] handles exception when handler method defined.
+      rescue => ex
+        handler = "on_#{ex.class}"
+        return __send__(handler, ex) if respond_to?(handler)
+        raise
+      end
+    end
+
     def handle_content(content)
       case content
       #; [!jhnzu] when content is nil...

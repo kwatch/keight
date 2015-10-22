@@ -79,6 +79,15 @@ class TestBaseAction < K8::BaseAction
 end
 
 
+class TestExceptionAction < K8::Action
+
+  def do_create
+    1/0   #=> ZeroDivisionError
+  end
+
+end
+
+
 Oktest.scope do
 
   def new_env(meth="GET", path="/", opts={})
@@ -813,6 +822,31 @@ Oktest.scope do
           pr = proc { after_action(nil) }
           _.ok {pr}.raise?(K8::ContentTypeRequiredError)
         end
+      end
+
+    end
+
+
+    topic '#invoke_action()' do
+
+      spec "[!d5v0l] handles exception when handler method defined." do
+        env = new_env("POST", "/", env: {'rack.session'=>{}})
+        action_obj = TestExceptionAction.new(K8::Request.new(env), K8::Response.new())
+        result = nil
+        pr = proc { result = action_obj.handle_action(:do_create, []) }
+        ok {pr}.raise?(ZeroDivisionError)
+        #
+        action_obj.instance_exec(self) do |_|
+          def on_ZeroDivisionError(ex)
+            @_called = ex
+            "<h1>Yes</h1>"
+          end
+        end
+        ok {action_obj}.respond_to?('on_ZeroDivisionError')
+        ok {pr}.NOT.raise?(ZeroDivisionError)
+        ok {action_obj.instance_variable_get('@_called')} != nil
+        ok {action_obj.instance_variable_get('@_called')}.is_a?(ZeroDivisionError)
+        ok {result} == ["<h1>Yes</h1>"]
       end
 
     end

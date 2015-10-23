@@ -344,6 +344,27 @@ module K8
       return MIME_TYPES[ext] || 'application/octet-stream'
     end
 
+    def http_utc_time(utc_time)   # similar to Time#httpdate() in 'time.rb'
+      #; [!3z5lf] raises error when argument is not UTC.
+      utc_time.utc?  or
+        raise ArgumentError.new("http_utc_time(#{utc_time.inspect}): expected UTC time but got local time.")
+      #; [!5k50b] converts Time object into HTTP date format string.
+      return utc_time.strftime('%a, %d %b %Y %H:%M:%S GMT')
+    end
+
+    WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].freeze
+    MONTHS   = [nil, 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].freeze
+
+    t = Time.now.utc
+    if t.strftime('%a') != WEEKDAYS[t.wday] || t.strftime('%b') != MONTHS[t.month]
+      def http_utc_time(utc_time)
+        utc_time.utc?  or
+          raise ArgumentError.new("http_utc_time(#{utc_time.inspect}): expected UTC time but got local time.")
+        return utc_time.strftime("#{WEEKDAYS[utc_time.wday]}, %d #{MONTHS[utc_time.month]} %Y %H:%M:%S GMT")
+      end
+    end
+
   end
 
 

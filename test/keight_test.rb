@@ -237,6 +237,25 @@ Oktest.scope do
     end
 
 
+    topic '#http_utc_time()' do
+
+      spec "[!5k50b] converts Time object into HTTP date format string." do
+        require 'time'
+        t = Time.new(2015, 2, 3, 4, 5, 6).utc
+        ok {K8::Util.http_utc_time(t)} == t.httpdate
+        now = Time.now.utc
+        ok {K8::Util.http_utc_time(now)} == now.httpdate
+      end
+
+      spec "[!3z5lf] raises error when argument is not UTC." do
+        t = Time.new(2015, 2, 3, 4, 5, 6)
+        pr = proc { K8::Util.http_utc_time(t) }
+        ok {pr}.raise?(ArgumentError, /\Ahttp_utc_time\(2015-02-03 04:05:06 [-+]\d{4}\): expected UTC time but got local time.\z/)
+      end
+
+    end
+
+
   end
 
 

@@ -914,6 +914,31 @@ module K8
       return @_csrf_token ||= (csrf_get_token() || csrf_set_token(csrf_new_token()))
     end
 
+    ##
+
+    def send_file(filepath, content_type=nil)
+      #; [!iblvb] raises 404 Not Found when file not exist.
+      File.file?(filepath)  or raise HttpException.new(404)
+      #; [!v7r59] returns empty string with status code 304 when not modified.
+      mtime_utc = File.mtime(filepath).utc
+      mtime_str = K8::Util.http_utc_time(mtime_utc)
+      if mtime_str == @req.env['HTTP_IF_MODIFIED_SINCE']
+        @resp.status_code = 304
+        return ""
+      end
+      #; [!e8l5o] sets Content-Type with guessing it from filename.
+      #; [!qhx0l] sets Content-Length with file size.
+      #; [!6j4fh] sets Last-Modified with file timestamp.
+      #; [!37i9c] returns opened file.
+      file = File.open(filepath)
+      content_type ||= K8::Util.guess_content_type(filepath)
+      headers = @resp.headers
+      headers['Content-Type'] ||= content_type
+      headers['Content-Length'] = File.size(filepath).to_s
+      headers['Last-Modified']  = mtime_str
+      return file
+    end
+
   end
 
 

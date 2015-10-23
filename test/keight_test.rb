@@ -1252,6 +1252,87 @@ Oktest.scope do
     end
 
 
+    topic '#send_file()' do
+
+      fixture :data_dir do
+        File.join(File.dirname(__FILE__), 'data')
+      end
+
+      fixture :pngfile do |data_dir|
+        File.join(data_dir, 'example1.png')
+      end
+
+      fixture :jpgfile do |data_dir|
+        File.join(data_dir, 'example1.jpg')
+      end
+
+      spec "[!37i9c] returns opened file." do
+        |action_obj, jpgfile|
+        action_obj.instance_exec(self) do |_|
+          file = send_file(jpgfile)
+          _.ok {file}.is_a?(File)
+          _.ok {file.closed?} == false
+          _.ok {file.path} == jpgfile
+        end
+      end
+
+      spec "[!v7r59] returns empty string with status code 304 when not modified." do
+        |action_obj, pngfile|
+        mtime_utc_str = K8::Util.http_utc_time(File.mtime(pngfile).utc)
+        action_obj.instance_exec(self) do |_|
+          @req.env['HTTP_IF_MODIFIED_SINCE'] = mtime_utc_str
+          ret = send_file(pngfile)
+          _.ok {ret} == ""
+          _.ok {@resp.status_code} == 304
+        end
+      end
+
+      spec "[!e8l5o] sets Content-Type with guessing it from filename." do
+        |action_obj, pngfile, jpgfile|
+        action_obj.instance_exec(self) do |_|
+          send_file(pngfile)
+          _.ok {@resp.headers['Content-Type']} == "image/png"
+          #
+          send_file(jpgfile)
+          _.ok {@resp.headers['Content-Type']} == "image/png"   # not changed
+          #
+          @resp.headers['Content-Type'] = nil
+          send_file(jpgfile)
+          _.ok {@resp.headers['Content-Type']} == "image/jpeg"  # changed!
+        end
+      end
+
+      spec "[!qhx0l] sets Content-Length with file size." do
+        |action_obj, pngfile, jpgfile|
+        action_obj.instance_exec(self) do |_|
+          send_file(pngfile)
+          _.ok {@resp.headers['Content-Length']} == File.size(pngfile).to_s
+          send_file(jpgfile)
+          _.ok {@resp.headers['Content-Length']} == File.size(jpgfile).to_s
+        end
+      end
+
+      spec "[!6j4fh] sets Last-Modified with file timestamp." do
+        |action_obj, pngfile|
+        expected = K8::Util.http_utc_time(File.mtime(pngfile).utc)
+        action_obj.instance_exec(self) do |_|
+          send_file(pngfile)
+          _.ok {@resp.headers['Last-Modified']} == expected
+        end
+      end
+
+      spec "[!iblvb] raises 404 Not Found when file not exist." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          pr = proc { send_file('hom-hom.hom') }
+          _.ok {pr}.raise?(K8::HttpException)
+          _.ok {pr.exception.status_code} == 404
+        end
+      end
+
+    end
+
+
   end
 
 

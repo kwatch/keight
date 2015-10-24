@@ -927,12 +927,22 @@ module K8
         @resp.status_code = 304
         return nil
       end
+      #; [!woho6] when gzipped file exists...
+      content_type ||= K8::Util.guess_content_type(filepath)
+      gzipped = "#{filepath}.gz"
+      if File.file?(gzipped) && mtime_utc <= File.mtime(gzipped).utc
+        #; [!9dmrf] returns gzipped file object when 'Accept-Encoding: gzip' exists.
+        #; [!m51dk] adds 'Content-Encoding: gzip' when 'Accept-Encoding: gzip' exists.
+        if /\bgzip\b/.match(@req.env['HTTP_ACCEPT_ENCODING'])
+          @resp.headers['Content-Encoding'] = 'gzip'
+          filepath = gzipped
+        end
+      end
       #; [!e8l5o] sets Content-Type with guessing it from filename.
       #; [!qhx0l] sets Content-Length with file size.
       #; [!6j4fh] sets Last-Modified with file timestamp.
       #; [!37i9c] returns opened file.
       file = File.open(filepath)
-      content_type ||= K8::Util.guess_content_type(filepath)
       headers = @resp.headers
       headers['Content-Type'] ||= content_type
       headers['Content-Length'] = File.size(filepath).to_s

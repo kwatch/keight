@@ -1258,6 +1258,10 @@ Oktest.scope do
         File.join(data_dir, 'example1.jpg')
       end
 
+      fixture :jsfile do |data_dir|
+        File.join(data_dir, 'wabisabi.js')
+      end
+
       spec "[!37i9c] returns opened file." do
         |action_obj, jpgfile|
         action_obj.instance_exec(self) do |_|
@@ -1278,6 +1282,43 @@ Oktest.scope do
           _.ok {@resp.status_code} == 304
         end
       end
+
+      case_when "[!woho6] when gzipped file exists..." do
+
+        spec "[!9dmrf] returns gzipped file object when 'Accept-Encoding: gzip' exists." do
+          |action_obj, jsfile|
+          action_obj.instance_exec(self) do |_|
+            file = send_file(jsfile)
+            _.ok {file}.is_a?(File)
+            _.ok {file.path} == jsfile   # not gzipped
+            #
+            @req.env['HTTP_ACCEPT_ENCODING'] = 'gzip,deflate'
+            file = send_file(jsfile)
+            _.ok {file}.is_a?(File)
+            _.ok {file.path} == jsfile + ".gz"
+          end
+        end
+
+        spec "[!m51dk] adds 'Content-Encoding: gzip' when 'Accept-Encoding: gzip' exists." do
+          |action_obj, jsfile|
+          action_obj.instance_exec(self) do |_|
+            @resp.headers.clear()
+            send_file(jsfile)
+            _.ok {@resp.headers['Content-Encoding']} == nil
+            _.ok {@resp.headers['Content-Type']} == 'application/javascript'
+            _.ok {@resp.status_code} == 200
+            #
+            @resp.headers.clear()
+            @req.env['HTTP_ACCEPT_ENCODING'] = 'gzip,deflate'
+            send_file(jsfile)
+            _.ok {@resp.headers['Content-Encoding']} == 'gzip'
+            _.ok {@resp.headers['Content-Type']} == 'application/javascript'
+            _.ok {@resp.status_code} == 200
+          end
+        end
+
+      end
+
 
       spec "[!e8l5o] sets Content-Type with guessing it from filename." do
         |action_obj, pngfile, jpgfile|

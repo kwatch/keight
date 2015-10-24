@@ -770,8 +770,11 @@ module K8
     def after_action(ex)
       return if ex
       #; [!qsz2z] raises ContentTypeRequiredError when content type is not set.
-      @resp.headers['Content-Type']  or
-        raise ContentTypeRequiredError.new("Response header 'Content-Type' expected, but not provided.")
+      unless @resp.headers['Content-Type']
+        status = @resp.status_code
+        status < 200 || 300 <= status || status == 204  or
+          raise ContentTypeRequiredError.new("Response header 'Content-Type' expected, but not provided.")
+      end
     end
 
     def invoke_action(action_method, urlpath_params)

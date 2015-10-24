@@ -789,11 +789,7 @@ module K8
       case content
       #; [!jhnzu] when content is nil...
       when nil
-        #; [!42fxs] sets content length as 0.
-        #; [!zcodm] sets content type as octet-stream when not set.
         #; [!sfwfz] returns [''].
-        @resp.headers['Content-Length'] = "0"
-        @resp.headers['Content-Type'] ||= "application/octet-stream"  # necessary?
         return [""]
       #; [!lkxua] when content is a hash object...
       when Hash

@@ -875,22 +875,6 @@ Oktest.scope do
 
       case_when "[!jhnzu] when content is nil..." do
 
-        spec "[!42fxs] sets content length as 0." do
-          |action_obj|
-          action_obj.instance_exec(self) do |_|
-            handle_content(nil)
-            _.ok {@resp.headers['Content-Length']} == "0"
-          end
-        end
-
-        spec "[!zcodm] sets content type as octet-stream when not set." do
-          |action_obj|
-          action_obj.instance_exec(self) do |_|
-            handle_content(nil)
-            _.ok {@resp.headers['Content-Type']} == "application/octet-stream"
-          end
-        end
-
         spec "[!sfwfz] returns ['']." do
           |action_obj|
           action_obj.instance_exec(self) do |_|

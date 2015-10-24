@@ -875,22 +875,6 @@ Oktest.scope do
 
       case_when "[!jhnzu] when content is nil..." do
 
-        spec "[!42fxs] sets content length as 0." do
-          |action_obj|
-          action_obj.instance_exec(self) do |_|
-            handle_content(nil)
-            _.ok {@resp.headers['Content-Length']} == "0"
-          end
-        end
-
-        spec "[!zcodm] sets content type as octet-stream when not set." do
-          |action_obj|
-          action_obj.instance_exec(self) do |_|
-            handle_content(nil)
-            _.ok {@resp.headers['Content-Type']} == "application/octet-stream"
-          end
-        end
-
         spec "[!sfwfz] returns ['']." do
           |action_obj|
           action_obj.instance_exec(self) do |_|
@@ -940,7 +924,7 @@ Oktest.scope do
         spec "[!1ejgh] sets content length." do
           |action_obj|
           action_obj.instance_exec(self) do |_|
-            handle_content("abc")
+            handle_content("<b>")
             _.ok {@resp.headers['Content-Length']} == "3"
           end
         end
@@ -954,6 +938,14 @@ Oktest.scope do
             @resp.headers['Content-Type'] = nil
             handle_content('{"a":1}')
             _.ok {@resp.headers['Content-Type']} == "application/json"
+          end
+        end
+
+        spec "[!5q1u5] raises error when failed to detect content type." do
+          |action_obj|
+          action_obj.instance_exec(self) do |_|
+            pr = proc { handle_content("html") }
+            _.ok {pr}.raise?(K8::ContentTypeRequiredError, "Content-Type response header required.")
           end
         end
 
@@ -1246,6 +1238,128 @@ Oktest.scope do
           _.ok {@resp.headers['Set-Cookie']} == nil
           token = csrf_token()
           _.ok {@resp.headers['Set-Cookie']} == "_csrf=#{token}"
+        end
+      end
+
+    end
+
+
+    topic '#send_file()' do
+
+      fixture :data_dir do
+        File.join(File.dirname(__FILE__), 'data')
+      end
+
+      fixture :pngfile do |data_dir|
+        File.join(data_dir, 'example1.png')
+      end
+
+      fixture :jpgfile do |data_dir|
+        File.join(data_dir, 'example1.jpg')
+      end
+
+      fixture :jsfile do |data_dir|
+        File.join(data_dir, 'wabisabi.js')
+      end
+
+      spec "[!37i9c] returns opened file." do
+        |action_obj, jpgfile|
+        action_obj.instance_exec(self) do |_|
+          file = send_file(jpgfile)
+          _.ok {file}.is_a?(File)
+          _.ok {file.closed?} == false
+          _.ok {file.path} == jpgfile
+        end
+      end
+
+      spec "[!v7r59] returns nil with status code 304 when not modified." do
+        |action_obj, pngfile|
+        mtime_utc_str = K8::Util.http_utc_time(File.mtime(pngfile).utc)
+        action_obj.instance_exec(self) do |_|
+          @req.env['HTTP_IF_MODIFIED_SINCE'] = mtime_utc_str
+          ret = send_file(pngfile)
+          _.ok {ret} == nil
+          _.ok {@resp.status_code} == 304
+        end
+      end
+
+      case_when "[!woho6] when gzipped file exists..." do
+
+        spec "[!9dmrf] returns gzipped file object when 'Accept-Encoding: gzip' exists." do
+          |action_obj, jsfile|
+          action_obj.instance_exec(self) do |_|
+            file = send_file(jsfile)
+            _.ok {file}.is_a?(File)
+            _.ok {file.path} == jsfile   # not gzipped
+            #
+            @req.env['HTTP_ACCEPT_ENCODING'] = 'gzip,deflate'
+            file = send_file(jsfile)
+            _.ok {file}.is_a?(File)
+            _.ok {file.path} == jsfile + ".gz"
+          end
+        end
+
+        spec "[!m51dk] adds 'Content-Encoding: gzip' when 'Accept-Encoding: gzip' exists." do
+          |action_obj, jsfile|
+          action_obj.instance_exec(self) do |_|
+            @resp.headers.clear()
+            send_file(jsfile)
+            _.ok {@resp.headers['Content-Encoding']} == nil
+            _.ok {@resp.headers['Content-Type']} == 'application/javascript'
+            _.ok {@resp.status_code} == 200
+            #
+            @resp.headers.clear()
+            @req.env['HTTP_ACCEPT_ENCODING'] = 'gzip,deflate'
+            send_file(jsfile)
+            _.ok {@resp.headers['Content-Encoding']} == 'gzip'
+            _.ok {@resp.headers['Content-Type']} == 'application/javascript'
+            _.ok {@resp.status_code} == 200
+          end
+        end
+
+      end
+
+
+      spec "[!e8l5o] sets Content-Type with guessing it from filename." do
+        |action_obj, pngfile, jpgfile|
+        action_obj.instance_exec(self) do |_|
+          send_file(pngfile)
+          _.ok {@resp.headers['Content-Type']} == "image/png"
+          #
+          send_file(jpgfile)
+          _.ok {@resp.headers['Content-Type']} == "image/png"   # not changed
+          #
+          @resp.headers['Content-Type'] = nil
+          send_file(jpgfile)
+          _.ok {@resp.headers['Content-Type']} == "image/jpeg"  # changed!
+        end
+      end
+
+      spec "[!qhx0l] sets Content-Length with file size." do
+        |action_obj, pngfile, jpgfile|
+        action_obj.instance_exec(self) do |_|
+          send_file(pngfile)
+          _.ok {@resp.headers['Content-Length']} == File.size(pngfile).to_s
+          send_file(jpgfile)
+          _.ok {@resp.headers['Content-Length']} == File.size(jpgfile).to_s
+        end
+      end
+
+      spec "[!6j4fh] sets Last-Modified with file timestamp." do
+        |action_obj, pngfile|
+        expected = K8::Util.http_utc_time(File.mtime(pngfile).utc)
+        action_obj.instance_exec(self) do |_|
+          send_file(pngfile)
+          _.ok {@resp.headers['Last-Modified']} == expected
+        end
+      end
+
+      spec "[!iblvb] raises 404 Not Found when file not exist." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          pr = proc { send_file('hom-hom.hom') }
+          _.ok {pr}.raise?(K8::HttpException)
+          _.ok {pr.exception.status_code} == 404
         end
       end
 

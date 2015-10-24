@@ -770,8 +770,11 @@ module K8
     def after_action(ex)
       return if ex
       #; [!qsz2z] raises ContentTypeRequiredError when content type is not set.
-      @resp.headers['Content-Type']  or
-        raise ContentTypeRequiredError.new("Response header 'Content-Type' expected, but not provided.")
+      unless @resp.headers['Content-Type']
+        status = @resp.status_code
+        status < 200 || 300 <= status || status == 204  or
+          raise ContentTypeRequiredError.new("Response header 'Content-Type' expected, but not provided.")
+      end
     end
 
     def invoke_action(action_method, urlpath_params)
@@ -789,11 +792,7 @@ module K8
       case content
       #; [!jhnzu] when content is nil...
       when nil
-        #; [!42fxs] sets content length as 0.
-        #; [!zcodm] sets content type as octet-stream when not set.
         #; [!sfwfz] returns [''].
-        @resp.headers['Content-Length'] = "0"
-        @resp.headers['Content-Type'] ||= "application/octet-stream"  # necessary?
         return [""]
       #; [!lkxua] when content is a hash object...
       when Hash
@@ -809,9 +808,11 @@ module K8
       when String
         #; [!1ejgh] sets content length.
         #; [!uslm5] sets content type according to content when not set.
+        #; [!5q1u5] raises error when failed to detect content type.
         #; [!79v6x] returns array of string.
         @resp.headers['Content-Length'] = content.bytesize.to_s
-        @resp.headers['Content-Type'] ||= detect_content_type(content)
+        @resp.headers['Content-Type'] ||= detect_content_type(content)  or
+          raise ContentTypeRequiredError.new("Content-Type response header required.")
         return [content]
       #; [!s7eix] when content is an Enumerable object...
       when Enumerable
@@ -912,6 +913,41 @@ module K8
       #; [!7gibo] returns current csrf token.
       #; [!6vtqd] creates new csrf token and set it to cookie when csrf token is blank.
       return @_csrf_token ||= (csrf_get_token() || csrf_set_token(csrf_new_token()))
+    end
+
+    ##
+
+    def send_file(filepath, content_type=nil)
+      #; [!iblvb] raises 404 Not Found when file not exist.
+      File.file?(filepath)  or raise HttpException.new(404)
+      #; [!v7r59] returns nil with status code 304 when not modified.
+      mtime_utc = File.mtime(filepath).utc
+      mtime_str = K8::Util.http_utc_time(mtime_utc)
+      if mtime_str == @req.env['HTTP_IF_MODIFIED_SINCE']
+        @resp.status_code = 304
+        return nil
+      end
+      #; [!woho6] when gzipped file exists...
+      content_type ||= K8::Util.guess_content_type(filepath)
+      gzipped = "#{filepath}.gz"
+      if File.file?(gzipped) && mtime_utc <= File.mtime(gzipped).utc
+        #; [!9dmrf] returns gzipped file object when 'Accept-Encoding: gzip' exists.
+        #; [!m51dk] adds 'Content-Encoding: gzip' when 'Accept-Encoding: gzip' exists.
+        if /\bgzip\b/.match(@req.env['HTTP_ACCEPT_ENCODING'])
+          @resp.headers['Content-Encoding'] = 'gzip'
+          filepath = gzipped
+        end
+      end
+      #; [!e8l5o] sets Content-Type with guessing it from filename.
+      #; [!qhx0l] sets Content-Length with file size.
+      #; [!6j4fh] sets Last-Modified with file timestamp.
+      #; [!37i9c] returns opened file.
+      file = File.open(filepath)
+      headers = @resp.headers
+      headers['Content-Type'] ||= content_type
+      headers['Content-Length'] = File.size(filepath).to_s
+      headers['Last-Modified']  = mtime_str
+      return file
     end
 
   end

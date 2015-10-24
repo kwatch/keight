@@ -1260,13 +1260,13 @@ Oktest.scope do
         end
       end
 
-      spec "[!v7r59] returns empty string with status code 304 when not modified." do
+      spec "[!v7r59] returns nil with status code 304 when not modified." do
         |action_obj, pngfile|
         mtime_utc_str = K8::Util.http_utc_time(File.mtime(pngfile).utc)
         action_obj.instance_exec(self) do |_|
           @req.env['HTTP_IF_MODIFIED_SINCE'] = mtime_utc_str
           ret = send_file(pngfile)
-          _.ok {ret} == ""
+          _.ok {ret} == nil
           _.ok {@resp.status_code} == 304
         end
       end

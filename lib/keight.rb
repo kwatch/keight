@@ -915,12 +915,12 @@ module K8
     def send_file(filepath, content_type=nil)
       #; [!iblvb] raises 404 Not Found when file not exist.
       File.file?(filepath)  or raise HttpException.new(404)
-      #; [!v7r59] returns empty string with status code 304 when not modified.
+      #; [!v7r59] returns nil with status code 304 when not modified.
       mtime_utc = File.mtime(filepath).utc
       mtime_str = K8::Util.http_utc_time(mtime_utc)
       if mtime_str == @req.env['HTTP_IF_MODIFIED_SINCE']
         @resp.status_code = 304
-        return ""
+        return nil
       end
       #; [!e8l5o] sets Content-Type with guessing it from filename.
       #; [!qhx0l] sets Content-Length with file size.

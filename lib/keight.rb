@@ -808,9 +808,11 @@ module K8
       when String
         #; [!1ejgh] sets content length.
         #; [!uslm5] sets content type according to content when not set.
+        #; [!5q1u5] raises error when failed to detect content type.
         #; [!79v6x] returns array of string.
         @resp.headers['Content-Length'] = content.bytesize.to_s
-        @resp.headers['Content-Type'] ||= detect_content_type(content)
+        @resp.headers['Content-Type'] ||= detect_content_type(content)  or
+          raise ContentTypeRequiredError.new("Content-Type response header required.")
         return [content]
       #; [!s7eix] when content is an Enumerable object...
       when Enumerable

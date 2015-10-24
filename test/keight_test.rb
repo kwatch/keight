@@ -924,7 +924,7 @@ Oktest.scope do
         spec "[!1ejgh] sets content length." do
           |action_obj|
           action_obj.instance_exec(self) do |_|
-            handle_content("abc")
+            handle_content("<b>")
             _.ok {@resp.headers['Content-Length']} == "3"
           end
         end
@@ -938,6 +938,14 @@ Oktest.scope do
             @resp.headers['Content-Type'] = nil
             handle_content('{"a":1}')
             _.ok {@resp.headers['Content-Type']} == "application/json"
+          end
+        end
+
+        spec "[!5q1u5] raises error when failed to detect content type." do
+          |action_obj|
+          action_obj.instance_exec(self) do |_|
+            pr = proc { handle_content("html") }
+            _.ok {pr}.raise?(K8::ContentTypeRequiredError, "Content-Type response header required.")
           end
         end
 

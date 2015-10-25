@@ -668,7 +668,7 @@ module K8
       s << "; Secure"             if secure
       value = @headers['Set-Cookie']
       @headers['Set-Cookie'] = value ? (value << "\n" << s) : s
-      return self
+      return value
     end
 
     def clear

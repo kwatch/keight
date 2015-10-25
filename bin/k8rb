@@ -143,7 +143,9 @@ class K8::Main
         elsif File.directory?(path)
           o.mkdir("#{project_name}/#{base}", descs[base+"/"])
         elsif File.file?(path)
-          content = MyTemplate.new.from_file(path, 'ascii-8bit').render()
+          content = path =~ /\Astatic\/lib|\.gz\z/  \
+                  ? File.read(path, encoding: 'ascii-8bit')  \
+                  : MyTemplate.new.from_file(path, 'ascii-8bit').render()
           o.mkfile("#{project_name}/#{base}", content, descs[base])
         else
           next

@@ -342,11 +342,11 @@ module K8
       return [binary].pack('m').chomp("=\n").tr('+/', '-_')
     end
 
-    def guess_content_type(filename)
+    def guess_content_type(filename, default='application/octet-stream')
       #; [!xw0js] returns content type guessed from filename.
       #; [!dku5c] returns 'application/octet-stream' when failed to guess content type.
       ext = File.extname(filename)
-      return MIME_TYPES[ext] || 'application/octet-stream'
+      return MIME_TYPES[ext] || default
     end
 
     def http_utc_time(utc_time)   # similar to Time#httpdate() in 'time.rb'

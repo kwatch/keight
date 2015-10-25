@@ -1596,6 +1596,43 @@ END
       self.freeze       if freeze
     end
 
+    def self.validate_values   # :nodoc:
+      not_set = []
+      not_env = []
+      each() do |key, val, _, _|
+        if val.is_a?(SecretValue)
+          if ! val.name
+            not_set << [key, val]
+          elsif ! ENV[val.name]
+            not_env << [key, val]
+          end
+        end
+      end
+      return nil if not_set.empty? && not_env.empty?
+      sb = []
+      sb << "**"
+      sb << "** ERROR: insufficient config"
+      unless not_set.empty?
+        sb << "**"
+        sb << "** The following configs should be set, but not."
+        sb << "**"
+        not_set.each do |key, val|
+          sb <<  "**   %-25s %s" % [key, val]
+        end
+      end
+      unless not_env.empty?
+        sb << "**"
+        sb << "** The following configs expect environment variable, but not set."
+        sb << "**"
+        not_env.each do |key, val|
+          sb <<  "**   %-25s %s" % [key, val]
+        end
+      end
+      sb << "**"
+      sb << ""
+      return sb.join("\n")
+    end
+
     private
 
     def self.__all

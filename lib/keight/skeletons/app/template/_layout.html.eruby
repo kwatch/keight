@@ -1,11 +1,16 @@
 <% # -*- coding: utf-8 -*-
 
-@page_title ||= "Example page"
+@page_title ||= "Example"
 
 #cdn_baseurl = 'https://ajax.googleapis.com/ajax/libs'   # Google
 cdn_baseurl  = 'https://cdnjs.cloudflare.com/ajax/libs'  # CDNJS
 
 ga_code = $config.google_analytics_code
+
+if $config.app_env == 'dev'
+  cdn_baseurl = '/static/lib'
+  ga_code     = nil
+end
 
 %>
 <!doctype html>
@@ -18,7 +23,7 @@ ga_code = $config.google_analytics_code
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!--link rel="stylesheet" href="/static/css/normalize.css" /-->
     <!--link rel="stylesheet" href="/static/css/main.css" /-->
-    <script src="/static/lib/modernizr/2.8.3/modernizr.min.js"></script>
+    <script src="<%= cdn_baseurl %>/modernizr/2.8.3/modernizr.min.js"></script>
   </head>
   <body>
 

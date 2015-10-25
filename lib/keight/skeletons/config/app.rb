@@ -2,6 +2,8 @@
 
 class Config
 
+  add :app_env      , ENV['APP_ENV']  , "environment name"
+
   ## database
   add :db_host      , 'localhost'     , "DB host name"
   add :db_port      , 5432            , "DB port number"

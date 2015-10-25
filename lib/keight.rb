@@ -540,6 +540,7 @@ module K8
       #; [!o0ws7] unquotes both keys and values.
       return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
+    alias query params_query
 
     MAX_POST_SIZE      =  10*1024*1024
     MAX_MULTIPART_SIZE = 100*1024*1024
@@ -578,6 +579,7 @@ module K8
       @params_form = d
       return d
     end
+    alias form params_form
 
     def params_file
       #; [!1el9z] returns uploaded files of multipart.
@@ -602,6 +604,7 @@ module K8
       @params_json = d
       return d
     end
+    alias json params_json
 
     def params
       #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.

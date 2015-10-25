@@ -637,11 +637,11 @@ module K8
   class Response
 
     def initialize
-      @status_code = 200
+      @status = 200
       @headers = {}
     end
 
-    attr_accessor :status_code
+    attr_accessor :status
     attr_reader :headers
 
     def content_type
@@ -779,7 +779,7 @@ module K8
       return if ex
       #; [!qsz2z] raises ContentTypeRequiredError when content type is not set.
       unless @resp.headers['Content-Type']
-        status = @resp.status_code
+        status = @resp.status
         status < 200 || 300 <= status || status == 204  or
           raise ContentTypeRequiredError.new("Response header 'Content-Type' expected, but not provided.")
       end
@@ -849,8 +849,8 @@ module K8
     end
 
     #--
-    #def HTTP(status_code, message=nil, response_headers=nil)
-    #  return HttpException.new(status_code, message, response_headers)
+    #def HTTP(status, message=nil, response_headers=nil)
+    #  return HttpException.new(status, message, response_headers)
     #end
     #++
 
@@ -858,7 +858,7 @@ module K8
       #; [!xkrfk] sets flash message if provided.
       set_flash_message(flash) if flash
       #; [!ev9nu] sets response status code as 302.
-      @resp.status_code = status
+      @resp.status = status
       #; [!spfge] sets Location response header.
       @resp.headers['Location'] = location
       #; [!k3gvm] returns html anchor tag.
@@ -879,7 +879,7 @@ module K8
 
     def validation_failed
       #; [!texnd] sets response status code as 422.
-      @resp.status_code = 422    # 422 Unprocessable Entity
+      @resp.status = 422    # 422 Unprocessable Entity
       nil
     end
 
@@ -945,7 +945,7 @@ module K8
       mtime_utc = File.mtime(filepath).utc
       mtime_str = K8::Util.http_utc_time(mtime_utc)
       if mtime_str == @req.env['HTTP_IF_MODIFIED_SINCE']
-        @resp.status_code = 304
+        @resp.status = 304
         return nil
       end
       #; [!woho6] when gzipped file exists...
@@ -1478,7 +1478,7 @@ module K8
         #; [!0fgbd] finds action class and invokes action method with urlpath params.
         action_obj = action_class.new(req, resp)
         content = action_obj.handle_action(action_method, urlpath_param_values)
-        tuple = [resp.status_code, resp.headers, content]
+        tuple = [resp.status, resp.headers, content]
       rescue HttpException => ex
         tuple = handle_http(ex, req, resp)
       rescue Exception => ex

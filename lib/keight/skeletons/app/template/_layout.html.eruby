@@ -1,0 +1,21 @@
+<% # -*- coding: utf-8 -*-
+
+@page_title ||= "Example page"
+
+%>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title><%= @page_title %></title>
+  </head>
+  <body>
+    <header>
+    </header>
+    <div id="main" class="main">
+<%== @_content %>
+    </div>
+    <footer>
+    </footer>
+  </body>
+</html>

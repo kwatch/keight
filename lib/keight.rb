@@ -15,6 +15,8 @@ require 'digest/sha1'
 
 module K8
 
+  FILEPATH = __FILE__
+
   HTTP_REQUEST_METHODS = {
     "GET"     => :GET,
     "POST"    => :POST,

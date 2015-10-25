@@ -1,0 +1,10 @@
+config/*.private
+*.cache
+*.gem
+*.rbc
+tmp/
+.bundle
+.rvmrc
+.repl_history
+.yardoc
+_yardoc

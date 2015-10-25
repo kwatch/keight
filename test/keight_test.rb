@@ -1072,9 +1072,9 @@ Oktest.scope do
         |action_obj|
         action_obj.instance_exec(self) do |_|
           redirect_to '/top'
-          _.ok {@resp.status_code} == 302
+          _.ok {@resp.status} == 302
           redirect_to '/top', 301
-          _.ok {@resp.status_code} == 301
+          _.ok {@resp.status} == 301
         end
       end
 
@@ -1111,7 +1111,7 @@ Oktest.scope do
         |action_obj|
         action_obj.instance_exec(self) do |_|
           validation_failed()
-          _.ok {@resp.status_code} == 422
+          _.ok {@resp.status} == 422
         end
       end
 
@@ -1308,7 +1308,7 @@ Oktest.scope do
           @req.env['HTTP_IF_MODIFIED_SINCE'] = mtime_utc_str
           ret = send_file(pngfile)
           _.ok {ret} == nil
-          _.ok {@resp.status_code} == 304
+          _.ok {@resp.status} == 304
         end
       end
 
@@ -1335,14 +1335,14 @@ Oktest.scope do
             send_file(jsfile)
             _.ok {@resp.headers['Content-Encoding']} == nil
             _.ok {@resp.headers['Content-Type']} == 'application/javascript'
-            _.ok {@resp.status_code} == 200
+            _.ok {@resp.status} == 200
             #
             @resp.headers.clear()
             @req.env['HTTP_ACCEPT_ENCODING'] = 'gzip,deflate'
             send_file(jsfile)
             _.ok {@resp.headers['Content-Encoding']} == 'gzip'
             _.ok {@resp.headers['Content-Type']} == 'application/javascript'
-            _.ok {@resp.status_code} == 200
+            _.ok {@resp.status} == 200
           end
         end
 

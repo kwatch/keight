@@ -14,18 +14,6 @@ require 'keight'
 require 'baby_erubis'
 
 
-class MyTemplate < BabyErubis::Text
-
-  rexp = BabyErubis::Text::PATTERN
-  PATTERN = Regexp.compile(rexp.to_s.sub(/<%/, '\{%').sub(/%>/, '%\}'))
-
-  def pattern
-    PATTERN
-  end
-
-end
-
-
 class K8::Main
 
   @__current = nil
@@ -147,7 +135,7 @@ class K8::Main
         elsif File.file?(path)
           content = path =~ /\Astatic\/lib|\.gz\z/  \
                   ? File.read(path, encoding: 'ascii-8bit')  \
-                  : MyTemplate.new.from_file(path, 'ascii-8bit').render()
+                  : SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
           o.mkfile("#{project_name}/#{base}", content, descs[base])
         else
           next
@@ -441,6 +429,18 @@ class K8::Main
   end
 
 
+  class SkeletonTemplate < BabyErubis::Text
+
+    rexp = BabyErubis::Text::PATTERN
+    PATTERN = Regexp.compile(rexp.to_s.sub(/<%/, '\{%').sub(/%>/, '%\}'))
+
+    def pattern
+      PATTERN
+    end
+
+  end
+
+
   class FileTool
 
     def initialize(width: 30)
@@ -482,239 +482,6 @@ class K8::Main
 
   end
 
-
-  CONFIG_RB = <<'END'
-# -*- coding: utf-8 -*-
-
-app_mode = ENV['APP_MODE']
-if app_mode.nil? || app_mode.empty?
-  $stderr << '
-**
-** ERROR: Set $APP_MODE environment variable at first.
-**
-** Example (MacOSX, UNIX):
-**    $ export APP_MODE=dev       # development mode
-**    $ export APP_MODE=prod      # production mode
-**    $ export APP_MODE=stg       # staging mode
-**
-'
-  exit 1
-end
-
-if defined?(Config)     # Ruby < 2.2 has obsoleted 'Config' object
-  Object.class_eval do
-    remove_const :Config
-  end
-end
-
-require 'keight'
-class Config < K8::BaseConfig
-end
-
-require_relative "config_common"
-require_relative "config_mapping"
-require_relative "config_#{app_mode}"
-load File.join(File.dirname(__FILE__), "config_#{app_mode}.secret")
-$config = Config.new
-END
-
-  CONFIG_COMMON_RB = <<'END'
-# -*- coding: utf-8 -*-
-
-class Config
-
-  ## database
-  add :db_host      , "localhost"     , "DB host name"
-  add :db_port      , 5432            , "DB port number"
-  add :db_name      , "xxxx"          , "DB database"
-  add :db_user      , "xxxx"          , "DB user name"
-  add :db_pass      , SECRET          , "DB password"
-
-  ## Rack::Session::Cookie
-  add :session_key           , 'rack.session'   , "cookie name"
-  add :session_domain        , nil              , "cookie domain"
-  add :session_path          , '/'              , "cookie path"
-  add :session_expire_after  , 24 * 60 * 60     , "cookie expires"
-  add :session_secret        , SECRET           , "secret key"
-  add :session_old_secret    , SECRET           , "old secret key"
-
-  ## K8::RackApplication
-  add :k8_rackapp_urlpath_cache_size , 0        , "0: cache disabled"
-
-  ## add your own configs here
-
-end
-END
-
-  CONFIG_DEV_RB = <<'END'
-# -*- coding: utf-8 -*-
-
-class Config
-  set :db_user      , ::ENV['USER']
-end
-END
-
-  CONFIG_DEV_SECRET = <<"END"
-# -*- coding: utf-8 -*-
-
-class Config
-  set :db_pass              , SECRET
-  set :session_secret       , "#{_randstr()}"
-  set :session_old_secret   , ""
-end
-END
-
-  CONFIG_PROD_RB = <<'END'
-# -*- coding: utf-8 -*-
-
-class Config
-
-end
-END
-
-  CONFIG_PROD_SECRET = <<"END"
-# -*- coding: utf-8 -*-
-
-class Config
-  set :db_pass              , SECRET
-  set :session_secret       , "#{_randstr()}"
-  set :session_old_secret   , ""
-end
-END
-
-  CONFIG_STG_RB = <<'END'
-# -*- coding: utf-8 -*-
-
-class Config
-
-end
-END
-
-  CONFIG_STG_SECRET = <<"END"
-# -*- coding: utf-8 -*-
-
-class Config
-  set :db_pass              , SECRET
-  set :session_secret       , "#{_randstr()}"
-  set :session_old_secret   , ""
-end
-END
-
-  CONFIG_TEST_RB = <<'END'
-# -*- coding: utf-8 -*-
-
-class Config
-
-end
-END
-
-  CONFIG_TEST_SECRET = <<"END"
-# -*- coding: utf-8 -*-
-
-class Config
-  set :db_pass              , SECRET
-  set :session_secret       , "#{_randstr()}"
-  set :session_old_secret   , ""
-end
-END
-
-  CONFIG_MAPPING_RB = <<"END"
-# -*- coding: utf-8 -*-
-
-class Config
-
-  add :action_mapping, [
-    ['/',                            "./my/page/welcome:WelcomePage"],
-    ['/api', [
-      ['/hello',                     "./my/api/hello:HelloAPI"],
-     #['/books',                     "./my/api/books:BooksAPI"],
-     #['/books/{book_id}/comments',  "./my/api/books:BookCommentsAPI"],
-     #['/orders',                    "./my/api/orders:OrdersAPI"],
-    ]],
-    ['/admin', [
-     #['/books',                     "./my/admin/books:AdminBooksPage"],
-     #['/orders',                    "./my/admin/orders:AdminOrdersPage"],
-    ]],
-  ], nil
-
-end
-END
-
-  CONFIG_RU = <<'END'
-# -*- coding: utf-8 -*-
-
-require 'keight'
-
-require_relative 'configs/config'
-
-opts = $config.get_all(:k8_rackapp_)   # ex: {urlpath_cache_size: 1000}
-app = K8::RackApplication.new(opts)
-$config.action_mapping.each do |urlpath, children|
-  app.mount(urlpath, children)
-end
-
-require 'rack/session/cookie'
-use Rack::Session::Cookie, $config.get_all(:session_)
-
-run app
-END
-
-  WELCOME_RB = <<'END'
-# -*- coding: utf-8 -*-
-
-require 'keight'
-
-
-class WelcomePage < K8::Action
-
-  mapping ''        , :GET=>:do_index
-
-  def do_index
-    "<h1>Welcome!</h1>"
-  end
-
-end
-END
-
-  HELLO_RB = <<'END'
-# -*- coding: utf-8 -*-
-
-require 'keight'
-
-
-class HelloAPI < K8::Action
-
-  mapping ''        , :GET=>:do_index, :POST=>:do_create
-  mapping '/{id}'   , :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
-  ## or if you want support '/hello.json' and '/hello/123.json'...
-  #mapping '{ext}'        , :GET=>:do_index, :POST=>:do_create
-  #mapping '/{id}{ext}'   , :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
-
-  def do_index()
-    query = @req.params_query   # QUERY_STRING
-    {"action"=>"index", "query"=>query}
-  end
-
-  def do_create()
-    form = @req.params_form   # or @req.params_json
-    {"action"=>"create", "form"=>form}
-  end
-
-  def do_show(id)
-    {"action"=>"show", "id"=>id}
-  end
-
-  def do_update(id)
-    form = @req.params_form   # or @req.params_json
-    {"action"=>"update", "form"=>form}
-  end
-
-  def do_delete(id)
-    {"action"=>"delete", "id"=>id}
-  end
-
-end
-END
 
 end
 

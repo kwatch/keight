@@ -1584,6 +1584,15 @@ Oktest.scope do
           ok {pr}.raise?(ArgumentError, "mount('./testapi/books999:MyBooksAPI'): failed to require file.")
         end
 
+        spec "[!eiovd] raises original LoadError when it raises in loading file." do
+          |mapping, testapi_books|
+          filepath = './testapi/books7.rb'
+          ok {filepath}.NOT.exist?
+          File.open(filepath, 'w') {|f| f << "require 'homhom7'\n" }
+          pr = proc { mapping.mount '/books', './testapi/books7:MyBooks7API' }
+          ok {pr}.raise?(LoadError, "cannot load such file -- homhom7")
+        end
+
         spec "[!au27n] finds target class." do
           |mapping, testapi_books|
           pr = proc { mapping.mount '/books', './testapi/books:MyBooksAPI' }

@@ -1074,9 +1074,11 @@ module K8
         raise ArgumentError.new("#{error}: expected 'file/path:ClassName'.")
       #; [!jpg56] loads file.
       #; [!vaazw] raises error when failed to load file.
+      #; [!eiovd] raises original LoadError when it raises in loading file.
       begin
         require filepath
-      rescue LoadError
+      rescue LoadError => ex
+        raise unless ex.path == filepath
         raise ArgumentError.new("#{error}: failed to require file.")
       end
       #; [!au27n] finds target class.

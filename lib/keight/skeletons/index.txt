@@ -1,0 +1,37 @@
+# -*- coding: utf-8 -*-
+config.ru				for 'rackup' command
+config.rb				define $config object
+config/					configurations
+config/app.rb				common config
+config/app_dev.rb			for development
+config/app_dev.private			(private configs)
+config/app_prod.rb			for production
+config/app_stg.rb			for staging
+config/app_test.rb			for test
+config/app_test.private			(private configs)
+config/server_unicorn.rb		for unicorn server
+config/server_puma.rb			for puma server
+config/urlpath_mapping.rb		urlpath mapping
+app/					application code
+app/action.rb				base action class
+app/api/				for API
+app/api/hello.rb			example API
+app/page/				for HTML
+app/page/welcome.rb			example HTML page
+app/model.rb				base classes of models
+app/model/				model classes
+app/usecase/				usecase classes
+app/form/				HTML form
+app/helper/				helper modules
+app/template/				template files
+app/template/_layout.html.eruby		default layout template
+app/template/welcome.html.eruby		welcome page template
+static/					static files
+static/lib/				library such as jquery
+static/lib/jquery/			
+static/lib/jquery/1.11.3		
+static/lib/modernizr/			
+static/lib/modernizr/2.8.3		
+tmp/					temporary directory
+.gitignore				for Git
+

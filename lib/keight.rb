@@ -15,6 +15,8 @@ require 'digest/sha1'
 
 module K8
 
+  FILEPATH = __FILE__
+
   HTTP_REQUEST_METHODS = {
     "GET"     => :GET,
     "POST"    => :POST,
@@ -1074,9 +1076,11 @@ module K8
         raise ArgumentError.new("#{error}: expected 'file/path:ClassName'.")
       #; [!jpg56] loads file.
       #; [!vaazw] raises error when failed to load file.
+      #; [!eiovd] raises original LoadError when it raises in loading file.
       begin
         require filepath
-      rescue LoadError
+      rescue LoadError => ex
+        raise unless ex.path == filepath
         raise ArgumentError.new("#{error}: failed to require file.")
       end
       #; [!au27n] finds target class.
@@ -1594,6 +1598,43 @@ END
       #; [!6dilv] freezes self and class object if 'freeze:' is true.
       self.class.freeze if freeze
       self.freeze       if freeze
+    end
+
+    def self.validate_values   # :nodoc:
+      not_set = []
+      not_env = []
+      each() do |key, val, _, _|
+        if val.is_a?(SecretValue)
+          if ! val.name
+            not_set << [key, val]
+          elsif ! ENV[val.name]
+            not_env << [key, val]
+          end
+        end
+      end
+      return nil if not_set.empty? && not_env.empty?
+      sb = []
+      sb << "**"
+      sb << "** ERROR: insufficient config"
+      unless not_set.empty?
+        sb << "**"
+        sb << "** The following configs should be set, but not."
+        sb << "**"
+        not_set.each do |key, val|
+          sb <<  "**   %-25s %s" % [key, val]
+        end
+      end
+      unless not_env.empty?
+        sb << "**"
+        sb << "** The following configs expect environment variable, but not set."
+        sb << "**"
+        not_env.each do |key, val|
+          sb <<  "**   %-25s %s" % [key, val]
+        end
+      end
+      sb << "**"
+      sb << ""
+      return sb.join("\n")
     end
 
     private

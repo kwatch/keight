@@ -140,6 +140,8 @@ class K8::Main
         base = path[(dir.length+1)..-1]
         if base == "index.txt"
           next
+        elsif base =~ /\/\.keep\z/
+          next
         elsif File.directory?(path)
           o.mkdir("#{project_name}/#{base}", descs[base+"/"])
         elsif File.file?(path)

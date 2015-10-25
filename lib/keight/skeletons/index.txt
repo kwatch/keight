@@ -27,6 +27,10 @@ app/template/_layout.html.eruby		default layout template
 app/template/welcome.html.eruby		welcome page template
 static/					static files
 static/lib/				library such as jquery
+static/lib/jquery/			
+static/lib/jquery/1.11.3		
+static/lib/modernizr/			
+static/lib/modernizr/2.8.3		
 tmp/					temporary directory
 .gitignore				for Git
 

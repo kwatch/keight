@@ -15,8 +15,12 @@ if app_env.nil? || app_env.empty?
   exit 1
 end
 
-## remove obsoleted Config class in Ruby (< 2.2)
-Object.remove_const :Config if defined?(Config)
+if defined?(Config)     # Ruby < 2.2 has obsoleted 'Config' object
+  Object.class_eval do
+    remove_const :Config
+  end
+end
+
 
 require 'keight'
 

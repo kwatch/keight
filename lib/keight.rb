@@ -335,8 +335,11 @@ module K8
 
     def randstr_b64()
       #; [!yq0gv] returns random string, encoded with urlsafe base64.
-      binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
-      return [binary].pack('m').chomp!("=\n").tr('+/', '-_')
+      ## Don't use SecureRandom; entropy of /dev/random or /dev/urandom
+      ## should be left for more secure-sensitive purpose.
+      s = "#{rand()}#{rand()}#{rand()}#{Time.now.to_f}"
+      binary = Digest::SHA1.digest(s)
+      return [binary].pack('m').chomp("=\n").tr('+/', '-_')
     end
 
     def guess_content_type(filename)

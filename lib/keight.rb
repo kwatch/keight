@@ -342,11 +342,11 @@ module K8
       return [binary].pack('m').chomp("=\n").tr('+/', '-_')
     end
 
-    def guess_content_type(filename)
+    def guess_content_type(filename, default='application/octet-stream')
       #; [!xw0js] returns content type guessed from filename.
       #; [!dku5c] returns 'application/octet-stream' when failed to guess content type.
       ext = File.extname(filename)
-      return MIME_TYPES[ext] || 'application/octet-stream'
+      return MIME_TYPES[ext] || default
     end
 
     def http_utc_time(utc_time)   # similar to Time#httpdate() in 'time.rb'
@@ -540,6 +540,7 @@ module K8
       #; [!o0ws7] unquotes both keys and values.
       return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
+    alias query params_query
 
     MAX_POST_SIZE      =  10*1024*1024
     MAX_MULTIPART_SIZE = 100*1024*1024
@@ -578,6 +579,7 @@ module K8
       @params_form = d
       return d
     end
+    alias form params_form
 
     def params_file
       #; [!1el9z] returns uploaded files of multipart.
@@ -602,6 +604,7 @@ module K8
       @params_json = d
       return d
     end
+    alias json params_json
 
     def params
       #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
@@ -668,7 +671,7 @@ module K8
       s << "; Secure"             if secure
       value = @headers['Set-Cookie']
       @headers['Set-Cookie'] = value ? (value << "\n" << s) : s
-      return self
+      return value
     end
 
     def clear
@@ -845,9 +848,11 @@ module K8
       end
     end
 
-    def HTTP(status_code, message=nil, response_headers=nil)
-      return HttpException.new(status_code, message, response_headers)
-    end
+    #--
+    #def HTTP(status_code, message=nil, response_headers=nil)
+    #  return HttpException.new(status_code, message, response_headers)
+    #end
+    #++
 
     def redirect_to(location, status=302, flash: nil)
       #; [!xkrfk] sets flash message if provided.
@@ -872,6 +877,12 @@ module K8
       return self.sess.delete('_flash')
     end
 
+    def validation_failed
+      #; [!texnd] sets response status code as 422.
+      @resp.status_code = 422    # 422 Unprocessable Entity
+      nil
+    end
+
     ##
     ## helpers for CSRF protection
     ##
@@ -893,7 +904,7 @@ module K8
       expected = csrf_get_token()
       actual   = csrf_get_param()
       expected == actual  or
-        raise HTTP(400, "invalid csrf token")     # TODO: logging
+        raise HttpException.new(400, "invalid csrf token")     # TODO: logging
       nil
     end
 

@@ -2,4 +2,7 @@
 
 class Config
 
+  set :db_user      , ENV['USER']
+  set :db_pass      , ''
+
 end

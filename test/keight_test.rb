@@ -1068,20 +1068,36 @@ Oktest.scope do
 
     topic '#redirect_to()' do
 
-      spec "[!6zgnj] raises HTTP 302 with 'Location' header." do
+      spec "[!ev9nu] sets response status code as 302." do
         |action_obj|
         action_obj.instance_exec(self) do |_|
-          pr = proc { redirect_to '/top' }
-          _.ok {pr}.raise?(K8::HttpException, '/top')
-          _.ok {pr.exception.response_headers} == {"Location"=>"/top"}
+          redirect_to '/top'
+          _.ok {@resp.status_code} == 302
+          redirect_to '/top', 301
+          _.ok {@resp.status_code} == 301
+        end
+      end
+
+      spec "[!spfge] sets Location response header." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          redirect_to '/top'
+          _.ok {@resp.headers['Location']} == '/top'
+        end
+      end
+
+      spec "[!k3gvm] returns html anchor tag." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          ret = redirect_to '/top?x=1&y=2'
+          _.ok {ret} == '<a href="/top?x=1&amp;y=2">/top?x=1&amp;y=2</a>'
         end
       end
 
       spec "[!xkrfk] sets flash message if provided." do
         |action_obj|
         action_obj.instance_exec(self) do |_|
-          pr = proc { redirect_to '/top', flash: "created!" }
-          _.ok {pr}.raise?(K8::HttpException)
+          redirect_to '/top', flash: "created!"
           _.ok {get_flash_message()} == "created!"
         end
       end

@@ -637,12 +637,15 @@ module K8
   class Response
 
     def initialize
-      @status = 200
+      @status_code = 200
       @headers = {}
     end
 
-    attr_accessor :status
+    attr_accessor :status_code
     attr_reader :headers
+    ## for compatibility with Rack::Response
+    alias status status_code
+    alias status= status_code=
 
     def content_type
       return @headers['Content-Type']

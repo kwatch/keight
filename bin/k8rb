@@ -11,6 +11,19 @@
 require 'digest/sha1'
 
 require 'keight'
+require 'baby_erubis'
+
+
+class MyTemplate < BabyErubis::Text
+
+  rexp = BabyErubis::Text::PATTERN
+  PATTERN = Regexp.compile(rexp.to_s.sub(/<%/, '\{%').sub(/%>/, '%\}'))
+
+  def pattern
+    PATTERN
+  end
+
+end
 
 
 class K8::Main
@@ -112,31 +125,31 @@ class K8::Main
   end
 
   @action.(:init, "create project files")
-  def do_init(project_name)
-    o = FileTool.new
-    o.mkdir  project_name            , "project directory" do
-      o.mkfile "config.ru"           , "for 'rackup' command", CONFIG_RU
-      o.mkdir  "configs"             , "config files"      do
-        o.mkfile "config.rb"         , "main"            , CONFIG_RB
-        o.mkfile "config_common.rb"  , "common"          , CONFIG_COMMON_RB
-        o.mkfile "config_mapping.rb" , "action class mapping", CONFIG_MAPPING_RB
-        o.mkfile "config_dev.rb"     , "for development" , CONFIG_DEV_RB
-        o.mkfile "config_dev.secret" , ""                , CONFIG_DEV_SECRET
-        o.mkfile "config_prod.rb"    , "for production"  , CONFIG_PROD_RB
-        o.mkfile "config_prod.secret", ""                , CONFIG_PROD_SECRET
-        o.mkfile "config_stg.rb"     , "for staging"     , CONFIG_STG_RB
-        o.mkfile "config_stg.secret" , ""                , CONFIG_STG_SECRET
-        o.mkfile "config_test.rb"    , "for test"        , CONFIG_TEST_RB
-        o.mkfile "config_test.secret", ""                , CONFIG_TEST_SECRET
-      end
-      o.mkdir "my"                   , "example files" do
-        o.mkdir "page"               , "" do
-          o.mkfile "welcome.rb"      , "example action"  , WELCOME_RB
+  @option.("-s, --skeleton=DIR", "directory of skeleton files")
+  def do_init(project_name, dir: nil)
+    dir ||= K8::FILEPATH.sub(/\.rb\z/, '') + "/skeletons"
+    if dir
+      File.directory?(dir)  or
+        raise "#{dir}: directory not exist."
+      o = FileTool.new
+      descs = o.parse_index_file("#{dir}/index.txt")
+      o.mkdir(project_name, "project root directory")
+      files = Dir.glob("#{dir}/**/*")
+      files.concat(["#{dir}/.gitignore"])
+      files.each do |path|
+        base = path[(dir.length+1)..-1]
+        if base == "index.txt"
+          next
+        elsif File.directory?(path)
+          o.mkdir("#{project_name}/#{base}", descs[base+"/"])
+        elsif File.file?(path)
+          content = MyTemplate.new.from_file(path, 'ascii-8bit').render()
+          o.mkfile("#{project_name}/#{base}", content, descs[base])
+        else
+          next
         end
-        o.mkdir "api"                , "" do
-          o.mkfile "hello.rb"        , "example action"  , HELLO_RB
-        end
       end
+      return
     end
     0
   end
@@ -426,9 +439,19 @@ class K8::Main
 
   class FileTool
 
-    def initialize(width=30)
+    def initialize(width: 30)
       @width = width
       @depth = 0
+    end
+
+    def parse_index_file(index_file)
+      dict = File.open(index_file) {|f|
+        f.grep(/^[^#]/).each_with_object({}) {|line, d|
+          path, desc = line.chomp.split(/\s+/, 2)
+          d[path] = desc
+        }
+      }
+      return dict
     end
 
     def report(s, desc)
@@ -436,19 +459,21 @@ class K8::Main
       puts "%s%-#{@width - indent.length}s # %s" % [indent, s, desc]
     end
 
-    def mkdir(dirname, desc)
-      report("+ #{dirname}/", desc)
-      Dir.mkdir dirname
-      Dir.chdir dirname do
-        @depth += 1
-        yield
-        @depth -= 1
-      end if block_given?
+    def mkrootdir(dirpath)
+      @root = dirpath
+      mkdir(dirpath)
     end
 
-    def mkfile(filename, desc, content)
-      report("- #{filename}", desc)
-      File.open(filename, 'w') {|f| f.write(content) }
+    def mkdir(dirpath, desc)
+      Dir.mkdir dirpath
+      s = dirpath.gsub(/.*?[\/\\]/, '  ') + "/"
+      report(s, desc)
+    end
+
+    def mkfile(filepath, content, desc)
+      File.open(filepath, 'wb') {|dst| dst.write(content) }
+      s = filepath.gsub(/.*?[\/\\]/, '  ')
+      report(s, desc)
     end
 
   end

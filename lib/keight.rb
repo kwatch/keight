@@ -852,8 +852,13 @@ module K8
     def redirect_to(location, status=302, flash: nil)
       #; [!xkrfk] sets flash message if provided.
       set_flash_message(flash) if flash
-      #; [!6zgnj] raises HTTP 302 with 'Location' header.
-      raise HttpException.new(status, location, {"Location"=>location})
+      #; [!ev9nu] sets response status code as 302.
+      @resp.status_code = status
+      #; [!spfge] sets Location response header.
+      @resp.headers['Location'] = location
+      #; [!k3gvm] returns html anchor tag.
+      href = Util.h(location)
+      return "<a href=\"#{href}\">#{href}</a>"
     end
 
     def set_flash_message(message)

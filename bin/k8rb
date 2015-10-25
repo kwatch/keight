@@ -14,18 +14,6 @@ require 'keight'
 require 'baby_erubis'
 
 
-class MyTemplate < BabyErubis::Text
-
-  rexp = BabyErubis::Text::PATTERN
-  PATTERN = Regexp.compile(rexp.to_s.sub(/<%/, '\{%').sub(/%>/, '%\}'))
-
-  def pattern
-    PATTERN
-  end
-
-end
-
-
 class K8::Main
 
   @__current = nil
@@ -147,7 +135,7 @@ class K8::Main
         elsif File.file?(path)
           content = path =~ /\Astatic\/lib|\.gz\z/  \
                   ? File.read(path, encoding: 'ascii-8bit')  \
-                  : MyTemplate.new.from_file(path, 'ascii-8bit').render()
+                  : SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
           o.mkfile("#{project_name}/#{base}", content, descs[base])
         else
           next
@@ -438,6 +426,18 @@ class K8::Main
 
 
   class OptionError < StandardError
+  end
+
+
+  class SkeletonTemplate < BabyErubis::Text
+
+    rexp = BabyErubis::Text::PATTERN
+    PATTERN = Regexp.compile(rexp.to_s.sub(/<%/, '\{%').sub(/%>/, '%\}'))
+
+    def pattern
+      PATTERN
+    end
+
   end
 
 

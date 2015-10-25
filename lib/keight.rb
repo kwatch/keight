@@ -848,9 +848,11 @@ module K8
       end
     end
 
-    def HTTP(status_code, message=nil, response_headers=nil)
-      return HttpException.new(status_code, message, response_headers)
-    end
+    #--
+    #def HTTP(status_code, message=nil, response_headers=nil)
+    #  return HttpException.new(status_code, message, response_headers)
+    #end
+    #++
 
     def redirect_to(location, status=302, flash: nil)
       #; [!xkrfk] sets flash message if provided.

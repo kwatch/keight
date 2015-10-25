@@ -896,7 +896,7 @@ module K8
       expected = csrf_get_token()
       actual   = csrf_get_param()
       expected == actual  or
-        raise HTTP(400, "invalid csrf token")     # TODO: logging
+        raise HttpException.new(400, "invalid csrf token")     # TODO: logging
       nil
     end
 

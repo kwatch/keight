@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-## usage: unicorn -p $PORT -c ./config/server_unicorn.rb
+## usage: unicorn -p 9292 -E production -c ./config/server_unicorn.rb
 ## ref: https://devcenter.heroku.com/articles/rails-unicorn
 
-worker_processes Integer(ENV["WEB_CONCURRENCY"] || 3)
-timeout 15
+worker_processes Integer(ENV["WEB_CONCURRENCY"] || 4)
+timeout 10
 preload_app true
 
 before_fork do |server, worker|

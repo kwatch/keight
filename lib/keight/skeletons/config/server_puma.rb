@@ -3,7 +3,7 @@
 ## usage: puma -C config/server_puma.rb
 ## ref: https://github.com/puma/puma
 
-environment 'dev'   # or 'prod', 'stg'
+environment 'production'
 port 9292
 daemonize false
 threads 8,32

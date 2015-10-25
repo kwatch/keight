@@ -1105,6 +1105,19 @@ Oktest.scope do
     end
 
 
+    topic '#validation_failed()' do
+
+      spec "[!texnd] sets response status code as 422." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          validation_failed()
+          _.ok {@resp.status_code} == 422
+        end
+      end
+
+    end
+
+
     topic '#csrf_protection_required?' do
 
       fixture :action_obj do

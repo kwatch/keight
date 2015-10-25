@@ -877,6 +877,12 @@ module K8
       return self.sess.delete('_flash')
     end
 
+    def validation_failed
+      #; [!texnd] sets response status code as 422.
+      @resp.status_code = 422    # 422 Unprocessable Entity
+      nil
+    end
+
     ##
     ## helpers for CSRF protection
     ##

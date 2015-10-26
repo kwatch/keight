@@ -622,11 +622,17 @@ module K8
       #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
       #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
       if @method == :GET || @method == :HEAD
-        return self.params_query
-      elsif @env['CONTENT_TYPE'] =~ /\Aapplication\/json\b/
-        return self.params_json
+        return params_query()
+      end
+      case @env['CONTENT_TYPE']
+      when /\Aapplication\/json\b/
+        return params_json()
+      when /\Aapplication\/x-www-form-urlencoded\b/
+        return params_form()
+      when /\Amultipart\/form-data\b/
+        return params_multipart()
       else
-        return self.params_form
+        return {}
       end
     end
 

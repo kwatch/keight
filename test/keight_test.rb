@@ -2196,6 +2196,47 @@ Oktest.scope do
     end
 
 
+    topic '#initialize()' do
+
+      spec "[!vkp65] mounts urlpath mappings if provided." do
+        mapping = [
+          ['/books'                 , BooksAction],
+          ['/books/{id}/comments'   , BookCommentsAction],
+        ]
+        app = K8::RackApplication.new(mapping)
+        expected = <<-'END'
+    - urlpath: /books/
+      class:   BooksAction
+      methods: {GET: do_index, POST: do_create}
+
+    - urlpath: /books/new
+      class:   BooksAction
+      methods: {GET: do_new}
+
+    - urlpath: /books/{id}
+      class:   BooksAction
+      methods: {GET: do_show, PUT: do_update, DELETE: do_delete}
+
+    - urlpath: /books/{id}/edit
+      class:   BooksAction
+      methods: {GET: do_edit}
+
+    - urlpath: /books/{id}/comments/comments
+      class:   BookCommentsAction
+      methods: {GET: do_comments}
+
+    - urlpath: /books/{id}/comments/comments/{comment_id}
+      class:   BookCommentsAction
+      methods: {GET: do_comment}
+
+        END
+        expected.gsub!(/^    /, '')
+        ok {app.show_mappings()} == expected
+      end
+
+    end
+
+
     topic '#init_default_param_patterns()' do
 
       spec "[!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/." do

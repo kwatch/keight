@@ -1407,9 +1407,13 @@ module K8
 
   class RackApplication
 
-    def initialize(urlpath_cache_size: 0)
+    def initialize(urlpath_mapping=[], urlpath_cache_size: 0)
       @router = ActionRouter.new(urlpath_cache_size: urlpath_cache_size)
       init_default_param_patterns(@router.default_patterns)
+      #; [!vkp65] mounts urlpath mappings if provided.
+      urlpath_mapping.each do |urlpath, klass|
+        @router.mount(urlpath, klass)
+      end if urlpath_mapping
     end
 
     def init_default_param_patterns(default_patterns)

@@ -699,6 +699,7 @@ module K8
   end
 
 
+  ## Equivarent to BaseController or AbstractRequestHandler in other framework.
   class BaseAction
 
     def initialize(req, resp)
@@ -763,6 +764,7 @@ module K8
   end
 
 
+  ## Equivarent to Controller or RequestHandler in other framework.
   class Action < BaseAction
 
     #; [!siucz] request object is accessable with 'request' method as well as 'req'.
@@ -1363,6 +1365,7 @@ module K8
   end
 
 
+  ## Router consists of urlpath mapping and finder.
   class ActionRouter
 
     def initialize(urlpath_cache_size: 0)

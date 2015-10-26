@@ -78,7 +78,7 @@ class K8::Main
       sb <<   "(Tips: try '#{script} help ACTION' for details of each action.)"
     else
       tuple = self.class.find_action(action_name)  or
-        raise OptionError.new("help #{action_name}: no such action.")
+        raise K8::OptionError.new("help #{action_name}: no such action.")
       action_name, desc, options, method_name = tuple
       pnames = self.method(method_name).parameters.collect {|kind, pname|
         case kind
@@ -119,7 +119,7 @@ class K8::Main
     if dir
       File.directory?(dir)  or
         raise "#{dir}: directory not exist."
-      o = FileTool.new
+      o = K8::FileTool.new
       descs = o.parse_index_file("#{dir}/index.txt")
       o.mkdir(project_name, "project root directory")
       files = Dir.glob("#{dir}/**/*")
@@ -135,7 +135,7 @@ class K8::Main
         elsif File.file?(path)
           content = path =~ /\Astatic\/lib|\.gz\z/  \
                   ? File.read(path, encoding: 'ascii-8bit')  \
-                  : SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
+                  : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
           o.mkfile("#{project_name}/#{base}", content, descs[base])
         else
           next
@@ -279,10 +279,10 @@ class K8::Main
   def run(*cmd_args)
     action_name = cmd_args.shift() || 'help'
     tuple = self.class.find_action(action_name)  or
-      raise OptionError.new("#{action_name}: unknown action.")
+      raise K8::OptionError.new("#{action_name}: unknown action.")
     action_name, desc, options, method_name = tuple
-    optdefs = options.collect {|arr| OptionDefinition.new(*arr) }
-    optparser = OptionParser.new(optdefs)
+    optdefs = options.collect {|arr| K8::OptionDefinition.new(*arr) }
+    optparser = K8::OptionParser.new(optdefs)
     cmd_opts = optparser.parse(cmd_args)
     func_args = []
     func_kwds = {}
@@ -292,7 +292,7 @@ class K8::Main
       case kind
       when :req
         ! cmd_args.empty?  or
-          raise OptionError.new("#{action_name}: argument '#{pname}' required.")
+          raise K8::OptionError.new("#{action_name}: argument '#{pname}' required.")
         func_args << cmd_args.shift()
       when :opt
         func_args << cmd_args.shift()   # may be nil
@@ -310,9 +310,9 @@ class K8::Main
       end
     end
     cmd_args.empty?  or
-      raise OptionError.new("#{action_name}: too many argument.")
+      raise K8::OptionError.new("#{action_name}: too many argument.")
     cmd_opts.empty?  or
-      raise OptionError.new("#{action_name}: keyword arg not defined (#{cmd_opts.inspect}).")
+      raise K8::OptionError.new("#{action_name}: keyword arg not defined (#{cmd_opts.inspect}).")
     if func_kwds.empty?
       output = __send__(method_name, *func_args)
     else
@@ -332,13 +332,18 @@ class K8::Main
       when Integer ; status = output
       else         ; raise "** output=#{output.inspect}"
       end
-    rescue OptionError => ex
+    rescue K8::OptionError => ex
       $stderr.puts "ERROR (#{obj.script_name}): #{ex}"
       output = nil
       status = 1
     end
     exit status
   end
+
+end
+
+
+module K8
 
 
   class OptionDefinition

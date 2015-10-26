@@ -279,7 +279,7 @@ class K8::Main
   def run(*cmd_args)
     action_name = cmd_args.shift() || 'help'
     tuple = self.class.find_action(action_name)  or
-      raise OptionError.new("ERROR: #{self.script_name} #{action_name}: unknown action.")
+      raise OptionError.new("#{action_name}: unknown action.")
     action_name, desc, options, method_name = tuple
     optdefs = options.collect {|arr| OptionDefinition.new(*arr) }
     optparser = OptionParser.new(optdefs)

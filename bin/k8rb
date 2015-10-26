@@ -14,336 +14,336 @@ require 'keight'
 require 'baby_erubis'
 
 
-class K8::Main
+module K8
 
-  @__current = nil
-  @__actions = []
 
-  @action = proc do |action_name, desc|
-    options = []
-    method_name = nil
-    tuple = [action_name, desc, options, method_name]
-    @__current = tuple
-    @__actions << tuple
-  end
+  class Main
 
-  @option = proc do |optdef_str, desc|
-    tuple = @__current  or
-      raise "@option.() is called without @action.()"
-    tuple[2] << [optdef_str, desc]
-  end
-
-  def self.method_added(method_name)
-    tuple = @__current  or return
-    tuple[3] = method_name
     @__current = nil
-  end
+    @__actions = []
 
-  def self.find_action(name)
-    name = name.to_s
-    return @__actions.find {|tuple| tuple[0].to_s == name }
-  end
+    @action = proc do |action_name, desc|
+      options = []
+      method_name = nil
+      tuple = [action_name, desc, options, method_name]
+      @__current = tuple
+      @__actions << tuple
+    end
 
-  def self.each_action(&block)
-    @__actions.each(&block)
-  end
+    @option = proc do |optdef_str, desc|
+      tuple = @__current  or
+        raise "@option.() is called without @action.()"
+      tuple[2] << [optdef_str, desc]
+    end
+
+    def self.method_added(method_name)
+      tuple = @__current  or return
+      tuple[3] = method_name
+      @__current = nil
+    end
+
+    def self.find_action(name)
+      name = name.to_s
+      return @__actions.find {|tuple| tuple[0].to_s == name }
+    end
+
+    def self.each_action(&block)
+      @__actions.each(&block)
+    end
 
 
-  ###
+    ###
 
-  def initialize(script_name=nil)
-    @script_name = script_name || File.basename($0)   # ex: 'k8rb'
-  end
+    def initialize(script_name=nil)
+      @script_name = script_name || File.basename($0)   # ex: 'k8rb'
+    end
 
-  attr_reader :script_name
+    attr_reader :script_name
 
 
-  ### actions
+    ### actions
 
-  @action.(:help, "show help")
-  def do_help(action_name=nil)
-    script = self.script_name
-    sb = []
-    if action_name.nil?
-      sb <<   "Usage:"
-      sb <<   "  #{script} ACTION [..OPTIONS..]"
-      sb <<   ""
-      sb <<   "Actions:"
-      self.class.each_action do |action_name, desc, options, _|
-        next unless desc
-        help = desc.lines.first.chomp()
-        sb << "  #{script} %-15s # #{help}" % [action_name, help]
-      end
-      sb <<   ""
-      sb <<   "(Tips: try '#{script} help ACTION' for details of each action.)"
-    else
-      tuple = self.class.find_action(action_name)  or
-        raise K8::OptionError.new("help #{action_name}: no such action.")
-      action_name, desc, options, method_name = tuple
-      pnames = self.method(method_name).parameters.collect {|kind, pname|
-        case kind
-        when :req  ;  pname
-        when :opt  ;  "[#{pname}]"
-        when :rest ;  "[#{pname}...]"
-        when :key  ;  nil
-        else
-          raise "** kind=#{kind.inspect}, pname=#{pname.inspect}"
+    @action.(:help, "show help")
+    def do_help(action_name=nil)
+      script = self.script_name
+      sb = []
+      if action_name.nil?
+        sb <<   "Usage:"
+        sb <<   "  #{script} ACTION [..OPTIONS..]"
+        sb <<   ""
+        sb <<   "Actions:"
+        self.class.each_action do |action_name, desc, options, _|
+          next unless desc
+          help = desc.lines.first.chomp()
+          sb << "  #{script} %-15s # #{help}" % [action_name, help]
         end
-      }.compact()
-      pnames.unshift('') unless pnames.empty?
-      argstr = pnames.join(' ')
-      sb <<   "#{script} #{action_name}  - #{desc}"
-      sb <<   ""
-      sb <<   "Usage:"
-      if options.empty?
-        sb << "  #{script} #{action_name}#{argstr}"
+        sb <<   ""
+        sb <<   "(Tips: try '#{script} help ACTION' for details of each action.)"
       else
-        sb << "  #{script} #{action_name} [options]#{argstr}"
-        sb << ""
-        sb << "Options:"
-        options.each do |optdef_str, optdesc|
-          optstr = optdef_str.sub(/\A\s*--/, '    --').sub(/\s+\#\w+\s*\z/, '')
-          sb << "  %-20s # %s" % [optstr, optdesc] if optdesc
-        end
-      end
-    end
-    sb << ""
-    sb << ""
-    return sb.join("\n")
-  end
-
-  @action.(:init, "create project files")
-  @option.("-s, --skeleton=DIR", "directory of skeleton files")
-  def do_init(project_name, dir: nil)
-    dir ||= K8::FILEPATH.sub(/\.rb\z/, '') + "/skeletons"
-    if dir
-      File.directory?(dir)  or
-        raise "#{dir}: directory not exist."
-      o = K8::FileTool.new
-      descs = o.parse_index_file("#{dir}/index.txt")
-      o.mkdir(project_name, "project root directory")
-      files = Dir.glob("#{dir}/**/*")
-      files.concat(["#{dir}/.gitignore"])
-      files.each do |path|
-        base = path[(dir.length+1)..-1]
-        if base == "index.txt"
-          next
-        elsif base =~ /\/\.keep\z/
-          next
-        elsif File.directory?(path)
-          o.mkdir("#{project_name}/#{base}", descs[base+"/"])
-        elsif File.file?(path)
-          content = path =~ /\Astatic\/lib|\.gz\z/  \
-                  ? File.read(path, encoding: 'ascii-8bit')  \
-                  : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
-          o.mkfile("#{project_name}/#{base}", content, descs[base])
+        tuple = self.class.find_action(action_name)  or
+          raise K8::OptionError.new("help #{action_name}: no such action.")
+        action_name, desc, options, method_name = tuple
+        pnames = self.method(method_name).parameters.collect {|kind, pname|
+          case kind
+          when :req  ;  pname
+          when :opt  ;  "[#{pname}]"
+          when :rest ;  "[#{pname}...]"
+          when :key  ;  nil
+          else
+            raise "** kind=#{kind.inspect}, pname=#{pname.inspect}"
+          end
+        }.compact()
+        pnames.unshift('') unless pnames.empty?
+        argstr = pnames.join(' ')
+        sb <<   "#{script} #{action_name}  - #{desc}"
+        sb <<   ""
+        sb <<   "Usage:"
+        if options.empty?
+          sb << "  #{script} #{action_name}#{argstr}"
         else
-          next
+          sb << "  #{script} #{action_name} [options]#{argstr}"
+          sb << ""
+          sb << "Options:"
+          options.each do |optdef_str, optdesc|
+            optstr = optdef_str.sub(/\A\s*--/, '    --').sub(/\s+\#\w+\s*\z/, '')
+            sb << "  %-20s # %s" % [optstr, optdesc] if optdesc
+          end
         end
       end
-      return
-    end
-    0
-  end
-
-  @action.(:mapping, "show action mappings")
-  def do_mapping()
-    ENV['APP_MODE'] ||= 'dev'
-    load_config()
-    require './config/urlpath_mapping'
-    app = K8::RackApplication.new
-    $urlpath_mapping.each do |urlpath, children|
-      app.mount(urlpath, children)
-    end
-    return app.show_mappings()
-  end
-
-  @action.(:configs, "list config keys and values")
-  @option.("--getenv", "show actual ENV value")
-  def do_configs(getenv: false)
-    ENV['APP_MODE'] ||= 'dev'
-    load_config()
-    s = ""
-    ::Config.each do |key, val, desc, secret|
-      kv = "%-20s = %s" % [key, __var_dump(val, secret, getenv)]
-      s << ("%-43s # %s\n" % [kv, desc]) if desc
-    end
-    return s
-  end
-
-  @action.(:config, "show config value")
-  @option.("--getenv", "show actual ENV value")
-  def do_config(key, getenv: false)
-    key_name = key
-    ENV['APP_MODE'] ||= 'dev'
-    load_config()
-    ::Config.each do |key, val, desc, secret|
-      if key.to_s == key_name
-        return __var_dump(val, secret, getenv)
-      end
-    end
-    $stderr.puts "#{key_name}: no such config key."
-    return 1
-  end
-
-  @action.(:'config:check', "check config values")
-  def do_config_check()
-    ENV['APP_MODE'] ||= 'dev'
-    load_config()
-    not_set = []
-    not_env = []
-    ::Config.each do |key, val, desc, secret|
-      if val.is_a?(K8::SecretValue)
-        if ! val.name
-          not_set << [key, val, desc]
-        elsif ! ENV[val.name]
-          not_env << [key, val, desc]
-        end
-      end
-    end
-    if not_set.empty? && not_env.empty?
-      puts "ok."
-      return 0
-    else
-      sb = []
-      sb <<     "**"
-      sb <<     "** NG!"
-      unless not_set.empty?
-        sb <<   "**"
-        sb <<   "** The following configs should be set, but not."
-        sb <<   "**"
-        not_set.each do |key, val, desc|
-          sb << "**   %-20s = %s" % [key, val.inspect]
-        end
-      end
-      unless not_env.empty?
-        sb <<   "**"
-        sb <<   "** The following configs expect environment variable, but not set."
-        sb <<   "**"
-        not_env.each do |key, val, desc|
-          sb << "**   %-20s = %s" % [key, val.inspect]
-        end
-      end
-      sb <<     "**"
-      puts sb.join("\n")
-      return 1
-    end
-  end
-
-  def __var_dump(val, secret, getenv)
-    if ! val.is_a?(K8::SecretValue)
-      #secret ? '<secret>' : val.inspect
-      val.inspect
-    elsif val.name
-      getenv ? ENV[val.name].inspect : "ENV['#{val.name}']"
-    else
-      '<SECRET>'
-    end
-  end
-  private :__var_dump
-
-
-  if ENV['DEBUG']
-    @action.(:debug, "debug")
-    @option.("-h, --help"       , "show help message")
-    @option.("--version"        , "print version")
-    #@option.("-f, --file=FILE"  , "filename")
-    @option.("-f FILE  #file"  , "filename")
-    @option.("-i, --indent[=N]" , "indent depth (default 2)")
-    @option.("-s"               , "be silent")
-    @option.("-S      #silent"  , "be silent")
-    @option.("-d[N]   #dbg1"    , "debug level #1")
-    @option.("  --dbg2[=N]"     , "debug level #2")
-    def do_debug(argmnt=nil, help: nil, version: nil, file: nil, indent: nil, s: nil, silent: false, dbg1: nil, dbg2: nil)
-      sb = []
-      sb << "** argmnt  = #{argmnt.inspect}"
-      sb << "** help:     #{help.inspect}"
-      sb << "** version:  #{version.inspect}"
-      sb << "** file:     #{file.inspect}"
-      sb << "** indent:   #{indent.inspect}"
-      sb << "** s:        #{s.inspect}"
-      sb << "** silent:   #{silent.inspect}"
-      sb << "** dbg1:     #{dbg1.inspect}"
-      sb << "** dbg2:     #{dbg2.inspect}"
+      sb << ""
+      sb << ""
       return sb.join("\n")
     end
-  end
 
-
-  ###
-
-  def load_config
-    require './config' rescue K8::ConfigError
-  end
-
-  def run(*cmd_args)
-    action_name = cmd_args.shift() || 'help'
-    tuple = self.class.find_action(action_name)  or
-      raise K8::OptionError.new("#{action_name}: unknown action.")
-    action_name, desc, options, method_name = tuple
-    optdefs = options.collect {|arr| K8::OptionDefinition.new(*arr) }
-    optparser = K8::OptionParser.new(optdefs)
-    cmd_opts = optparser.parse(cmd_args)
-    func_args = []
-    func_kwds = {}
-    method_params = self.method(method_name).parameters
-    method_params.each do |param_info|
-      kind, pname = param_info
-      case kind
-      when :req
-        ! cmd_args.empty?  or
-          raise K8::OptionError.new("#{action_name}: argument '#{pname}' required.")
-        func_args << cmd_args.shift()
-      when :opt
-        func_args << cmd_args.shift()   # may be nil
-      when :rest
-        func_args.concat(cmd_args)
-        cmd_args.clear()
-      when :key
-        k = pname.to_s
-        func_kwds[pname] = cmd_opts.delete(k) if cmd_opts.key?(k)
-        if cmd_opts.key?(pname.to_s)
-          func_kwds[pname] = cmd_opts.delete(pname.to_s)
+    @action.(:init, "create project files")
+    @option.("-s, --skeleton=DIR", "directory of skeleton files")
+    def do_init(project_name, dir: nil)
+      dir ||= K8::FILEPATH.sub(/\.rb\z/, '') + "/skeletons"
+      if dir
+        File.directory?(dir)  or
+          raise "#{dir}: directory not exist."
+        o = K8::FileTool.new
+        descs = o.parse_index_file("#{dir}/index.txt")
+        o.mkdir(project_name, "project root directory")
+        files = Dir.glob("#{dir}/**/*")
+        files.concat(["#{dir}/.gitignore"])
+        files.each do |path|
+          base = path[(dir.length+1)..-1]
+          if base == "index.txt"
+            next
+          elsif base =~ /\/\.keep\z/
+            next
+          elsif File.directory?(path)
+            o.mkdir("#{project_name}/#{base}", descs[base+"/"])
+          elsif File.file?(path)
+            content = path =~ /\Astatic\/lib|\.gz\z/  \
+            ? File.read(path, encoding: 'ascii-8bit')  \
+            : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
+            o.mkfile("#{project_name}/#{base}", content, descs[base])
+          else
+            next
+          end
         end
+        return
+      end
+      0
+    end
+
+    @action.(:mapping, "show action mappings")
+    def do_mapping()
+      ENV['APP_MODE'] ||= 'dev'
+      load_config()
+      require './config/urlpath_mapping'
+      app = K8::RackApplication.new
+      $urlpath_mapping.each do |urlpath, children|
+        app.mount(urlpath, children)
+      end
+      return app.show_mappings()
+    end
+
+    @action.(:configs, "list config keys and values")
+    @option.("--getenv", "show actual ENV value")
+    def do_configs(getenv: false)
+      ENV['APP_MODE'] ||= 'dev'
+      load_config()
+      s = ""
+      ::Config.each do |key, val, desc, secret|
+        kv = "%-20s = %s" % [key, __var_dump(val, secret, getenv)]
+        s << ("%-43s # %s\n" % [kv, desc]) if desc
+      end
+      return s
+    end
+
+    @action.(:config, "show config value")
+    @option.("--getenv", "show actual ENV value")
+    def do_config(key, getenv: false)
+      key_name = key
+      ENV['APP_MODE'] ||= 'dev'
+      load_config()
+      ::Config.each do |key, val, desc, secret|
+        if key.to_s == key_name
+          return __var_dump(val, secret, getenv)
+        end
+      end
+      $stderr.puts "#{key_name}: no such config key."
+      return 1
+    end
+
+    @action.(:'config:check', "check config values")
+    def do_config_check()
+      ENV['APP_MODE'] ||= 'dev'
+      load_config()
+      not_set = []
+      not_env = []
+      ::Config.each do |key, val, desc, secret|
+        if val.is_a?(K8::SecretValue)
+          if ! val.name
+            not_set << [key, val, desc]
+          elsif ! ENV[val.name]
+            not_env << [key, val, desc]
+          end
+        end
+      end
+      if not_set.empty? && not_env.empty?
+        puts "ok."
+        return 0
       else
-        $stderr.puts "*** internal error: kind=#{kind.inspect}, pname=#{pname.inspect}"
+        sb = []
+        sb <<     "**"
+        sb <<     "** NG!"
+        unless not_set.empty?
+          sb <<   "**"
+          sb <<   "** The following configs should be set, but not."
+          sb <<   "**"
+          not_set.each do |key, val, desc|
+            sb << "**   %-20s = %s" % [key, val.inspect]
+          end
+        end
+        unless not_env.empty?
+          sb <<   "**"
+          sb <<   "** The following configs expect environment variable, but not set."
+          sb <<   "**"
+          not_env.each do |key, val, desc|
+            sb << "**   %-20s = %s" % [key, val.inspect]
+          end
+        end
+        sb <<     "**"
+        puts sb.join("\n")
+        return 1
       end
     end
-    cmd_args.empty?  or
-      raise K8::OptionError.new("#{action_name}: too many argument.")
-    cmd_opts.empty?  or
-      raise K8::OptionError.new("#{action_name}: keyword arg not defined (#{cmd_opts.inspect}).")
-    if func_kwds.empty?
-      output = __send__(method_name, *func_args)
-    else
-      output = __send__(method_name, *func_args, func_kwds)
-    end
-    return output
-  end
 
-  def self.main
-    status = 0
-    obj = self.new()
-    begin
-      output = obj.run(*ARGV)
-      case output
-      when nil     ;
-      when String  ; puts output
-      when Integer ; status = output
-      else         ; raise "** output=#{output.inspect}"
+    def __var_dump(val, secret, getenv)
+      if ! val.is_a?(K8::SecretValue)
+        #secret ? '<secret>' : val.inspect
+        val.inspect
+      elsif val.name
+        getenv ? ENV[val.name].inspect : "ENV['#{val.name}']"
+      else
+        '<SECRET>'
       end
-    rescue K8::OptionError => ex
-      $stderr.puts "ERROR (#{obj.script_name}): #{ex}"
-      output = nil
-      status = 1
     end
-    exit status
+    private :__var_dump
+
+
+    if ENV['DEBUG']
+      @action.(:debug, "debug")
+      @option.("-h, --help"       , "show help message")
+      @option.("--version"        , "print version")
+      #@option.("-f, --file=FILE"  , "filename")
+      @option.("-f FILE  #file"  , "filename")
+      @option.("-i, --indent[=N]" , "indent depth (default 2)")
+      @option.("-s"               , "be silent")
+      @option.("-S      #silent"  , "be silent")
+      @option.("-d[N]   #dbg1"    , "debug level #1")
+      @option.("  --dbg2[=N]"     , "debug level #2")
+      def do_debug(argmnt=nil, help: nil, version: nil, file: nil, indent: nil, s: nil, silent: false, dbg1: nil, dbg2: nil)
+        sb = []
+        sb << "** argmnt  = #{argmnt.inspect}"
+        sb << "** help:     #{help.inspect}"
+        sb << "** version:  #{version.inspect}"
+        sb << "** file:     #{file.inspect}"
+        sb << "** indent:   #{indent.inspect}"
+        sb << "** s:        #{s.inspect}"
+        sb << "** silent:   #{silent.inspect}"
+        sb << "** dbg1:     #{dbg1.inspect}"
+        sb << "** dbg2:     #{dbg2.inspect}"
+        return sb.join("\n")
+      end
+    end
+
+
+    ###
+
+    def load_config
+      require './config' rescue K8::ConfigError
+    end
+
+    def run(*cmd_args)
+      action_name = cmd_args.shift() || 'help'
+      tuple = self.class.find_action(action_name)  or
+        raise K8::OptionError.new("#{action_name}: unknown action.")
+      action_name, desc, options, method_name = tuple
+      optdefs = options.collect {|arr| K8::OptionDefinition.new(*arr) }
+      optparser = K8::OptionParser.new(optdefs)
+      cmd_opts = optparser.parse(cmd_args)
+      func_args = []
+      func_kwds = {}
+      method_params = self.method(method_name).parameters
+      method_params.each do |param_info|
+        kind, pname = param_info
+        case kind
+        when :req
+          ! cmd_args.empty?  or
+            raise K8::OptionError.new("#{action_name}: argument '#{pname}' required.")
+          func_args << cmd_args.shift()
+        when :opt
+          func_args << cmd_args.shift()   # may be nil
+        when :rest
+          func_args.concat(cmd_args)
+          cmd_args.clear()
+        when :key
+          k = pname.to_s
+          func_kwds[pname] = cmd_opts.delete(k) if cmd_opts.key?(k)
+          if cmd_opts.key?(pname.to_s)
+            func_kwds[pname] = cmd_opts.delete(pname.to_s)
+          end
+        else
+          $stderr.puts "*** internal error: kind=#{kind.inspect}, pname=#{pname.inspect}"
+        end
+      end
+      cmd_args.empty?  or
+        raise K8::OptionError.new("#{action_name}: too many argument.")
+      cmd_opts.empty?  or
+        raise K8::OptionError.new("#{action_name}: keyword arg not defined (#{cmd_opts.inspect}).")
+      if func_kwds.empty?
+        output = __send__(method_name, *func_args)
+      else
+        output = __send__(method_name, *func_args, func_kwds)
+      end
+      return output
+    end
+
+    def self.main
+      status = 0
+      obj = self.new()
+      begin
+        output = obj.run(*ARGV)
+        case output
+        when nil     ;
+        when String  ; puts output
+        when Integer ; status = output
+        else         ; raise "** output=#{output.inspect}"
+        end
+      rescue K8::OptionError => ex
+        $stderr.puts "ERROR (#{obj.script_name}): #{ex}"
+        output = nil
+        status = 1
+      end
+      exit status
+    end
+
   end
-
-end
-
-
-module K8
 
 
   class OptionDefinition

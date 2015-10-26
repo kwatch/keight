@@ -118,7 +118,7 @@ module K8
     @action.(:init, "create project files")
     @option.("-s, --skeleton=DIR", "directory of skeleton files")
     def do_init(project_name, dir: nil)
-      dir ||= K8::FILEPATH.sub(/\.rb\z/, '') + "/skeletons"
+      dir ||= K8::FILEPATH.sub(/\.rb\z/, '') + "/skeleton"
       if dir
         File.directory?(dir)  or
           raise "#{dir}: directory not exist."

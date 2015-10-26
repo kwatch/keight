@@ -149,9 +149,10 @@ class K8::Main
   @action.(:mapping, "show action mappings")
   def do_mapping()
     ENV['APP_MODE'] ||= 'dev'
-    require "./configs/config"
+    load_config()
+    require './config/urlpath_mapping'
     app = K8::RackApplication.new
-    $config.action_mapping.each do |urlpath, children|
+    $urlpath_mapping.each do |urlpath, children|
       app.mount(urlpath, children)
     end
     return app.show_mappings()
@@ -161,7 +162,7 @@ class K8::Main
   @option.("--getenv", "show actual ENV value")
   def do_configs(getenv: false)
     ENV['APP_MODE'] ||= 'dev'
-    require "./configs/config" rescue K8::ConfigError
+    load_config()
     s = ""
     ::Config.each do |key, val, desc, secret|
       kv = "%-20s = %s" % [key, __var_dump(val, secret, getenv)]
@@ -175,7 +176,7 @@ class K8::Main
   def do_config(key, getenv: false)
     key_name = key
     ENV['APP_MODE'] ||= 'dev'
-    require "./configs/config" rescue K8::ConfigError
+    load_config()
     ::Config.each do |key, val, desc, secret|
       if key.to_s == key_name
         return __var_dump(val, secret, getenv)
@@ -188,7 +189,7 @@ class K8::Main
   @action.(:'config:check', "check config values")
   def do_config_check()
     ENV['APP_MODE'] ||= 'dev'
-    require "./configs/config" rescue K8::ConfigError
+    load_config()
     not_set = []
     not_env = []
     ::Config.each do |key, val, desc, secret|
@@ -270,6 +271,10 @@ class K8::Main
 
 
   ###
+
+  def load_config
+    require './config' rescue K8::ConfigError
+  end
 
   def run(*cmd_args)
     action_name = cmd_args.shift() || 'help'

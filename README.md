@@ -10,6 +10,8 @@ Overview
 Keight.rb is the very fast web application framework for Ruby.
 It is about 100 times faster than Rails and 20 times faster than Sinatra.
 
+*Keight.rb is under development and is subject to change without notice.*
+
 
 Benchmarks
 ----------
@@ -38,7 +40,7 @@ Measured with `app.call(env)` style in order to exclude server overhead:
 Quick Tutorial
 --------------
 
-```
+```console
 $ gem install keight
 $ vi hello.rb
 $ vi config.ru
@@ -90,7 +92,7 @@ Open http://localhost:8000/hello or http://localhost:8000/hello/123 by browser.
 
 Do you like it? If so, try `k8rb init myapp1` to generate project skeleton.
 
-```
+```console
 $ k8rb init myapp1
 $ cd myapp1
 $ export APP_ENV=dev    # 'dev', 'prod', or 'stg'

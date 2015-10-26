@@ -340,11 +340,6 @@ class K8::Main
     exit status
   end
 
-  def self._randstr
-    binary = Digest::SHA1.digest("#{rand()}#{rand()}#{rand()}")
-    return [binary].pack('m').chomp("=\n").tr('+/', '-_')
-  end
-
 
   class OptionDefinition
 

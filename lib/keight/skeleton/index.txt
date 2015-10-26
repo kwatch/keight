@@ -33,6 +33,6 @@ static/lib/jquery/1.11.3
 static/lib/modernizr/			
 static/lib/modernizr/2.8.3		
 tmp/					temporary directory
-tmp/upload				for uploaded files
+tmp/upload/				for uploaded files
 .gitignore				for Git
 

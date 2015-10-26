@@ -548,6 +548,31 @@ module K8
     def params_form
       d = @params_form
       return d if d
+      #
+      d = @params_form = _parse_post_data(:form)
+      return d
+    end
+    alias form params_form
+
+    def params_multipart
+      d1 = @params_form
+      d2 = @params_file
+      return d1, d2 if d1 && d2
+      d1, d2 = _parse_post_data(:multipart)
+      @params_form = d1; @params_file = d2
+      return d1, d2
+    end
+    alias multipart params_multipart
+
+    def params_json
+      d = @params_json
+      return d if d
+      d = @params_json = _parse_post_data(:json)
+      return d
+    end
+    alias json params_json
+
+    def _parse_post_data(kind)
       #; [!q88w9] raises error when content length is missing.
       cont_len = @env['CONTENT_LENGTH']  or
         raise HttpException.new(400, 'Content-Length header expected.')
@@ -559,52 +584,37 @@ module K8
       case @env['CONTENT_TYPE']
       #; [!59ad2] parses form parameters and returns it as Hash object when form requested.
       when 'application/x-www-form-urlencoded'
+        kind == :form  or
+          raise HttpException.new(400, 'unexpected form data (expected multipart).')
         #; [!puxlr] raises error when content length is too long (> 10MB).
         len <= MAX_POST_SIZE  or
           raise HttpException.new(400, 'Content-Length is too long.')
         qstr = @env['rack.input'].read(len)
         d = Util.parse_query_string(qstr)
+        return d
       #; [!y1jng] parses multipart when multipart form requested.
-      when /\Amultipart\/form-data;\s*boundary=(.*)/
-        boundary = $1
+      when /\Amultipart\/form-data(?:;\s*boundary=(.*))?/
+        kind == :multipart  or
+          raise HttpException.new(400, 'unexpected multipart data.')
+        boundary = $1  or
+          raise HttpException.new(400, 'bounday attribute of multipart required.')
         #; [!mtx6t] raises error when content length of multipart is too long (> 100MB).
         len <= MAX_MULTIPART_SIZE  or
           raise HttpException.new(400, 'Content-Length of multipart is too long.')
-        d, d2 = Util.parse_multipart(@env['rack.input'], boundary, len, nil, nil)
-        @params_file = d2
-      #; [!4hh3k] returns empty hash object when form param is not sent.
-      else
-        d = {}
-      end
-      @params_form = d
-      return d
-    end
-    alias form params_form
-
-    def params_file
-      #; [!1el9z] returns uploaded files of multipart.
-      d = @params_file
-      return d if d
-      self.params_form
-      return @params_file ||= {}
-    end
-
-    def params_json
-      d = @params_json
-      return d if d
-      case @env['CONTENT_TYPE']
+        d1, d2 = Util.parse_multipart(@env['rack.input'], boundary, len, nil, nil)
+        return d1, d2
       #; [!ugik5] parses json data and returns it as hash object when json data is sent.
       when /\Aapplication\/json\b/
+        kind == :json  or
+          raise HttpException.new(400, 'unexpected JSON data.')
         json_str = @env['rack.input'].read(10*1024*1024)   # TODO
         d = JSON.parse(json_str)
-      #; [!xwsdn] returns empty hash object when json data is not sent.
+      #; [!p9ybb] raises error when not a form data.
       else
-        d = {}
+        raise HttpException.new(400, 'POST data expected, but not.')
       end
-      @params_json = d
-      return d
     end
-    alias json params_json
+    private :_parse_post_data
 
     def params
       #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.

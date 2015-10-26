@@ -528,44 +528,22 @@ Oktest.scope do
         ok {pr}.raise?(K8::HttpException, 'Content-Length is too long.')
       end
 
+    end
+
+
+    topic '#params_multipart' do
+
       spec "[!y1jng] parses multipart when multipart form requested." do
         |multipart_env, data_dir|
         env = multipart_env
         req = K8::Request.new(env)
-        params = req.params_form
-        ok {params} == {
+        form, files = req.params_multipart
+        ok {form} == {
           "text1" => "test1",
           "text2" => "日本語\r\nあいうえお\r\n".force_encoding('binary'),
           "file1" => "example1.png",
           "file2" => "example1.jpg",
         }
-      end
-
-      spec "[!mtx6t] raises error when content length of multipart is too long (> 100MB)." do
-        |multipart_env|
-        env = multipart_env
-        env['CONTENT_LENGTH'] = (100*1024*1024 + 1).to_s
-        req = K8::Request.new(env)
-        pr = proc { req.params_form }
-        ok {pr}.raise?(K8::HttpException, 'Content-Length of multipart is too long.')
-      end
-
-      spec "[!4hh3k] returns empty hash object when form param is not sent." do
-        form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
-        req = K8::Request.new(new_env("GET", "/", query: form))
-        ok {req.params_form} == {}
-      end
-
-    end
-
-
-    topic '#params_file' do
-
-      spec "[!1el9z] returns uploaded files of multipart." do
-        |multipart_env, data_dir|
-        env = multipart_env
-        req = K8::Request.new(env)
-        files = req.params_file
         ok {files}.is_a?(Hash)
         ok {files.keys.sort} == ["file1", "file2"]
         #
@@ -584,6 +562,16 @@ Oktest.scope do
         expected = File.read("#{data_dir}/example1.jpg",  encoding: 'binary')
         actual   = File.read(files['file2'].tmp_filepath, encoding: 'binary')
         ok {actual} == expected
+
+      end
+
+      spec "[!mtx6t] raises error when content length of multipart is too long (> 100MB)." do
+        |multipart_env|
+        env = multipart_env
+        env['CONTENT_LENGTH'] = (100*1024*1024 + 1).to_s
+        req = K8::Request.new(env)
+        pr = proc { req.params_multipart }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length of multipart is too long.')
       end
 
     end
@@ -595,12 +583,6 @@ Oktest.scope do
         data = '{"x":1,"y":2,"arr":["a","b","c"]}'
         req = K8::Request.new(new_env("POST", "/", json: data))
         ok {req.params_json} == {"x"=>1, "y"=>2, "arr"=>["a", "b", "c"]}
-      end
-
-      spec "[!xwsdn] returns empty hash object when json data is not sent." do
-        data = '{"x":1,"y":2,"arr":["a","b","c"]}'
-        req = K8::Request.new(new_env("POST", "/", form: data))
-        ok {req.params_json} == {}
       end
 
     end
@@ -649,7 +631,7 @@ Oktest.scope do
       spec "[!0jdal] removes uploaded files." do
         |multipart_env|
         req = K8::Request.new(multipart_env)
-        files = req.params_file
+        form, files = req.params_multipart
         ok {files.empty?} == false
         tmpfile1 = files['file1'].tmp_filepath
         tmpfile2 = files['file2'].tmp_filepath

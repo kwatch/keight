@@ -491,6 +491,6 @@ module K8
 end
 
 
-if __FILE__ == $0
-  K8::Main.main()
-end
+#if __FILE__ == $0
+  K8::Main.main() unless defined? NOEXEC_SCRIPT
+#end

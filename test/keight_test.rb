@@ -304,6 +304,22 @@ Oktest.scope do
 
     end
 
+
+    topic '#new_filepath()' do
+
+      spec "[!zdkts] use $K8_UPLOAD_DIR environment variable as temporary directory." do
+        orig = ENV['K8_UPLOAD_DIR']
+        ENV['K8_UPLOAD_DIR'] = "/var/tmp/upload"
+        begin
+          upfile = K8::UploadedFile.new("hom.txt", "text/plain")
+          ok {upfile.__send__(:new_filepath)} =~ /\A\/var\/tmp\/upload\/up\./
+        ensure
+          ENV['K8_UPLOAD_DIR'] = orig
+        end
+      end
+
+    end
+
   end
 
 

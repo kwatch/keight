@@ -397,7 +397,9 @@ module K8
     protected
 
     def new_filepath
-      dir = ENV['TMPDIR'] || ENV['TEMPDIR'] || '/tmp'   # TODO: read from config file?
+      #; [!zdkts] use $K8_UPLOAD_DIR environment variable as temporary directory.
+      dir = ENV['K8_UPLOAD_DIR']
+      dir ||= ENV['TMPDIR'] || ENV['TEMPDIR'] || '/tmp'
       return File.join(dir, "up.#{Util.randstr_b64()}")
     end
 

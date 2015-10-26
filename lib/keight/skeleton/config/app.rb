@@ -19,7 +19,8 @@ class Config
   add :session_secret        , SECRET           , "secret key"
   add :session_old_secret    , SECRET           , "old secret key"
 
-  ## K8::RackApplication
+  ## Keight
+  add :k8_upload_dir         , './tmp/upload'   , "for uploaded files"
   add :k8_rackapp_urlpath_cache_size , 0        , "0: cache disabled"
 
   ## add your own configs here

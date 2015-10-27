@@ -47,9 +47,9 @@ $ mkdir gems
 $ export GEM_HOME=$PWD/gems
 $ export PATH=$GEM_HOME/bin:$PATH
 
-$ gem install keight rack
+$ gem install keight
 $ vi hello.rb
-$ vi config.ru
+$ vi config.ru     # != 'config.rb'
 $ rackup -p 8000 config.ru
 ```
 
@@ -102,17 +102,19 @@ app.mount '/hello', HelloAction
 run app
 ```
 
-Open http://localhost:8000/hello or http://localhost:8000/hello/123 by browser.
+Open http://localhost:8000/hello or http://localhost:8000/hello/123
+with your browser.
 
 Do you like it? If so, try `k8rb init myapp1` to generate project skeleton.
 
 ```console
 $ k8rb init myapp1
-$ cd myapp1
+$ cd myapp1/
 $ export APP_ENV=dev    # 'dev', 'prod', or 'stg'
 $ k8rb mapping
 $ k8rb configs
 $ rackup -p 8000 -E production config.ru
+$ open http://127.0.0.1:8000/
 $ ab -n 1000 -c 10 http://127.0.0.1:8000/api/hello
 ## or:
 $ gem install puma

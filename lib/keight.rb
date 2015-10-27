@@ -1522,19 +1522,19 @@ module K8
         #; [!0fgbd] finds action class and invokes action method with urlpath params.
         action_obj = action_class.new(req, resp)
         content = action_obj.handle_action(action_method, urlpath_param_values)
-        tuple = [resp.status, resp.headers, content]
+        ret = [resp.status, resp.headers, content]
       rescue HttpException => ex
-        tuple = handle_http(ex, req, resp)
+        ret = handle_http(ex, req, resp)
       rescue Exception => ex
-        tuple = handle_error(ex, req, resp)
+        ret = handle_error(ex, req, resp)
       ensure
         #; [!vdllr] clears request and response if possible.
         req.clear()  if req.respond_to?(:clear)
         resp.clear() if resp.respond_to?(:clear)
       end
       #; [!9wp9z] returns empty body when request method is HEAD.
-      tuple[2] = [""] if req_meth == :HEAD
-      return tuple
+      ret[2] = [""] if req_meth == :HEAD
+      return ret
     end
 
     def handle_http(ex, req, resp)

@@ -27,9 +27,6 @@ class My::Action < K8::Action
   ## template
   ##
 
-  include BabyErubis::HtmlEscaper
-  include BabyErubis::Renderer
-
   ERUBY_PATH       = ['app/template']
   ERUBY_LAYOUT     = :_layout
   #ERUBY_HTML      = BabyErubis::Html
@@ -38,6 +35,9 @@ class My::Action < K8::Action
   ERUBY_TEXT       = BabyErubis::Text
   ERUBY_TEXT_EXT   = '.eruby'
   ERUBY_CACHE      = {}
+
+  include BabyErubis::HtmlEscaper  # define escape()
+  include BabyErubis::Renderer     # define eruby_render_{html,text}()
 
   protected
 

@@ -1091,12 +1091,13 @@ module K8
     end
 
     def _mount(mappings, urlpath_pattern, action_class)
+      child_mappings = nil
       #; [!4l8xl] can accept array of pairs of urlpath and action class.
       if action_class.is_a?(Array)
         array = action_class
         child_mappings = []
         array.each {|upath, klass| _mount(child_mappings, upath, klass) }
-        action_class = child_mappings
+        action_class = nil
       #; [!ne804] when target class name is string...
       elsif action_class.is_a?(String)
         str = action_class
@@ -1107,7 +1108,7 @@ module K8
           raise ArgumentError.new("mount('#{urlpath_pattern}'): Action class expected but got: #{action_class.inspect}")
       end
       #; [!flb11] mounts action class to urlpath.
-      mappings << [urlpath_pattern, action_class]
+      mappings << [urlpath_pattern, action_class || child_mappings]
     end
     private :_mount
 

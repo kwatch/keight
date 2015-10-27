@@ -1513,9 +1513,9 @@ module K8
       end
       begin
         #; [!rz13i] returns HTTP 404 when urlpath not found.
-        tuple = find(req.path)  or
+        tuple4 = find(req.path)  or
           raise HttpException.new(404)
-        action_class, action_methods, urlpath_param_names, urlpath_param_values = tuple
+        action_class, action_methods, urlpath_param_names, urlpath_param_values = tuple4
         #; [!rv3cf] returns HTTP 405 when urlpath found but request method not allowed.
         action_method = action_methods[req_meth_]  or
           raise HttpException.new(405)

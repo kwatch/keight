@@ -432,6 +432,10 @@ module K8
   end
 
 
+  class UnknownActionMethodError < BaseError
+  end
+
+
   class UnknownContentError < BaseError
   end
 
@@ -1091,12 +1095,13 @@ module K8
     end
 
     def _mount(mappings, urlpath_pattern, action_class)
+      child_mappings = nil
       #; [!4l8xl] can accept array of pairs of urlpath and action class.
       if action_class.is_a?(Array)
         array = action_class
         child_mappings = []
         array.each {|upath, klass| _mount(child_mappings, upath, klass) }
-        action_class = child_mappings
+        action_class = nil
       #; [!ne804] when target class name is string...
       elsif action_class.is_a?(String)
         str = action_class
@@ -1106,10 +1111,21 @@ module K8
         action_class.is_a?(Class) && action_class < BaseAction  or
           raise ArgumentError.new("mount('#{urlpath_pattern}'): Action class expected but got: #{action_class.inspect}")
       end
+      #; [!30cib] raises error when action method is not defined in action class.
+      _validate_action_method_existence(action_class) if action_class
       #; [!flb11] mounts action class to urlpath.
-      mappings << [urlpath_pattern, action_class]
+      mappings << [urlpath_pattern, action_class || child_mappings]
     end
     private :_mount
+
+    def _validate_action_method_existence(action_class)
+      action_class._action_method_mapping.each do |_, action_methods|
+        action_methods.each do |req_meth, action_method_name|
+          action_class.method_defined?(action_method_name)  or
+            raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_method_name.inspect}: unknown action method in #{action_class}.")
+        end
+      end
+    end
 
     def _load_action_class(str, error)
       #; [!9brqr] raises error when string format is invalid.
@@ -1724,7 +1740,7 @@ END
     def self.set(key, value, desc=nil)
       #; [!2yis0] raises error when not added yet.
       self.has?(key)  or
-        raise K8::ConfigError.new("add(#{key.inspect}, #{value.inspect}): cannot set because not added yet; use add() or put() instead.")
+        raise K8::ConfigError.new("set(#{key.inspect}, #{value.inspect}): cannot set because not added yet; use add() or put() instead.")
       #; [!3060g] sets key, value and desc.
       self.put(key, value, desc)
     end

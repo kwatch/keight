@@ -18,7 +18,7 @@ class BooksAction < K8::Action
   #
   def do_index();    "<index>";  end
   def do_create();   "<create>"; end
-  #def do_new();      "<new>";    end
+  def do_new();      "<new>";    end
   def do_show(id);   "<show:#{id.inspect}(#{id.class})>";   end
   def do_update(id); "<update:#{id.inspect}(#{id.class})>"; end
   def do_delete(id); "<delete:#{id.inspect}(#{id.class})>"; end
@@ -42,6 +42,7 @@ class AdminBooksAction < K8::Action
   #
   def do_index(); end
   def do_create(); end
+  def do_new(); end
   def do_show(id); end
   def do_update(id); end
   def do_delete(id); end
@@ -1653,6 +1654,17 @@ Oktest.scope do
         ok {pr}.raise?(ArgumentError, "mount('/api'): Action class expected but got: String")
       end
 
+      spec "[!30cib] raises error when action method is not defined in action class." do
+        |mapping|
+        class ExampleAction3 < K8::Action
+          mapping '', :GET=>:do_index, :POST=>:do_create
+          def do_index; end
+        end
+        pr = proc { mapping.mount '/example3', ExampleAction3 }
+        expected_msg = ":POST=>:do_create: unknown action method in ExampleAction3."
+        ok {pr}.raise?(K8::UnknownActionMethodError, expected_msg)
+      end
+
       spec "[!w8mee] returns self." do
         |mapping|
         ret = mapping.mount '/books', BooksAction
@@ -2731,7 +2743,7 @@ Oktest.scope do
         ex = C41.instance_variable_get('@ex')
         ok {ex} != nil
         ok {ex}.is_a?(K8::ConfigError)
-        ok {ex.message} == "add(:hom, 123): cannot set because not added yet; use add() or put() instead."
+        ok {ex.message} == "set(:hom, 123): cannot set because not added yet; use add() or put() instead."
       end
 
       spec "[!3060g] sets key, value and desc." do

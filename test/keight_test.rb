@@ -2743,7 +2743,7 @@ Oktest.scope do
         ex = C41.instance_variable_get('@ex')
         ok {ex} != nil
         ok {ex}.is_a?(K8::ConfigError)
-        ok {ex.message} == "add(:hom, 123): cannot set because not added yet; use add() or put() instead."
+        ok {ex.message} == "set(:hom, 123): cannot set because not added yet; use add() or put() instead."
       end
 
       spec "[!3060g] sets key, value and desc." do

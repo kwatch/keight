@@ -1740,7 +1740,7 @@ END
     def self.set(key, value, desc=nil)
       #; [!2yis0] raises error when not added yet.
       self.has?(key)  or
-        raise K8::ConfigError.new("add(#{key.inspect}, #{value.inspect}): cannot set because not added yet; use add() or put() instead.")
+        raise K8::ConfigError.new("set(#{key.inspect}, #{value.inspect}): cannot set because not added yet; use add() or put() instead.")
       #; [!3060g] sets key, value and desc.
       self.put(key, value, desc)
     end

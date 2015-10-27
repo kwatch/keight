@@ -38,7 +38,8 @@ if errmsg
   exit 1
 end
 
-## directory to place uploaded files
-ENV['K8_UPLOAD_DIR'] = $config.k8_upload_dir if $config.k8_upload_dir
-
+## create $config object
 $config = Config.new()
+
+## temporary directory to put uploaded files
+ENV['K8_UPLOAD_DIR'] = $config.k8_upload_dir if $config.k8_upload_dir

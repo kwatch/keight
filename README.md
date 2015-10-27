@@ -41,10 +41,16 @@ Quick Tutorial
 --------------
 
 ```console
-$ gem install keight
+$ ruby -v     # required Ruby >= 2.0
+ruby 2.2.3p173 (2015-08-18 revision 51636) [x86_64-darwin14]
+$ mkdir gems
+$ export GEM_HOME=$PWD/gems
+$ export PATH=$GEM_HOME/bin:$PATH
+
+$ gem install keight rack
 $ vi hello.rb
 $ vi config.ru
-$ rackup -c config.ru -p 8000
+$ rackup -p 8000 config.ru
 ```
 
 hello.rb:
@@ -82,8 +88,16 @@ config.rb:
 require 'keight'
 require './hello'
 
-app = K8::RackApplication.new
+app = K8::RackApplication.new()
 app.mount '/hello', HelloAction
+
+### or
+#mapping = [
+#  ['/api', [
+#    ['/hello'         , "./hello:HelloAction"],
+#  ]],
+#]
+#app = K8::RackApplication.new(mapping)
 
 run app
 ```
@@ -98,8 +112,12 @@ $ cd myapp1
 $ export APP_ENV=dev    # 'dev', 'prod', or 'stg'
 $ k8rb mapping
 $ k8rb configs
-$ rackup -c config.ru -p 8000
-$ ab -n 1000000 -c 100 http://127.0.0.1:8000/api/hello
+$ rackup -p 8000 -E production config.ru
+$ ab -n 1000 -c 10 http://127.0.0.1:8000/api/hello
+## or:
+$ gem install puma
+$ rackup -p 8000 -E production -s puma config.ru
+$ ab -n 10000 -c 100 http://localhost:8000/api/hello
 ```
 
 

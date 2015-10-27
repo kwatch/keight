@@ -4,8 +4,6 @@ require 'keight'
 require 'baby_erubis'
 require 'baby_erubis/renderer'
 
-require './config'
-
 
 class StrippedHtmlTemplate < BabyErubis::Html
   def parse(input, *args)

@@ -4,7 +4,14 @@ require 'keight'
 require 'baby_erubis'
 require 'baby_erubis/renderer'
 
-require './config'
+
+class StrippedHtmlTemplate < BabyErubis::Html
+  def parse(input, *args)
+    ## strip spaces of indentation
+    stripped = input.gsub(/^[ \t]+</, '<')
+    return super(stripped, *args)
+  end
+end
 
 
 module My
@@ -18,16 +25,17 @@ class My::Action < K8::Action
   ## template
   ##
 
-  include BabyErubis::HtmlEscaper
-  include BabyErubis::Renderer
-
   ERUBY_PATH       = ['app/template']
   ERUBY_LAYOUT     = :_layout
-  ERUBY_HTML       = BabyErubis::Html
+  #ERUBY_HTML      = BabyErubis::Html
+  ERUBY_HTML       = StrippedHtmlTemplate
   ERUBY_HTML_EXT   = '.html.eruby'
   ERUBY_TEXT       = BabyErubis::Text
   ERUBY_TEXT_EXT   = '.eruby'
   ERUBY_CACHE      = {}
+
+  include BabyErubis::HtmlEscaper  # define escape()
+  include BabyErubis::Renderer     # define eruby_render_{html,text}()
 
   protected
 

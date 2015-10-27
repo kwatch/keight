@@ -21,24 +21,26 @@ if defined?(Config)     # Ruby < 2.2 has obsoleted 'Config' object
   end
 end
 
-
+## define Config class
 require 'keight'
-
 class Config < K8::BaseConfig
 end
 
+## load 'app.rb', 'app_xxx.rb' and 'app_xxx.private'
 require_relative "config/app"
 require_relative "config/app_#{app_env}"
 fpath = File.join(File.dirname(__FILE__), "config", "app_#{app_env}.private")
 load fpath if File.file?(fpath)
 
+## if SECRET value is left, report error and exit.
 errmsg = Config.validate_values()
 if errmsg
   $stderr.write(errmsg)
   exit 1
 end
 
-## directory to place uploaded files
-ENV['K8_UPLOAD_DIR'] = $config.k8_upload_dir if $config.k8_upload_dir
-
+## create $config object
 $config = Config.new()
+
+## temporary directory to put uploaded files
+ENV['K8_UPLOAD_DIR'] = $config.k8_upload_dir if $config.k8_upload_dir

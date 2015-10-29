@@ -1001,6 +1001,70 @@ module K8
   end
 
 
+  ##
+  ## ex:
+  ##   info = ActionInfo.new('GET', '/api/books/{id}')
+  ##   p info.method        #=> "GET"
+  ##   p info.urlpath(123)  #=> "/api/books/123"
+  ##
+  class ActionInfo
+
+    def initialize(method, urlpath_format)
+      @method = method
+      @urlpath_format = urlpath_format   # ex: '/books/%s/comments/%s'
+    end
+
+    attr_reader :method
+
+    def urlpath(*args)
+      return @urlpath_format % args
+    end
+
+    def self.create(method, urlpath_pattern)
+      ## ex: '/books/{id}' -> '/books/%s'
+      #; [!1nk0i] replaces urlpath parameters with '%s'.
+      #; [!a7fqv] replaces '%' with'%%'.
+      rexp = /(.*?)\{(\w*?)(?::[^{}]*(?:\{[^{}]*?\}[^{}]*?)*)?\}/
+      urlpath_format = ''; n = 0
+      urlpath_pattern.scan(rexp) do |text, pname|
+        next if pname == 'ext'   # ignore '.html' or '.json'
+        urlpath_format << text.gsub(/%/, '%%') << '%s'
+        n += 1
+      end
+      rest = n > 0 ? Regexp.last_match.post_match : urlpath_pattern
+      urlpath_format << rest.gsub(/%/, '%%')
+      #; [!btt2g] returns ActionInfoN object when number of urlpath parameter <= 4.
+      #; [!x5yx2] returns ActionInfo object when number of urlpath parameter > 4.
+      return (SUBCLASSES[n] || ActionInfo).new(method, urlpath_format)
+    end
+
+    SUBCLASSES = []
+
+  end
+
+  class ActionInfo0 < ActionInfo
+    def urlpath(); @urlpath_format; end
+  end
+
+  class ActionInfo1 < ActionInfo
+    def urlpath(a); @urlpath_format % [a]; end
+  end
+
+  class ActionInfo2 < ActionInfo
+    def urlpath(a, b); @urlpath_format % [a, b]; end
+  end
+
+  class ActionInfo3 < ActionInfo
+    def urlpath(a, b, c); @urlpath_format % [a, b, c]; end
+  end
+
+  class ActionInfo4 < ActionInfo
+    def urlpath(a, b, c, d); @urlpath_format % [a, b, c, d]; end
+  end
+
+  ActionInfo::SUBCLASSES << ActionInfo0 << ActionInfo1 << ActionInfo2 << ActionInfo3 << ActionInfo4
+
+
   class DefaultPatterns
 
     def initialize

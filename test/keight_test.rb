@@ -1397,6 +1397,68 @@ Oktest.scope do
   end
 
 
+  topic K8::ActionInfo do
+
+
+    topic '.create()' do
+
+      spec "[!1nk0i] replaces urlpath parameters with '%s'." do
+        info = K8::ActionInfo.create('GET', '/books/{id}/comments/{comment_id}')
+        actual = info.instance_variable_get('@urlpath_format')
+        ok {actual} == '/books/%s/comments/%s'
+        #
+        info = K8::ActionInfo.create('GET', '/books')
+        actual = info.instance_variable_get('@urlpath_format')
+        ok {actual} == '/books'
+      end
+
+      spec "[!a7fqv] replaces '%' with'%%'." do
+        info = K8::ActionInfo.create('GET', '/books%9A%9B/{id}')
+        actual = info.instance_variable_get('@urlpath_format')
+        ok {actual} == '/books%%9A%%9B/%s'
+      end
+
+      spec "[!btt2g] returns ActionInfoN object when number of urlpath parameter <= 4." do
+        info = K8::ActionInfo.create('GET', '/books')
+        ok {info}.is_a?(K8::ActionInfo0)
+        ok {info.urlpath} == '/books'
+        ok {->{ info.urlpath('a') }}.raise?(ArgumentError, "wrong number of arguments (1 for 0)")
+        #
+        info = K8::ActionInfo.create('GET', '/books/{id}')
+        ok {info}.is_a?(K8::ActionInfo1)
+        ok {info.urlpath('a')} == '/books/a'
+        ok {->{ info.urlpath() }}.raise?(ArgumentError, "wrong number of arguments (0 for 1)")
+        #
+        info = K8::ActionInfo.create('GET', '/books/{id}/comments/{comment_id}')
+        ok {info}.is_a?(K8::ActionInfo2)
+        ok {info.urlpath('a', 'b')} == '/books/a/comments/b'
+        ok {->{info.urlpath('a')}}.raise?(ArgumentError, "wrong number of arguments (1 for 2)")
+        #
+        info = K8::ActionInfo.create('GET', '/books/{id}/{title}/{code}')
+        ok {info}.is_a?(K8::ActionInfo3)
+        ok {info.urlpath('a', 'b', 'c')} == '/books/a/b/c'
+        ok {->{info.urlpath(1,2)}}.raise?(ArgumentError, "wrong number of arguments (2 for 3)")
+        #
+        info = K8::ActionInfo.create('GET', '/books/{id}/{title}/{code}/{ref}')
+        ok {info}.is_a?(K8::ActionInfo4)
+        ok {info.urlpath('a', 'b', 'c', 'd')} == '/books/a/b/c/d'
+        ok {->{info.urlpath}}.raise?(ArgumentError, "wrong number of arguments (0 for 4)")
+      end
+
+      spec "[!x5yx2] returns ActionInfo object when number of urlpath parameter > 4." do
+        info = K8::ActionInfo.create('GET', '/books/{id}/{title}/{code}/{ref}/{x}')
+        ok {info}.is_a?(K8::ActionInfo)
+        ok {info.urlpath('a', 'b', 'c', 'd', 'e')} == "/books/a/b/c/d/e"
+        #
+        ok {->{info.urlpath('a','b','c')}}.raise?(ArgumentError, "too few arguments")
+      end
+
+    end
+
+
+  end
+
+
   topic K8::DefaultPatterns do
 
 

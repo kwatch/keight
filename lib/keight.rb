@@ -1172,18 +1172,19 @@ module K8
     ##         ]
     ##
     def mount(urlpath_pattern, action_class)
-      _mount(@mappings, urlpath_pattern, action_class)
+      _mount(@mappings, urlpath_pattern, urlpath_pattern, action_class)
       #; [!w8mee] returns self.
       return self
     end
 
-    def _mount(mappings, urlpath_pattern, action_class)
+    def _mount(mappings, full_urlpath_pattern, urlpath_pattern, action_class)
       child_mappings = nil
       #; [!4l8xl] can accept array of pairs of urlpath and action class.
       if action_class.is_a?(Array)
         array = action_class
+        parent = full_urlpath_pattern
         child_mappings = []
-        array.each {|upath, klass| _mount(child_mappings, upath, klass) }
+        array.each {|upath, klass| _mount(child_mappings, "#{parent}#{upath}", upath, klass) }
         action_class = nil
       #; [!ne804] when target class name is string...
       elsif action_class.is_a?(String)
@@ -1196,6 +1197,8 @@ module K8
       end
       #; [!30cib] raises error when action method is not defined in action class.
       _validate_action_method_existence(action_class) if action_class
+      #; [!10yv2] build action infos for each action methods.
+      action_class._build_action_info(full_urlpath_pattern) if action_class
       #; [!flb11] mounts action class to urlpath.
       mappings << [urlpath_pattern, action_class || child_mappings]
     end

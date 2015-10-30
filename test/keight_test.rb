@@ -1770,6 +1770,31 @@ Oktest.scope do
         ok {pr}.raise?(K8::UnknownActionMethodError, expected_msg)
       end
 
+      spec "[!10yv2] build action infos for each action methods." do
+        |mapping|
+        class ExampleAction4 < K8::Action
+          mapping '',      :GET=>:do_index, :POST=>:do_create
+          mapping '/{id}', :GET=>:do_show,  :PUT=>:do_update
+          def do_index; end
+          def do_create; end
+          def do_show(id); end
+          def do_update(id); end
+        end
+        ok {ExampleAction4[:do_create]} == nil
+        ok {ExampleAction4[:do_update]} == nil
+        #
+        mapping.mount '/test', [
+          ['/example4', ExampleAction4],
+        ]
+        #
+        ok {ExampleAction4[:do_create]} != nil
+        ok {ExampleAction4[:do_create].method} == :POST
+        ok {ExampleAction4[:do_create].urlpath} == '/test/example4'
+        ok {ExampleAction4[:do_update]} != nil
+        ok {ExampleAction4[:do_update].method} == :PUT
+        ok {ExampleAction4[:do_update].urlpath(123)} == '/test/example4/123'
+      end
+
       spec "[!w8mee] returns self." do
         |mapping|
         ret = mapping.mount '/books', BooksAction

@@ -783,6 +783,25 @@ module K8
       return @action_method_mapping ||= ActionMethodMapping.new
     end
 
+    def self._build_action_info(full_urlpath_pattern)   # :nodoc:
+      #; [!ordhc] build ActionInfo objects for each action methods.
+      parent = full_urlpath_pattern
+      @action_infos = {}
+      _action_method_mapping().each do |urlpath_pat, methods|
+        methods.each do |req_meth, action_method_name|
+          info = ActionInfo.create(req_meth, "#{parent}#{urlpath_pat}")
+          @action_infos[action_method_name] = info
+        end
+      end
+      @action_infos
+    end
+
+    def self.[](action_method_name)
+      #; [!1tq8z] returns ActionInfo object corresponding to action method.
+      #; [!6g2iw] returns nil when not mounted yet.
+      return (@action_infos || {})[action_method_name]
+    end
+
   end
 
 

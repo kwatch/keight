@@ -785,6 +785,49 @@ Oktest.scope do
     end
 
 
+    topic '._build_action_info()' do
+
+      spec "[!ordhc] build ActionInfo objects for each action methods." do
+        infos = BooksAction._build_action_info('/api/books')
+        #
+        ok {infos[:do_index]}.is_a?(K8::ActionInfo)
+        ok {infos[:do_index].method} == :GET
+        ok {infos[:do_index].urlpath} == '/api/books/'
+        #
+        ok {infos[:do_update]}.is_a?(K8::ActionInfo)
+        ok {infos[:do_update].method} == :PUT
+        ok {infos[:do_update].urlpath(123)} == '/api/books/123'
+      end
+
+    end
+
+
+    topic '.[]' do
+
+      spec "[!1tq8z] returns ActionInfo object corresponding to action method." do
+        BooksAction._build_action_info('/api/books')
+        cls = BooksAction
+        #
+        ok {cls[:do_create]}.is_a?(K8::ActionInfo)
+        ok {cls[:do_create].method} == :POST
+        ok {cls[:do_create].urlpath} == '/api/books/'
+        #
+        ok {cls[:do_show]}.is_a?(K8::ActionInfo)
+        ok {cls[:do_show].method} == :GET
+        ok {cls[:do_show].urlpath(123)} == '/api/books/123'
+      end
+
+      spec "[!6g2iw] returns nil when not mounted yet." do
+        class ExampleClass2 < K8::BaseAction
+          mapping '', :GET=>:do_index
+          def do_index; end
+        end
+        ok {ExampleClass2[:do_index]} == nil
+      end
+
+    end
+
+
   end
 
 

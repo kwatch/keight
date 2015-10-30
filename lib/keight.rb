@@ -26,7 +26,7 @@ module K8
     "PATCH"   => :PATCH,
     "OPTIONS" => :OPTIONS,
     "TRACE"   => :TRACE,
-  }.each {|k, _| k.freeze }
+  }
 
   HTTP_RESPONSE_STATUS = {
     100 => "Continue",
@@ -169,7 +169,7 @@ module K8
     '.docx'    => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     '.xlsx'    => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     '.pptx'    => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  }.each {|k, v| k.freeze; v.freeze }
+  }.each {|_, v| v.freeze }  # hash keys are always frozen
 
 
   module Util

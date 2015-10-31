@@ -1499,6 +1499,21 @@ Oktest.scope do
     end
 
 
+    topic '#form_action_attr()' do
+
+      spec "[!qyhkm] returns '/api/books/123' when method is POST." do
+        info = K8::ActionInfo.create('POST', '/api/books/{id}')
+        ok {info.form_action_attr(123)} == '/api/books/123'
+      end
+
+      spec "[!kogyx] returns '/api/books/123?_method=PUT' when method is not POST." do
+        info = K8::ActionInfo.create('PUT', '/api/books/{id}')
+        ok {info.form_action_attr(123)} == '/api/books/123?_method=PUT'
+      end
+
+    end
+
+
   end
 
 

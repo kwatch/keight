@@ -1022,9 +1022,10 @@ module K8
 
   ##
   ## ex:
-  ##   info = ActionInfo.new('GET', '/api/books/{id}')
-  ##   p info.method        #=> "GET"
-  ##   p info.urlpath(123)  #=> "/api/books/123"
+  ##   info = ActionInfo.new('PUT', '/api/books/{id}')
+  ##   p info.method                 #=> "PUT"
+  ##   p info.urlpath(123)           #=> "/api/books/123"
+  ##   p info.form_action_attr(123)  #=> "/api/books/123?_method=PUT"
   ##
   class ActionInfo
 
@@ -1037,6 +1038,16 @@ module K8
 
     def urlpath(*args)
       return @urlpath_format % args
+    end
+
+    def form_action_attr(*args)
+      #; [!qyhkm] returns '/api/books/123' when method is POST.
+      #; [!kogyx] returns '/api/books/123?_method=PUT' when method is not POST.
+      if @method == 'POST'
+        return urlpath(*args)
+      else
+        return "#{urlpath(*args)}?_method=#{@method}"
+      end
     end
 
     def self.create(method, urlpath_pattern)

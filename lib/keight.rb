@@ -1617,13 +1617,8 @@ module K8
         tuple4 = find(req.path)
         #; [!vz07j] redirects only when request method is GET or HEAD.
         if tuple4.nil? && req_meth_ == :GET
-          #; [!eb2ms] returns 302 when urlpath not found but found with tailing '/'.
-          #; [!02dow] returns 302 when urlpath not found but found without tailing '/'.
-          location = req.path.end_with?('/') ? req.path[0..-2] : "#{req.path}/"
-          if find(location)
-            #; [!2a9c9] adds query string to 'Location' header.
-            qs = req.env['QUERY_STRING']
-            location = "#{location}?#{qs}" if qs && ! qs.empty?
+          location = find_autoredirect_location(req)
+          if location
             return [302, {'Location'=>location}, []]
           end
         end
@@ -1692,6 +1687,19 @@ END
       return true if req.path.end_with?('.json')
       return true if req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
       return false
+    end
+
+    def find_autoredirect_location(req)
+      #; [!eb2ms] returns 302 when urlpath not found but found with tailing '/'.
+      #; [!02dow] returns 302 when urlpath not found but found without tailing '/'.
+      location = req.path.end_with?('/') ? req.path[0..-2] : "#{req.path}/"
+      if find(location)
+        #; [!2a9c9] adds query string to 'Location' header.
+        qs = req.env['QUERY_STRING']
+        location = "#{location}?#{qs}" if qs && ! qs.empty?
+        return location
+      end
+      return nil
     end
 
     public

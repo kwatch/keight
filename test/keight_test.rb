@@ -2524,6 +2524,19 @@ Oktest.scope do
         ok {headers['Location']} == "/api/books/123?x=3&y=4"
       end
 
+      spec "[!vz07j] redirects only when request method is GET or HEAD." do
+        |app|
+        env = new_env("HEAD", "/api/books")
+        status, headers, body = app.call(env)
+        ok {status} == 302
+        ok {headers['Location']} == "/api/books/"
+        #
+        env = new_env("POST", "/api/books")
+        status, headers, body = app.call(env)
+        ok {status} == 404
+        ok {headers['Location']} == nil
+      end
+
     end
 
 

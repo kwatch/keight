@@ -1030,23 +1030,23 @@ module K8
   class ActionInfo
 
     def initialize(method, urlpath_format)
-      @method = method
-      @urlpath_format = urlpath_format   # ex: '/books/%s/comments/%s'
+      @meth = method                  # ex: :GET, :POST, ...
+      @path_format = urlpath_format   # ex: '/books/%s/comments/%s'
     end
 
-    attr_reader :method
+    attr_reader :meth
 
-    def urlpath(*args)
-      return @urlpath_format % args
+    def path(*args)
+      return @path_format % args
     end
 
     def form_action_attr(*args)
       #; [!qyhkm] returns '/api/books/123' when method is POST.
       #; [!kogyx] returns '/api/books/123?_method=PUT' when method is not POST.
-      if @method == 'POST'
-        return urlpath(*args)
+      if @meth == 'POST'
+        return path(*args)
       else
-        return "#{urlpath(*args)}?_method=#{@method}"
+        return "#{path(*args)}?_method=#{@meth}"
       end
     end
 
@@ -1073,23 +1073,23 @@ module K8
   end
 
   class ActionInfo0 < ActionInfo    # :nodoc:
-    def urlpath(); @urlpath_format; end
+    def path(); @path_format; end
   end
 
   class ActionInfo1 < ActionInfo    # :nodoc:
-    def urlpath(a); @urlpath_format % [a]; end
+    def path(a); @path_format % [a]; end
   end
 
   class ActionInfo2 < ActionInfo    # :nodoc:
-    def urlpath(a, b); @urlpath_format % [a, b]; end
+    def path(a, b); @path_format % [a, b]; end
   end
 
   class ActionInfo3 < ActionInfo    # :nodoc:
-    def urlpath(a, b, c); @urlpath_format % [a, b, c]; end
+    def path(a, b, c); @path_format % [a, b, c]; end
   end
 
   class ActionInfo4 < ActionInfo    # :nodoc:
-    def urlpath(a, b, c, d); @urlpath_format % [a, b, c, d]; end
+    def path(a, b, c, d); @path_format % [a, b, c, d]; end
   end
 
   ActionInfo::SUBCLASSES << ActionInfo0 << ActionInfo1 << ActionInfo2 << ActionInfo3 << ActionInfo4

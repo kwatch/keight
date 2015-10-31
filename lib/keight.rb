@@ -1068,27 +1068,27 @@ module K8
       return (SUBCLASSES[n] || ActionInfo).new(method, urlpath_format)
     end
 
-    SUBCLASSES = []
+    SUBCLASSES = []     # :nodoc:
 
   end
 
-  class ActionInfo0 < ActionInfo
+  class ActionInfo0 < ActionInfo    # :nodoc:
     def urlpath(); @urlpath_format; end
   end
 
-  class ActionInfo1 < ActionInfo
+  class ActionInfo1 < ActionInfo    # :nodoc:
     def urlpath(a); @urlpath_format % [a]; end
   end
 
-  class ActionInfo2 < ActionInfo
+  class ActionInfo2 < ActionInfo    # :nodoc:
     def urlpath(a, b); @urlpath_format % [a, b]; end
   end
 
-  class ActionInfo3 < ActionInfo
+  class ActionInfo3 < ActionInfo    # :nodoc:
     def urlpath(a, b, c); @urlpath_format % [a, b, c]; end
   end
 
-  class ActionInfo4 < ActionInfo
+  class ActionInfo4 < ActionInfo    # :nodoc:
     def urlpath(a, b, c, d); @urlpath_format % [a, b, c, d]; end
   end
 

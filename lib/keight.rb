@@ -783,6 +783,25 @@ module K8
       return @action_method_mapping ||= ActionMethodMapping.new
     end
 
+    def self._build_action_info(full_urlpath_pattern)   # :nodoc:
+      #; [!ordhc] build ActionInfo objects for each action methods.
+      parent = full_urlpath_pattern
+      @action_infos = {}
+      _action_method_mapping().each do |urlpath_pat, methods|
+        methods.each do |req_meth, action_method_name|
+          info = ActionInfo.create(req_meth, "#{parent}#{urlpath_pat}")
+          @action_infos[action_method_name] = info
+        end
+      end
+      @action_infos
+    end
+
+    def self.[](action_method_name)
+      #; [!1tq8z] returns ActionInfo object corresponding to action method.
+      #; [!6g2iw] returns nil when not mounted yet.
+      return (@action_infos || {})[action_method_name]
+    end
+
   end
 
 
@@ -1001,6 +1020,86 @@ module K8
   end
 
 
+  ##
+  ## ex:
+  ##   info = ActionInfo.new('PUT', '/api/books/{id}')
+  ##   p info.method                 #=> "PUT"
+  ##   p info.urlpath(123)           #=> "/api/books/123"
+  ##   p info.form_action_attr(123)  #=> "/api/books/123?_method=PUT"
+  ##
+  class ActionInfo
+
+    def initialize(method, urlpath_format)
+      @method = method
+      @urlpath_format = urlpath_format   # ex: '/books/%s/comments/%s'
+    end
+
+    attr_reader :method
+
+    def method(name=nil)
+      return super if name
+      return @method
+    end
+
+    def urlpath(*args)
+      return @urlpath_format % args
+    end
+
+    def form_action_attr(*args)
+      #; [!qyhkm] returns '/api/books/123' when method is POST.
+      #; [!kogyx] returns '/api/books/123?_method=PUT' when method is not POST.
+      if @method == 'POST'
+        return urlpath(*args)
+      else
+        return "#{urlpath(*args)}?_method=#{@method}"
+      end
+    end
+
+    def self.create(method, urlpath_pattern)
+      ## ex: '/books/{id}' -> '/books/%s'
+      #; [!1nk0i] replaces urlpath parameters with '%s'.
+      #; [!a7fqv] replaces '%' with'%%'.
+      rexp = /(.*?)\{(\w*?)(?::[^{}]*(?:\{[^{}]*?\}[^{}]*?)*)?\}/
+      urlpath_format = ''; n = 0
+      urlpath_pattern.scan(rexp) do |text, pname|
+        next if pname == 'ext'   # ignore '.html' or '.json'
+        urlpath_format << text.gsub(/%/, '%%') << '%s'
+        n += 1
+      end
+      rest = n > 0 ? Regexp.last_match.post_match : urlpath_pattern
+      urlpath_format << rest.gsub(/%/, '%%')
+      #; [!btt2g] returns ActionInfoN object when number of urlpath parameter <= 4.
+      #; [!x5yx2] returns ActionInfo object when number of urlpath parameter > 4.
+      return (SUBCLASSES[n] || ActionInfo).new(method, urlpath_format)
+    end
+
+    SUBCLASSES = []     # :nodoc:
+
+  end
+
+  class ActionInfo0 < ActionInfo    # :nodoc:
+    def urlpath(); @urlpath_format; end
+  end
+
+  class ActionInfo1 < ActionInfo    # :nodoc:
+    def urlpath(a); @urlpath_format % [a]; end
+  end
+
+  class ActionInfo2 < ActionInfo    # :nodoc:
+    def urlpath(a, b); @urlpath_format % [a, b]; end
+  end
+
+  class ActionInfo3 < ActionInfo    # :nodoc:
+    def urlpath(a, b, c); @urlpath_format % [a, b, c]; end
+  end
+
+  class ActionInfo4 < ActionInfo    # :nodoc:
+    def urlpath(a, b, c, d); @urlpath_format % [a, b, c, d]; end
+  end
+
+  ActionInfo::SUBCLASSES << ActionInfo0 << ActionInfo1 << ActionInfo2 << ActionInfo3 << ActionInfo4
+
+
   class DefaultPatterns
 
     def initialize
@@ -1089,18 +1188,19 @@ module K8
     ##         ]
     ##
     def mount(urlpath_pattern, action_class)
-      _mount(@mappings, urlpath_pattern, action_class)
+      _mount(@mappings, urlpath_pattern, urlpath_pattern, action_class)
       #; [!w8mee] returns self.
       return self
     end
 
-    def _mount(mappings, urlpath_pattern, action_class)
+    def _mount(mappings, full_urlpath_pattern, urlpath_pattern, action_class)
       child_mappings = nil
       #; [!4l8xl] can accept array of pairs of urlpath and action class.
       if action_class.is_a?(Array)
         array = action_class
+        parent = full_urlpath_pattern
         child_mappings = []
-        array.each {|upath, klass| _mount(child_mappings, upath, klass) }
+        array.each {|upath, klass| _mount(child_mappings, "#{parent}#{upath}", upath, klass) }
         action_class = nil
       #; [!ne804] when target class name is string...
       elsif action_class.is_a?(String)
@@ -1113,6 +1213,8 @@ module K8
       end
       #; [!30cib] raises error when action method is not defined in action class.
       _validate_action_method_existence(action_class) if action_class
+      #; [!10yv2] build action infos for each action methods.
+      action_class._build_action_info(full_urlpath_pattern) if action_class
       #; [!flb11] mounts action class to urlpath.
       mappings << [urlpath_pattern, action_class || child_mappings]
     end

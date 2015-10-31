@@ -227,6 +227,12 @@ opts = {
   urlpath_cache_size:  0,    # 0 means cache disabled
 }
 app = K8::RackApplication.new(urlpath_mapping, opts)
+
+## misc
+p HelloAction[:do_update].method        #=> :GET
+p HelloAction[:do_update].urlpath(123)  #=> '/api/books/123'
+p HelloAction[:do_update].form_action_attr(123)
+                                        #=> '/api/books/123?_method=PUT'
 ```
 
 

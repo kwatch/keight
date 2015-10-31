@@ -1036,6 +1036,11 @@ module K8
 
     attr_reader :method
 
+    def method(name=nil)
+      return super if name
+      return @method
+    end
+
     def urlpath(*args)
       return @urlpath_format % args
     end

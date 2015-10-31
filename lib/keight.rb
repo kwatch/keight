@@ -1614,8 +1614,20 @@ module K8
         req_meth_ = req_meth
       end
       begin
+        tuple4 = find(req.path)
+        if tuple4.nil?
+          #; [!eb2ms] returns 302 when urlpath not found but found with tailing '/'.
+          #; [!02dow] returns 302 when urlpath not found but found without tailing '/'.
+          location = req.path.end_with?('/') ? req.path[0..-2] : "#{req.path}/"
+          if find(location)
+            #; [!2a9c9] adds query string to 'Location' header.
+            qs = req.env['QUERY_STRING']
+            location = "#{location}?#{qs}" if qs && ! qs.empty?
+            return [302, {'Location'=>location}, []]
+          end
+        end
         #; [!rz13i] returns HTTP 404 when urlpath not found.
-        tuple4 = find(req.path)  or
+        tuple4  or
           raise HttpException.new(404)
         action_class, action_methods, urlpath_param_names, urlpath_param_values = tuple4
         #; [!rv3cf] returns HTTP 405 when urlpath found but request method not allowed.

@@ -1617,10 +1617,10 @@ module K8
         tuple4 = find(req.path)
         #; [!vz07j] redirects only when request method is GET or HEAD.
         if tuple4.nil? && req_meth_ == :GET
-          #; [!eb2ms] returns 302 when urlpath not found but found with tailing '/'.
-          #; [!02dow] returns 302 when urlpath not found but found without tailing '/'.
+          #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
+          #; [!02dow] returns 301 when urlpath not found but found without tailing '/'.
           location = find_autoredirect_location(req)
-          return [302, {'Location'=>location}, []] if location
+          return [301, {'Location'=>location}, []] if location
         end
         #; [!rz13i] returns HTTP 404 when urlpath not found.
         tuple4  or

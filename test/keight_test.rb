@@ -2493,20 +2493,20 @@ Oktest.scope do
         ok {body} == ["<index>"]
       end
 
-      spec "[!eb2ms] returns 302 when urlpath not found but found with tailing '/'." do
+      spec "[!eb2ms] returns 301 when urlpath not found but found with tailing '/'." do
         |app|
         env = new_env("GET", "/api/books")
         status, headers, body = app.call(env)
-        ok {status} == 302
+        ok {status} == 301
         ok {headers['Location']} == "/api/books/"
         ok {body} == []
       end
 
-      spec "[!02dow] returns 302 when urlpath not found but found without tailing '/'." do
+      spec "[!02dow] returns 301 when urlpath not found but found without tailing '/'." do
         |app|
         env = new_env("GET", "/api/books/123/")
         status, headers, body = app.call(env)
-        ok {status} == 302
+        ok {status} == 301
         ok {headers['Location']} == "/api/books/123"
         ok {body} == []
       end
@@ -2515,12 +2515,12 @@ Oktest.scope do
         |app|
         env = new_env("GET", "/api/books", query: 'x=1&y=2')
         status, headers, body = app.call(env)
-        ok {status} == 302
+        ok {status} == 301
         ok {headers['Location']} == "/api/books/?x=1&y=2"
         #
         env = new_env("GET", "/api/books/123/", query: 'x=3&y=4')
         status, headers, body = app.call(env)
-        ok {status} == 302
+        ok {status} == 301
         ok {headers['Location']} == "/api/books/123?x=3&y=4"
       end
 
@@ -2528,7 +2528,7 @@ Oktest.scope do
         |app|
         env = new_env("HEAD", "/api/books")
         status, headers, body = app.call(env)
-        ok {status} == 302
+        ok {status} == 301
         ok {headers['Location']} == "/api/books/"
         #
         env = new_env("POST", "/api/books")

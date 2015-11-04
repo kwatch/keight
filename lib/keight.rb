@@ -1614,8 +1614,16 @@ module K8
         req_meth_ = req_meth
       end
       begin
+        tuple4 = find(req.path)
+        #; [!vz07j] redirects only when request method is GET or HEAD.
+        if tuple4.nil? && req_meth_ == :GET
+          #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
+          #; [!02dow] returns 301 when urlpath not found but found without tailing '/'.
+          location = find_autoredirect_location(req)
+          return [301, {'Location'=>location}, []] if location
+        end
         #; [!rz13i] returns HTTP 404 when urlpath not found.
-        tuple4 = find(req.path)  or
+        tuple4  or
           raise HttpException.new(404)
         action_class, action_methods, urlpath_param_names, urlpath_param_values = tuple4
         #; [!rv3cf] returns HTTP 405 when urlpath found but request method not allowed.
@@ -1679,6 +1687,14 @@ END
       return true if req.path.end_with?('.json')
       return true if req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
       return false
+    end
+
+    def find_autoredirect_location(req)
+      location = req.path.end_with?('/') ? req.path[0..-2] : "#{req.path}/"
+      return nil unless find(location)
+      #; [!2a9c9] adds query string to 'Location' header.
+      qs = req.env['QUERY_STRING']
+      return qs && ! qs.empty? ? "#{location}?#{qs}" : location
     end
 
     public

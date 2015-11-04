@@ -2493,6 +2493,50 @@ Oktest.scope do
         ok {body} == ["<index>"]
       end
 
+      spec "[!eb2ms] returns 301 when urlpath not found but found with tailing '/'." do
+        |app|
+        env = new_env("GET", "/api/books")
+        status, headers, body = app.call(env)
+        ok {status} == 301
+        ok {headers['Location']} == "/api/books/"
+        ok {body} == []
+      end
+
+      spec "[!02dow] returns 301 when urlpath not found but found without tailing '/'." do
+        |app|
+        env = new_env("GET", "/api/books/123/")
+        status, headers, body = app.call(env)
+        ok {status} == 301
+        ok {headers['Location']} == "/api/books/123"
+        ok {body} == []
+      end
+
+      spec "[!2a9c9] adds query string to 'Location' header." do
+        |app|
+        env = new_env("GET", "/api/books", query: 'x=1&y=2')
+        status, headers, body = app.call(env)
+        ok {status} == 301
+        ok {headers['Location']} == "/api/books/?x=1&y=2"
+        #
+        env = new_env("GET", "/api/books/123/", query: 'x=3&y=4')
+        status, headers, body = app.call(env)
+        ok {status} == 301
+        ok {headers['Location']} == "/api/books/123?x=3&y=4"
+      end
+
+      spec "[!vz07j] redirects only when request method is GET or HEAD." do
+        |app|
+        env = new_env("HEAD", "/api/books")
+        status, headers, body = app.call(env)
+        ok {status} == 301
+        ok {headers['Location']} == "/api/books/"
+        #
+        env = new_env("POST", "/api/books")
+        status, headers, body = app.call(env)
+        ok {status} == 404
+        ok {headers['Location']} == nil
+      end
+
     end
 
 

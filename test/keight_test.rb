@@ -5,6 +5,7 @@ $LOAD_PATH << "test" unless $LOAD_PATH.include?("test")
 
 require 'stringio'
 
+require 'rack/test_app'
 require 'oktest'
 
 require 'keight'
@@ -92,7 +93,7 @@ end
 Oktest.scope do
 
   def new_env(meth="GET", path="/", opts={})
-    return K8::Mock.new_env(meth, path, opts)
+    return Rack::TestApp.new_env(meth, path, opts)
   end
 
 
@@ -636,7 +637,7 @@ Oktest.scope do
     topic '#cookies' do
 
       spec "[!c9pwr] parses cookie data and returns it as hash object." do
-        req = K8::Request.new(new_env('POST', '/', cookie: "aaa=homhom; bbb=madmad"))
+        req = K8::Request.new(new_env('POST', '/', cookies: "aaa=homhom; bbb=madmad"))
         ok {req.cookies} == {"aaa"=>"homhom", "bbb"=>"madmad"}
       end
 

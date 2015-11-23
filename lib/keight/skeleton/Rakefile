@@ -1,0 +1,59 @@
+# -*- coding: utf-8 -*-
+
+#require "bundler/gem_tasks"
+
+#require 'rake/testtask'
+#Rake::TestTask.new(:test) do |t|
+#  t.libs << "test"
+#  t.test_files = FileList['test/**/*_test.rb']
+#  #t.verbose = true
+#end
+
+desc "run test scripts"
+task :test do
+  files = [
+    './test/**/*_test.rb',
+  ]
+  code = 'ARGV.each {|p| Dir.glob(p).each {|f| require f } }'
+  system "ruby -v"
+  system "ruby", "-e", code, *files
+end
+
+task :default => :test
+
+
+def run(command)
+  print "[rake]$ "
+  sh command
+end
+
+def gem_home_required
+  return if ENV['GEM_HOME']
+  $stderr.puts <<'END'
+***
+*** ERROR: $GEM_HOME environment variable required.
+***
+*** (MacOSX, Linux)
+***   $ mkdir gems
+***   $ export GEM_HOME=$PWD/gems
+***
+*** (Windows)
+***   $ md gems
+***   $ set GEM_HOME=%CD%\gems
+***
+END
+  exit 1
+end
+
+
+namespace :setup do
+
+  desc "install required libraries"
+  task :install do |t|
+    gem_home_required()
+    run "gem install bundler"
+    puts ""
+    run "bundler install"
+  end
+
+end

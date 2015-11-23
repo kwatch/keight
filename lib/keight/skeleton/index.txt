@@ -32,7 +32,12 @@ static/lib/jquery/
 static/lib/jquery/1.11.3		
 static/lib/modernizr/			
 static/lib/modernizr/2.8.3		
+test/                                   test scripts
+test/api/                               
+test/api/hello_test.rb                  
+test/test_helper.rb                     
 tmp/					temporary directory
 tmp/upload/				for uploaded files
 .gitignore				for Git
-
+Gemfile                                 gems list
+main.rb                                 create Rack app

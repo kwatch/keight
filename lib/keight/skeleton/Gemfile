@@ -3,9 +3,10 @@
 ##
 ## How to install all gems:
 ##
-##     $ mkdir gems                 # if necessary
-##     $ export GEM_HOME=$PWD/gems  # if necessary
-##     $ gem install bundler
+##     $ mkdir gems                       # if necessary
+##     $ export GEM_HOME=$PWD/gems        # if necessary
+##     $ export PATH=$GEM_HOME/bin:$PATH  # if necessary
+##     $ gem install bundler              # if necessary
 ##     $ bundler install
 ##
 

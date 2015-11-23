@@ -32,7 +32,5 @@ END
 
   o.required_ruby_version = '>= 2.0'
   o.add_runtime_dependency 'rack', '~> 1.6'
-  o.add_runtime_dependency 'baby_erubis', '~> 2.1', '>= 2.1.1'
   #o.add_development_dependency "oktest", "~> 0"
-  o.add_development_dependency 'rack-test_app', '~> 1.0', '>= 1.0.0'
 end

@@ -35,4 +35,5 @@ static/lib/modernizr/2.8.3
 tmp/					temporary directory
 tmp/upload/				for uploaded files
 .gitignore				for Git
-
+Gemfile                                 gems list
+main.rb                                 create Rack app

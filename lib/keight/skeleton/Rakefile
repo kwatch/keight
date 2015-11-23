@@ -20,3 +20,40 @@ task :test do
 end
 
 task :default => :test
+
+
+def run(command)
+  print "[rake]$ "
+  sh command
+end
+
+def gem_home_required
+  return if ENV['GEM_HOME']
+  $stderr.puts <<'END'
+***
+*** ERROR: $GEM_HOME environment variable required.
+***
+*** (MacOSX, Linux)
+***   $ mkdir gems
+***   $ export GEM_HOME=$PWD/gems
+***
+*** (Windows)
+***   $ md gems
+***   $ set GEM_HOME=%CD%\gems
+***
+END
+  exit 1
+end
+
+
+namespace :setup do
+
+  desc "install required libraries"
+  task :install do |t|
+    gem_home_required()
+    run "gem install bundler"
+    puts ""
+    run "bundler install"
+  end
+
+end

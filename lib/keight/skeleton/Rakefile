@@ -15,8 +15,8 @@ task :test do
     './test/**/*_test.rb',
   ]
   code = 'ARGV.each {|p| Dir.glob(p).each {|f| require f } }'
-  system("ruby -v")
-  system("ruby", "-e", code, *files)
+  system "ruby -v"
+  system "ruby", "-e", code, *files
 end
 
 task :default => :test

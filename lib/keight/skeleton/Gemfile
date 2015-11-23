@@ -1,0 +1,19 @@
+# -*- coding: utf-8 -*-
+
+##
+## How to install all gems:
+##
+##     $ mkdir gems                 # if necessary
+##     $ export GEM_HOME=$PWD/gems  # if necessary
+##     $ gem install bundler
+##     $ bundler install
+##
+
+source 'https://rubygems.org'
+
+gem 'rack'
+gem 'rack-test_app'
+gem 'keight'
+gem 'baby_erubis'
+gem 'minitest'
+gem 'minitest-ok'

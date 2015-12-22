@@ -1023,17 +1023,12 @@ module K8
   ##
   class ActionInfo
 
-    def initialize(method, urlpath_format)
-      @method = method
+    def initialize(meth, urlpath_format)
+      @meth = meth
       @urlpath_format = urlpath_format   # ex: '/books/%s/comments/%s'
     end
 
-    attr_reader :method
-
-    def method(name=nil)
-      return super if name
-      return @method
-    end
+    attr_reader :meth
 
     def urlpath(*args)
       return @urlpath_format % args
@@ -1042,14 +1037,14 @@ module K8
     def form_action_attr(*args)
       #; [!qyhkm] returns '/api/books/123' when method is POST.
       #; [!kogyx] returns '/api/books/123?_method=PUT' when method is not POST.
-      if @method == 'POST'
+      if @meth == 'POST'
         return urlpath(*args)
       else
-        return "#{urlpath(*args)}?_method=#{@method}"
+        return "#{urlpath(*args)}?_method=#{@meth}"
       end
     end
 
-    def self.create(method, urlpath_pattern)
+    def self.create(meth, urlpath_pattern)
       ## ex: '/books/{id}' -> '/books/%s'
       #; [!1nk0i] replaces urlpath parameters with '%s'.
       #; [!a7fqv] replaces '%' with'%%'.
@@ -1064,7 +1059,7 @@ module K8
       urlpath_format << rest.gsub(/%/, '%%')
       #; [!btt2g] returns ActionInfoN object when number of urlpath parameter <= 4.
       #; [!x5yx2] returns ActionInfo object when number of urlpath parameter > 4.
-      return (SUBCLASSES[n] || ActionInfo).new(method, urlpath_format)
+      return (SUBCLASSES[n] || ActionInfo).new(meth, urlpath_format)
     end
 
     SUBCLASSES = []     # :nodoc:

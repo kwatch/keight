@@ -461,12 +461,6 @@ module K8
       return @env["HTTP_#{name.upcase.sub('-', '_')}"]
     end
 
-    def method(name=nil)
-      #; [!tp595] returns :GET, :POST, :PUT, ... when argument is not passed.
-      #; [!49f51] returns Method object when argument is passed.
-      return name.nil? ? @method : super(name)
-    end
-
     def request_method
       #; [!y8eos] returns env['REQUEST_METHOD'] as string.
       return @env['REQUEST_METHOD']

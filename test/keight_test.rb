@@ -389,24 +389,6 @@ Oktest.scope do
     end
 
 
-    topic '#method()' do
-
-      spec "[!tp595] returns :GET, :POST, :PUT, ... when argument is not passed." do
-        ok {K8::Request.new(new_env('GET',    '/')).method} == :GET
-        ok {K8::Request.new(new_env('POST',   '/')).method} == :POST
-        ok {K8::Request.new(new_env('PUT',    '/')).method} == :PUT
-        ok {K8::Request.new(new_env('DELETE', '/')).method} == :DELETE
-      end
-
-      spec "[!49f51] returns Method object when argument is passed." do
-        req = K8::Request.new(new_env('GET', '/'))
-        ok {req.method('env')}.is_a?(Method)
-        ok {req.method('env').call()}.same?(req.env)
-      end
-
-    end
-
-
     topic '#request_method' do
 
       spec "[!y8eos] returns env['REQUEST_METHOD'] as string." do

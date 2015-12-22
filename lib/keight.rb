@@ -1030,7 +1030,7 @@ module K8
 
     attr_reader :meth
 
-    def urlpath(*args)
+    def path(*args)
       return @urlpath_format % args
     end
 
@@ -1038,9 +1038,9 @@ module K8
       #; [!qyhkm] returns '/api/books/123' when method is POST.
       #; [!kogyx] returns '/api/books/123?_method=PUT' when method is not POST.
       if @meth == 'POST'
-        return urlpath(*args)
+        return path(*args)
       else
-        return "#{urlpath(*args)}?_method=#{@meth}"
+        return "#{path(*args)}?_method=#{@meth}"
       end
     end
 
@@ -1067,23 +1067,23 @@ module K8
   end
 
   class ActionInfo0 < ActionInfo    # :nodoc:
-    def urlpath(); @urlpath_format; end
+    def path(); @urlpath_format; end
   end
 
   class ActionInfo1 < ActionInfo    # :nodoc:
-    def urlpath(a); @urlpath_format % [a]; end
+    def path(a); @urlpath_format % [a]; end
   end
 
   class ActionInfo2 < ActionInfo    # :nodoc:
-    def urlpath(a, b); @urlpath_format % [a, b]; end
+    def path(a, b); @urlpath_format % [a, b]; end
   end
 
   class ActionInfo3 < ActionInfo    # :nodoc:
-    def urlpath(a, b, c); @urlpath_format % [a, b, c]; end
+    def path(a, b, c); @urlpath_format % [a, b, c]; end
   end
 
   class ActionInfo4 < ActionInfo    # :nodoc:
-    def urlpath(a, b, c, d); @urlpath_format % [a, b, c, d]; end
+    def path(a, b, c, d); @urlpath_format % [a, b, c, d]; end
   end
 
   ActionInfo::SUBCLASSES << ActionInfo0 << ActionInfo1 << ActionInfo2 << ActionInfo3 << ActionInfo4

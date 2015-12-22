@@ -445,8 +445,8 @@ module K8
     def initialize(env)
       #; [!yb9k9] sets @env.
       @env = env
-      #; [!yo22o] sets @method as Symbol value.
-      @method = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
+      #; [!yo22o] sets @meth as Symbol value.
+      @meth = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
         raise HTTPException.new(400, "#{env['REQUEST_METHOD'].inspect}: unknown request method.")
       #; [!twgmi] sets @path.
       @path = (x = env['PATH_INFO'])
@@ -454,7 +454,7 @@ module K8
       @path = env['SCRIPT_NAME'] if x.nil? || x.empty?
     end
 
-    attr_reader :env, :method, :path
+    attr_reader :env, :meth, :path
 
     def header(name)
       #; [!1z7wj] returns http header value from environment.

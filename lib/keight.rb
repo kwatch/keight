@@ -621,7 +621,7 @@ module K8
       #; [!cr0zj] parses JSON when content type is 'application/json'.
       #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
       #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
-      if @method == :GET || @method == :HEAD
+      if @meth == :GET || @meth == :HEAD
         return params_query()
       end
       case @env['CONTENT_TYPE']
@@ -934,7 +934,7 @@ module K8
       return false if @req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
       #; [!vwrqv] returns true when request method is one of POST, PUT, or DELETE.
       #; [!jfhla] returns true when request method is GET or HEAD.
-      req_meth = @req.method
+      req_meth = @req.meth
       return req_meth == :POST || req_meth == :PUT || req_meth == :DELETE
     end
 

@@ -1566,6 +1566,42 @@ Oktest.scope do
   end
 
 
+  topic K8::DEFAULT_PATTERNS do
+
+    spec "[!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/." do
+      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('id')
+      ok {pat} == '\d+'
+      ok {proc_.call("123")} == 123
+      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('book_id')
+      ok {pat} == '\d+'
+      ok {proc_.call("123")} == 123
+    end
+
+    spec "[!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'." do
+      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('ext')
+      ok {pat} == '(?:\.\w+)?'
+      ok {proc_} == nil
+    end
+
+    spec "[!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/." do
+      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('date')
+      ok {pat} == '\d\d\d\d-\d\d-\d\d'
+      ok {proc_.call("2014-12-24")} == Date.new(2014, 12, 24)
+      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('birth_date')
+      ok {pat} == '\d\d\d\d-\d\d-\d\d'
+      ok {proc_.call("2015-02-14")} == Date.new(2015, 2, 14)
+    end
+
+    spec "[!wg9vl] raises 404 error when invalid date (such as 2012-02-30)." do
+      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('date')
+      pr = proc { proc_.call('2012-02-30') }
+      ok {pr}.raise?(K8::HttpException, "2012-02-30: invalid date.")
+      ok {pr.exception.status_code} == 404
+    end
+
+  end
+
+
   topic K8::ActionMethodMapping do
 
     fixture :mapping do

@@ -1121,6 +1121,26 @@ module K8
   end
 
 
+  DEFAULT_PATTERNS = proc {
+    x = DefaultPatterns.new
+    #; [!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/.
+    x.register('id',    '\d+') {|val| val.to_i }
+    x.register(/_id\z/, '\d+') {|val| val.to_i }
+    #; [!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'.
+    x.register('ext',   '(?:\.\w+)?')
+    #; [!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/.
+    to_date = proc {|val|
+      #; [!wg9vl] raises 404 error when invalid date (such as 2012-02-30).
+      yr, mo, dy = val.split(/-/).map(&:to_i)
+      Date.new(yr, mo, dy)  rescue
+        raise HttpException.new(404, "#{val}: invalid date.")
+    }
+    x.register('date',    '\d\d\d\d-\d\d-\d\d', &to_date)
+    x.register(/_date\z/, '\d\d\d\d-\d\d-\d\d', &to_date)
+    x
+  }.call()
+
+
   class ActionMethodMapping
 
     def initialize

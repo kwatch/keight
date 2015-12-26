@@ -89,60 +89,75 @@ end
 
 if defined?(Rack::Multiplexer)
 
-  mplx_dummy = proc {|env|
-    [200, {"Content-Type"=>"text/html"}, ["<h1>hello</h1>"]]
-    #req  = Rack::Request.new(env)
-    #resp = Rack::Response.new
-    #[resp.status, resp.headers, ["<h1>index</h1>"]]
-  }
-
-  mplx_app1 = Rack::Multiplexer.new
-
-  for x in $api_entries
-    mplx_app1.get    "/api/#{x}",           mplx_dummy
-    mplx_app1.post   "/api/#{x}",           mplx_dummy
-    #mplx_app1.get    "/api/#{x}/new",       mplx_dummy
-    mplx_app1.get    "/api/#{x}/:id",       mplx_dummy
-    mplx_app1.post   "/api/#{x}/:id",       mplx_dummy
-    mplx_app1.delete "/api/#{x}/:id",       mplx_dummy
-    #mplx_app1.get    "/api/#{x}/:id/edit",  mplx_dummy
-  end
-  for x in $admin_entries   # 'aaa01', 'bbb02', ..., 'zzz26'
-    mplx_app1.get    "/admin/#{x}",         mplx_dummy
-    mplx_app1.post   "/admin/#{x}",         mplx_dummy
-    mplx_app1.get    "/admin/#{x}/:id",     mplx_dummy
-    mplx_app1.put    "/admin/#{x}/:id",     mplx_dummy
-    mplx_app1.delete "/admin/#{x}/:id",     mplx_dummy
-  end
-
-  mplx_api = Rack::Multiplexer.new
-  for x in $api_entries
-    mplx_api.get    "/api/#{x}",           mplx_dummy
-    mplx_api.post   "/api/#{x}",           mplx_dummy
-   #mplx_api.get    "/api/#{x}/new",       mplx_dummy
-    mplx_api.get    "/api/#{x}/:id",       mplx_dummy
-    mplx_api.post   "/api/#{x}/:id",       mplx_dummy
-    mplx_api.delete "/api/#{x}/:id",       mplx_dummy
-   #mplx_api.get    "/api/#{x}/:id/edit",  mplx_dummy
-  end
-  mplx_admin = Rack::Multiplexer.new
-  for x in $admin_entries   # 'aaa01', 'bbb02', ..., 'zzz26'
-    mplx_admin.get    "/admin/#{x}",         mplx_dummy
-    mplx_admin.post   "/admin/#{x}",         mplx_dummy
-    mplx_admin.get    "/admin/#{x}/:id",     mplx_dummy
-    mplx_admin.put    "/admin/#{x}/:id",     mplx_dummy
-    mplx_admin.delete "/admin/#{x}/:id",     mplx_dummy
-  end
-  mplx_app2 = proc {|env|
-    urlpath = env['PATH_INFO']
-    if urlpath.start_with?('/api')
-      mplx_api.call(env)
-    elsif urlpath.start_with?('/admin')
-      mplx_admin.call(env)
-    else
-      [404, {}, []]
+  mplx_app1 = proc {
+    #
+    proc_ = proc {|env|
+      [200, {"Content-Type"=>"text/html"}, ["<h1>hello</h1>"]]
+      #req  = Rack::Request.new(env)
+      #resp = Rack::Response.new
+      #[resp.status, resp.headers, ["<h1>index</h1>"]]
+    }
+    #
+    app = Rack::Multiplexer.new
+    for x in $api_entries
+      app.get    "/api/#{x}",           proc_
+      app.post   "/api/#{x}",           proc_
+      #app.get    "/api/#{x}/new",       proc_
+      app.get    "/api/#{x}/:id",       proc_
+      app.post   "/api/#{x}/:id",       proc_
+      app.delete "/api/#{x}/:id",       proc_
+      #app.get    "/api/#{x}/:id/edit",  proc_
     end
-  }
+    for x in $admin_entries   # 'aaa01', 'bbb02', ..., 'zzz26'
+      app.get    "/admin/#{x}",         proc_
+      app.post   "/admin/#{x}",         proc_
+      app.get    "/admin/#{x}/:id",     proc_
+      app.put    "/admin/#{x}/:id",     proc_
+      app.delete "/admin/#{x}/:id",     proc_
+    end
+    #
+    app
+  }.call()
+
+  mplx_app2 = proc {
+    #
+    proc_ = proc {|env|
+      [200, {"Content-Type"=>"text/html"}, ["<h1>hello</h1>"]]
+    }
+    #
+    api = Rack::Multiplexer.new
+    for x in $api_entries
+      api.get    "/api/#{x}",       proc_
+      api.post   "/api/#{x}",       proc_
+      #api.get    "/api/#{x}/new",   proc_
+      api.get    "/api/#{x}/:id",   proc_
+      api.post   "/api/#{x}/:id",   proc_
+      api.delete "/api/#{x}/:id",   proc_
+      #api.get    "/api/#{x}/:id/edit",  proc_
+    end
+    #
+    admin = Rack::Multiplexer.new
+    for x in $admin_entries   # 'aaa01', 'bbb02', ..., 'zzz26'
+      admin.get    "/admin/#{x}",      proc_
+      admin.post   "/admin/#{x}",      proc_
+      admin.get    "/admin/#{x}/:id",  proc_
+      admin.put    "/admin/#{x}/:id",  proc_
+      admin.delete "/admin/#{x}/:id",  proc_
+    end
+    #
+    app = proc {|env|
+      urlpath = env['PATH_INFO']
+      if urlpath.start_with?('/api')
+        api.call(env)
+      elsif urlpath.start_with?('/admin')
+        admin.call(env)
+      else
+        [404, {}, []]
+      end
+    }
+    #
+    app
+  }.call()
 
 end
 
@@ -163,28 +178,30 @@ if defined?(K8)
     def do_edit(id)     ; "<h1>edit</h1>"; end
   end
   #
-  k8_mapping = [
-    ['/api', [
-      ['/books',   DummyAction],
-      ['/books/{id}/comments', DummyAction],
-      ['/authors', DummyAction],
-      ['/authors/{id}/comments', DummyAction],
-      ['/account', DummyAction],
-      ['/orders',  DummyAction],
-      ['/ranking', DummyAction],
-      ['/about',   DummyAction],
-      ['/news',    DummyAction],
-      ['/support', DummyAction],
-    ]],
-    ['/admin', $admin_entries.collect {|x|  # 'aaa01', 'bbb02', ..., 'zzz26'
-      ["/#{x}", DummyAction]
-    }],
-  ]
-  k8_app_opts = {
-    urlpath_cache_size: 0,
-    enable_urlpath_param_range: ENV['K8RANGE'] != '0',
-  }
-  k8_app = K8::RackApplication.new(k8_mapping, k8_app_opts)
+  k8_app = proc {
+    mapping = [
+      ['/api', [
+        ['/books',   DummyAction],
+        ['/books/{id}/comments', DummyAction],
+        ['/authors', DummyAction],
+        ['/authors/{id}/comments', DummyAction],
+        ['/account', DummyAction],
+        ['/orders',  DummyAction],
+        ['/ranking', DummyAction],
+        ['/about',   DummyAction],
+        ['/news',    DummyAction],
+        ['/support', DummyAction],
+      ]],
+      ['/admin', $admin_entries.collect {|x|  # 'aaa01', 'bbb02', ..., 'zzz26'
+        ["/#{x}", DummyAction]
+      }],
+    ]
+    opts = {
+      urlpath_cache_size: 0,
+      enable_urlpath_param_range: ENV['K8RANGE'] != '0',
+    }
+    K8::RackApplication.new(mapping, opts)
+  }.call()
 
 end
 

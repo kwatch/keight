@@ -1225,10 +1225,14 @@ module K8
       #; [!95q61] finds from variable urlpath patterns when not found in fixed ones.
       index = m.captures.find_index('')
       tuple = @variable_endpoints[index]
-      _, action_class, action_methods, urlpath_rexp, pnames, procs = tuple
+      _, action_class, action_methods, urlpath_rexp, pnames, procs, range = tuple
       #; [!1k1k5] converts urlpath param values by converter procs.
-      strs = urlpath_rexp.match(req_urlpath).captures
-      pvalues = \
+      if range
+        str = req_urlpath[range]
+        pvalues = [procs[0] ? procs[0].call(str) : str]
+      else
+        strs = urlpath_rexp.match(req_urlpath).captures
+        pvalues = \
           case procs.length
           when 1; [procs[0] ? procs[0].call(strs[0]) : strs[0]]
           when 2; [procs[0] ? procs[0].call(strs[0]) : strs[0],
@@ -1238,6 +1242,7 @@ module K8
                    procs[2] ? procs[2].call(strs[2]) : strs[2]]
           else  ; procs.zip(strs).map {|pr, v| pr ? pr.call(v) : v }
           end    # ex: ["123"] -> [123]
+      end
       #; [!jyxlm] returns action class and methods, parameter names and values.
       result = [action_class, action_methods, pnames, pvalues]
       #; [!uqwr7] stores result into cache if cache is enabled.
@@ -1301,7 +1306,8 @@ module K8
         #; [!z2iax] classifies urlpath contains any parameter as variable one.
         if pnames
           fullpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
-          tuple = [fullpath_pat, action_class, methods, fullpath_rexp, pnames.freeze, procs]
+          range = _range_of_urlpath_param(fullpath_pat)  # to retrieve urlpath param value
+          tuple = [fullpath_pat, action_class, methods, fullpath_rexp, pnames.freeze, procs, range]
           @variable_endpoints << tuple
           buf << (_compile_urlpath_pat(child_urlpath_pat).first << '(\z)')
         #; [!rvdes] classifies urlpath contains no parameters as fixed one.
@@ -1334,6 +1340,11 @@ module K8
     #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?))?\}/
     #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
     URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+    URLPATH_PARAM_REXP_NOGROUP = /\{(?:\w*)(?::(?:[^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+    proc {|rx1, rx2|
+      rx1.source.gsub(/\(([^?])/, '(?:\1') == rx2.source  or
+        raise "*** assertion failed: #{rx1.source.inspect} != #{rx2.source.inspect}"
+    }.call(URLPATH_PARAM_REXP, URLPATH_PARAM_REXP_NOGROUP)
 
     ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
     def _compile_urlpath_pat(urlpath_pat, enable_capture=false)
@@ -1368,6 +1379,19 @@ module K8
         action_class.method_defined?(action_method_name)  or
           raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_method_name.inspect}: unknown action method in #{action_class}.")
       end
+    end
+
+    ## range object to retrieve urlpath parameter value faster than Regexp matching
+    ## ex:
+    ##   urlpath_pat == '/books/{id}/edit'
+    ##   arr = urlpath_pat.split(/\{.*?\}/, -1)           #=> ['/books/', '/edit']
+    ##   range = (arr[0].length .. - (arr[01].length+1))  #=> 7..-6 (Range object)
+    ##   p "/books/123/edit"[range]                       #=> '123'
+    def _range_of_urlpath_param(urlpath_pattern)
+      rexp = URLPATH_PARAM_REXP_NOGROUP
+      arr = urlpath_pattern.split(rexp, -1)            # ex: ['/books/', '/edit']
+      return nil unless arr.length == 2
+      return (arr[0].length .. - (arr[1].length+1))    # ex: 7..-6  (Range object)
     end
 
     ## ex: './api/admin/books:Admin::BookAPI'  ->  Admin::BookAPI

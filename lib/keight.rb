@@ -1209,7 +1209,7 @@ module K8
     def lookup(req_urlpath)
       #; [!j34yh] finds from fixed urlpaths at first.
       if (tuple = @fixed_endpoints[req_urlpath])
-        _, action_class, action_methods, _, _, _ = tuple
+        _, action_class, action_methods = tuple
         pnames = pvalues = EMPTY_ARRAY
         return action_class, action_methods, pnames, pvalues
       end
@@ -1306,7 +1306,7 @@ module K8
           buf << (_compile_urlpath_pat(child_urlpath_pat).first << '(\z)')
         #; [!rvdes] classifies urlpath contains no parameters as fixed one.
         else
-          tuple = [fullpath_pat, action_class, methods, nil, nil, nil]
+          tuple = [fullpath_pat, action_class, methods]
           @fixed_endpoints[fullpath_pat] = tuple
         end
         #

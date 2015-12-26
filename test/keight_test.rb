@@ -1775,8 +1775,8 @@ Oktest.scope do
             ],
           ]
           _.ok {@fixed_endpoints} == {
-            "/api/books/"   =>["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}, nil, nil, nil],
-            "/api/books/new"=>["/api/books/new", BooksAction, {:GET=>:do_new}, nil, nil, nil],
+            "/api/books/"   =>["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}],
+            "/api/books/new"=>["/api/books/new", BooksAction, {:GET=>:do_new}],
           }
         end
       end
@@ -1817,8 +1817,8 @@ Oktest.scope do
         |mapping|
         mapping.instance_exec(self) do |_|
           _.ok {@fixed_endpoints} == {
-            "/api/books/" => ["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}, nil, nil, nil],
-            "/api/books/new" => ["/api/books/new", BooksAction, {:GET=>:do_new}, nil, nil, nil],
+            "/api/books/" => ["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}],
+            "/api/books/new" => ["/api/books/new", BooksAction, {:GET=>:do_new}],
           }
         end
       end
@@ -1865,8 +1865,8 @@ Oktest.scope do
                 )
             \z'.gsub(/\s/, ''))
           _.ok {@fixed_endpoints} == {
-            "/api/books/"   =>["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}, nil, nil, nil],
-            "/api/books/new"=>["/api/books/new", BooksAction, {:GET=>:do_new}, nil, nil, nil],
+            "/api/books/"   =>["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}],
+            "/api/books/new"=>["/api/books/new", BooksAction, {:GET=>:do_new}],
           }
           _.ok {@variable_endpoints} == [
             ["/api/books/{id}",
@@ -1933,7 +1933,7 @@ Oktest.scope do
         ])
         mapping.instance_exec(self) do |_|
           _.ok {@fixed_endpoints} == {
-            "/api/example"=>["/api/example", Ex_l2kz5::Example_l2kz5, {:GET=>:do_index}, nil, nil, nil],
+            "/api/example"=>["/api/example", Ex_l2kz5::Example_l2kz5, {:GET=>:do_index}],
           }
           _.ok {@variable_endpoints} == [
             ["/api/example/{id}", Ex_l2kz5::Example_l2kz5, {:GET=>:do_show}, /\A\/api\/example\/(\d+)\z/, ["id"], [proc1]],
@@ -1973,8 +1973,8 @@ Oktest.scope do
                                (?:/comments(\z)|/comments/\d+(\z))
                       )
               \z'.gsub(/\s+/, ''))
-          _.ok {@fixed_endpoints['/api/samples/']} == ["/api/samples/", klass, {:GET=>:do_index}, nil, nil, nil]
-          _.ok {@fixed_endpoints['/api/samples/new']} == ["/api/samples/new", klass, {:GET=>:do_new}, nil, nil, nil]
+          _.ok {@fixed_endpoints['/api/samples/']} == ["/api/samples/", klass, {:GET=>:do_index}]
+          _.ok {@fixed_endpoints['/api/samples/new']} == ["/api/samples/new", klass, {:GET=>:do_new}]
         end
       end
 

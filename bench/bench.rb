@@ -1,31 +1,30 @@
 # -*- coding: utf-8 -*-
 
-def detect_flag(cmdopt)
+$LOAD_PATH << '.'
+
+def _version(cmdopt)
   if cmdopt == '0'
-    return false
+    return nil
   end
   begin
-    result = yield
-    return !!result
+    return yield
   rescue LoadError
     if cmdopt.to_s.empty?
-      return false
+      return nil
     else
       raise
     end
   end
 end
 
-$LOAD_PATH << '.'
-
-flag_rack = detect_flag($rack) { require 'rack'            ; defined?(Rack) }
-flag_sina = detect_flag($sina) { require 'sinatra/base'    ; defined?(Sinatra) }
-flag_mplx = detect_flag($mplx) { require 'rack-multiplexer'; defined?(Rack::Multiplexer) }
-flag_k8   = detect_flag($k8  ) { require 'keight'          ; defined?(K8) }
-flag_jet  = detect_flag($jet ) { require 'rack-jet_router' ; defined?(Rack::JetRouter) }
+version_rack = _version($rack) { require 'rack'            ; Rack.release }
+version_sina = _version($sina) { require 'sinatra/base'    ; Sinatra::VERSION }
+version_mplx = _version($mplx) { require 'rack-multiplexer'; Rack::Multiplexer::VERSION }
+version_k8   = _version($k8  ) { require 'keight'          ; K8::RELEASE }
+version_jet  = _version($jet ) { require 'rack-jet_router' ; Rack::JetRouter::RELEASE }
 
 
-if flag_rack
+if version_rack
 
   class RackApp1
     def call(env)
@@ -69,7 +68,7 @@ $api_entries   = %w[books authors account orders ranking about news support]
 $admin_entries = ('a'..'z').each_with_index.collect {|c,i| "%s%02d" % [c*3, i+1] }
 
 
-if flag_sina
+if version_sina
 
   class SinaApp < Sinatra::Base
 
@@ -103,7 +102,7 @@ if flag_sina
 end
 
 
-if flag_mplx
+if version_mplx
 
   mplx_app1 = proc {
     #
@@ -178,7 +177,7 @@ if flag_mplx
 end
 
 
-if flag_k8
+if version_k8
 
   class DummyAction < K8::Action
     mapping '',       :GET=>:do_index, :POST=>:do_create
@@ -222,7 +221,7 @@ if flag_k8
 end
 
 
-if flag_jet
+if version_jet
 
   jet_app = proc {
     #
@@ -292,11 +291,11 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
   tuple = nil
 
   puts ""
-  puts "** rack            : #{!flag_rack ? '-' : Rack.release }"
-  puts "** rack-jet_router : #{!flag_jet  ? '-' : Rack::JetRouter::RELEASE}"
-  puts "** rack-multiplexer: #{!flag_mplx ? '-' : Rack::Multiplexer::VERSION}"
-  puts "** sinatra         : #{!flag_sina ? '-' : Sinatra::VERSION}"
-  puts "** keight          : #{!flag_k8   ? '-' : K8::RELEASE}"
+  puts "** rack            : #{version_rack || '-'}"
+  puts "** rack-jet_router : #{version_jet  || '-'}"
+  puts "** rack-multiplexer: #{version_mplx || '-'}"
+  puts "** sinatra         : #{version_sina || '-'}"
+  puts "** keight          : #{version_k8   || '-'}"
   puts ""
   puts "** N=#{N}"
 
@@ -310,7 +309,7 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
 
   ### Rack
-  if flag_rack
+  if version_rack
     rack_apps = [rack_app1, rack_app2, rack_app3, rack_app4]
     for rack_app, i in rack_apps.each_with_index
       bm.task("(Rack#{i+1}) /some/where") do
@@ -322,7 +321,7 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
 
   ### Sinatra
-  if flag_sina
+  if version_sina
     for upath in urlpaths
       bm.task("(Sina) #{upath}") do
         tuple = sina_app.call(newenv(upath))
@@ -333,7 +332,7 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
 
   ### Rack::Multiplexer
-  if flag_mplx
+  if version_mplx
     for upath in urlpaths
       bm.task("(Mplx) #{upath}") do
         tuple = mplx_app1.call(newenv(upath))
@@ -342,7 +341,7 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
     end
   end
 
-  if flag_mplx
+  if version_mplx
     for upath in urlpaths
       bm.task("(Mplx') #{upath}") do
         tuple = mplx_app2.call(newenv(upath))
@@ -354,7 +353,7 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
   ### Keight
 
-  if flag_k8
+  if version_k8
     for upath in urlpaths
       bm.task("(K8) #{upath}") do
         tuple = k8_app.call(newenv(upath))
@@ -366,7 +365,7 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
   ### Rack::JetRouter
 
-  if flag_jet
+  if version_jet
     for upath in urlpaths
       bm.task("(JetR) #{upath}") do
         tuple = jet_app.call(newenv(upath))

@@ -3039,7 +3039,7 @@ Oktest.scope do
 
     topic '#initialize()' do
 
-      spec "[!vkp65] mounts urlpath mappings if provided." do
+      spec "[!vkp65] mounts urlpath mappings." do
         mapping = [
           ['/books'                 , BooksAction],
           ['/books/{id}/comments'   , BookCommentsAction],

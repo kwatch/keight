@@ -23,6 +23,8 @@ version_mplx = _version($mplx) { require 'rack/multiplexer'; Rack::Multiplexer::
 version_k8   = _version($k8  ) { require 'keight'          ; K8::RELEASE }
 version_jet  = _version($jet ) { require 'rack/jet_router' ; Rack::JetRouter::RELEASE }
 
+$api_entries = ('a'..'z').each_with_index.map {|x, i| "%s%02d" % [x*3, i+1] }
+
 
 if version_rack
 
@@ -64,10 +66,6 @@ if version_rack
 end
 
 
-$api_entries   = %w[books authors account orders ranking about news support]
-$admin_entries = ('a'..'z').each_with_index.collect {|c,i| "%s%02d" % [c*3, i+1] }
-
-
 if version_sina
 
   class SinaApp < Sinatra::Base
@@ -87,14 +85,6 @@ if version_sina
       #get    "/api/#{x}/:id/edit" do "<h1>edit</h1>"   end
     end
 
-    for x in $admin_entries   # 'aaa01', 'bbb02', ..., 'zzz26'
-      get    "/admin/#{x}"        do '<p>index</p>'    end
-      post   "/admin/#{x}"        do '<p>create</p>'   end
-      get    "/admin/#{x}/:id"    do '<p>show</p>'     end
-      put    "/admin/#{x}/:id"    do '<p>update</p>'   end
-      delete "/admin/#{x}/:id"    do '<p>delete</p>'   end
-    end
-
   end
 
   sina_app = SinaApp.new
@@ -104,7 +94,7 @@ end
 
 if version_mplx
 
-  mplx_app1 = proc {
+  mplx_app = proc {
     #
     proc_ = proc {|env|
       [200, {"Content-Type"=>"text/html"}, ["<h1>hello</h1>"]]
@@ -123,53 +113,6 @@ if version_mplx
       app.delete "/api/#{x}/:id",       proc_
       #app.get    "/api/#{x}/:id/edit",  proc_
     end
-    for x in $admin_entries   # 'aaa01', 'bbb02', ..., 'zzz26'
-      app.get    "/admin/#{x}",         proc_
-      app.post   "/admin/#{x}",         proc_
-      app.get    "/admin/#{x}/:id",     proc_
-      app.put    "/admin/#{x}/:id",     proc_
-      app.delete "/admin/#{x}/:id",     proc_
-    end
-    #
-    app
-  }.call()
-
-  mplx_app2 = proc {
-    #
-    proc_ = proc {|env|
-      [200, {"Content-Type"=>"text/html"}, ["<h1>hello</h1>"]]
-    }
-    #
-    api = Rack::Multiplexer.new
-    for x in $api_entries
-      api.get    "/api/#{x}",       proc_
-      api.post   "/api/#{x}",       proc_
-      #api.get    "/api/#{x}/new",   proc_
-      api.get    "/api/#{x}/:id",   proc_
-      api.post   "/api/#{x}/:id",   proc_
-      api.delete "/api/#{x}/:id",   proc_
-      #api.get    "/api/#{x}/:id/edit",  proc_
-    end
-    #
-    admin = Rack::Multiplexer.new
-    for x in $admin_entries   # 'aaa01', 'bbb02', ..., 'zzz26'
-      admin.get    "/admin/#{x}",      proc_
-      admin.post   "/admin/#{x}",      proc_
-      admin.get    "/admin/#{x}/:id",  proc_
-      admin.put    "/admin/#{x}/:id",  proc_
-      admin.delete "/admin/#{x}/:id",  proc_
-    end
-    #
-    app = proc {|env|
-      urlpath = env['PATH_INFO']
-      if urlpath.start_with?('/api')
-        api.call(env)
-      elsif urlpath.start_with?('/admin')
-        admin.call(env)
-      else
-        [404, {}, []]
-      end
-    }
     #
     app
   }.call()
@@ -195,25 +138,11 @@ if version_k8
   #
   k8_app = proc {
     mapping = [
-      ['/api', [
-        ['/books',   DummyAction],
-        ['/books/{id}/comments', DummyAction],
-        ['/authors', DummyAction],
-        ['/authors/{id}/comments', DummyAction],
-        ['/account', DummyAction],
-        ['/orders',  DummyAction],
-        ['/ranking', DummyAction],
-        ['/about',   DummyAction],
-        ['/news',    DummyAction],
-        ['/support', DummyAction],
-      ]],
-      ['/admin', $admin_entries.collect {|x|  # 'aaa01', 'bbb02', ..., 'zzz26'
-        ["/#{x}", DummyAction]
-      }],
+      ['/api', $api_entries.map {|x| ["/#{x}", DummyAction] }],
     ]
     opts = {
-      urlpath_cache_size: 0,
-      enable_urlpath_param_range: ENV['K8RANGE'] != '0',
+      urlpath_cache_size: ($k8size || 0).to_i,
+      enable_urlpath_param_range: $k8range != '0',
     }
     K8::RackApplication.new(mapping, opts)
   }.call()
@@ -234,27 +163,18 @@ if version_jet
     methods1 = {:GET=>jet_proc, :POST=>jet_proc}
     methods2 = {:GET=>jet_proc, :PUT=>jet_proc, :DELETE=>jet_proc}
     #
+    arr = $api_entries.map {|x| ["/#{x}", [['', methods1], ['/:id', methods2]]] }
     jet_mapping = [
-        ['/api', [
-            ['/books',           [ ['', methods1], ['/:id', methods2] ] ],
-            ['/books/:book_id/comments',    [ ['', methods1], ['/:id', methods2] ] ],
-            ['/authors',         [ ['', methods1], ['/:id', methods2] ] ],
-            ['/authors/author_id/comments', [ ['', methods1], ['/:id', methods2] ] ],
-            ['/account',         [ ['', methods1], ['/:id', methods2] ] ],
-            ['/orders',          [ ['', methods1], ['/:id', methods2] ] ],
-            ['/ranking',         [ ['', methods1], ['/:id', methods2] ] ],
-            ['/about',           [ ['', methods1], ['/:id', methods2] ] ],
-            ['/news',            [ ['', methods1], ['/:id', methods2] ] ],
-            ['/support',         [ ['', methods1], ['/:id', methods2] ] ],
-        ]],
-        ['/admin', $admin_entries.each_with_object([]) {|x, arr|
-            arr << ["/#{x}",      methods1]
-            arr << ["/#{x}/:id",  methods2]
-        }]
+        ['/api', $api_entries.map {|x| ["/#{x}", [
+                                           ['',     methods1],
+                                           ['/:id', methods2],
+                                       ]] }
+        ],
     ]
     #
     jet_opts = {
-      urlpath_cache_size: 0,
+      urlpath_cache_size: ($jetcache || 0).to_i,
+      enable_urlpath_param_range: $jetrange != '0',
     }
     #
     Rack::JetRouter.new(jet_mapping, jet_opts)
@@ -283,9 +203,12 @@ N = ($N || 100000).to_i
 
 Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
-  urlpaths = %w[/api/books /api/books/123 /api/support /api/support/123
-                /admin/aaa01 /admin/aaa01/123 /admin/zzz26 /admin/zzz26/123]
-
+  urlpaths = [
+    '/api/aaa01',
+    '/api/aaa01/123',
+    '/api/zzz26',
+    '/api/zzz26/789',
+  ]
 
   tuple = nil
 
@@ -307,9 +230,10 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
   ### Rack
   if version_rack
+    rack_labels = ['Rack', 'R:Rq', 'R:Rs', 'RqRs']
     rack_apps = [rack_app1, rack_app2, rack_app3, rack_app4]
-    for rack_app, i in rack_apps.each_with_index
-      bm.task("(Rack#{i+1}) /some/where") do
+    for rack_app, label in rack_apps.zip(rack_labels)
+      bm.task("(#{label}) /some/where") do
         tuple = rack_app.call(newenv("/some/where"))
       end
       _chk(tuple)
@@ -332,16 +256,7 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
   if version_mplx
     for upath in urlpaths
       bm.task("(Mplx) #{upath}") do
-        tuple = mplx_app1.call(newenv(upath))
-      end
-      _chk(tuple)
-    end
-  end
-
-  if version_mplx
-    for upath in urlpaths
-      bm.task("(Mplx') #{upath}") do
-        tuple = mplx_app2.call(newenv(upath))
+        tuple = mplx_app.call(newenv(upath))
       end
       _chk(tuple)
     end
@@ -352,7 +267,7 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
   if version_k8
     for upath in urlpaths
-      bm.task("(K8) #{upath}") do
+      bm.task("(K8  ) #{upath}") do
         tuple = k8_app.call(newenv(upath))
       end
       _chk(tuple)

@@ -240,6 +240,8 @@ END
     attr_accessor :label, :loop, :user, :sys, :total, :real
 
     def run
+      #: starts GC before running benchmark.
+      GC.start
       #: yields block for @loop times.
       ntimes = @loop || 1
       pt1 = Process.times

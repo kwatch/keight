@@ -1770,14 +1770,14 @@ module K8
 
     def initialize(urlpath_mapping=[], default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0)
       #; [!vkp65] mounts urlpath mappings.
-      @router = ActionMapping.new(urlpath_mapping,
-                                  default_patterns:    default_patterns,
-                                  urlpath_cache_size:  urlpath_cache_size)
+      @mapping = ActionMapping.new(urlpath_mapping,
+                                   default_patterns:    default_patterns,
+                                   urlpath_cache_size:  urlpath_cache_size)
     end
 
     def find(req_path)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
-      return @router.dispatch(req_path)
+      return @mapping.dispatch(req_path)
     end
 
     def call(env)
@@ -1887,7 +1887,7 @@ END
 
     def each_mapping(&block)
       #; [!cgjyv] yields full urlpath pattern, action class and action methods.
-      @router.each(&block)
+      @mapping.each(&block)
       self
     end
 

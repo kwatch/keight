@@ -19,9 +19,9 @@ end
 
 version_rack = _version($rack) { require 'rack'            ; Rack.release }
 version_sina = _version($sina) { require 'sinatra/base'    ; Sinatra::VERSION }
-version_mplx = _version($mplx) { require 'rack-multiplexer'; Rack::Multiplexer::VERSION }
+version_mplx = _version($mplx) { require 'rack/multiplexer'; Rack::Multiplexer::VERSION }
 version_k8   = _version($k8  ) { require 'keight'          ; K8::RELEASE }
-version_jet  = _version($jet ) { require 'rack-jet_router' ; Rack::JetRouter::RELEASE }
+version_jet  = _version($jet ) { require 'rack/jet_router' ; Rack::JetRouter::RELEASE }
 
 
 if version_rack

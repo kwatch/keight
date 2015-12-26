@@ -1,15 +1,31 @@
 # -*- coding: utf-8 -*-
 
+def detect_flag(cmdopt)
+  if cmdopt == '0'
+    return false
+  end
+  begin
+    result = yield
+    return !!result
+  rescue LoadError
+    if cmdopt.to_s.empty?
+      return false
+    else
+      raise
+    end
+  end
+end
+
 $LOAD_PATH << '.'
 
-require 'rack'
-require 'sinatra/base'     rescue nil
-require 'rack-multiplexer' rescue nil
-require 'keight'           rescue nil
-require 'rack/jet_router'  rescue nil
+flag_rack = detect_flag($rack) { require 'rack'            ; defined?(Rack) }
+flag_sina = detect_flag($sina) { require 'sinatra/base'    ; defined?(Sinatra) }
+flag_mplx = detect_flag($mplx) { require 'rack-multiplexer'; defined?(Rack::Multiplexer) }
+flag_k8   = detect_flag($k8  ) { require 'keight'          ; defined?(K8) }
+flag_jet  = detect_flag($jet ) { require 'rack-jet_router' ; defined?(Rack::JetRouter) }
 
 
-if defined?(Rack)
+if flag_rack
 
   class RackApp1
     def call(env)
@@ -53,7 +69,7 @@ $api_entries   = %w[books authors account orders ranking about news support]
 $admin_entries = ('a'..'z').each_with_index.collect {|c,i| "%s%02d" % [c*3, i+1] }
 
 
-if defined?(Sinatra)
+if flag_sina
 
   class SinaApp < Sinatra::Base
 
@@ -87,7 +103,7 @@ if defined?(Sinatra)
 end
 
 
-if defined?(Rack::Multiplexer)
+if flag_mplx
 
   mplx_app1 = proc {
     #
@@ -162,7 +178,7 @@ if defined?(Rack::Multiplexer)
 end
 
 
-if defined?(K8)
+if flag_k8
 
   class DummyAction < K8::Action
     mapping '',       :GET=>:do_index, :POST=>:do_create
@@ -206,7 +222,7 @@ if defined?(K8)
 end
 
 
-if defined?(Rack::JetRouter)
+if flag_jet
 
   jet_app = proc {
     #
@@ -265,15 +281,9 @@ end
 
 require 'benchmarker'
 
+N = ($N || 100000).to_i
 
-Benchmarker.new(:width=>30, :loop=>100000) do |bm|
-
-  flag_rack = flag_sinatra = flag_multiplexer = flag_keight = flag_jet = false
-  flag_rack        = defined?(Rack)
-  flag_sinatra     = defined?(Sinatra)
-  flag_multiplexer = defined?(Rack::Multiplexer)
-  flag_keight      = defined?(K8)
-  flag_jet         = defined?(Rack::JetRouter)
+Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
   urlpaths = %w[/api/books /api/books/123 /api/support /api/support/123
                 /admin/aaa01 /admin/aaa01/123 /admin/zzz26 /admin/zzz26/123]
@@ -302,7 +312,7 @@ Benchmarker.new(:width=>30, :loop=>100000) do |bm|
 
 
   ### Sinatra
-  if flag_sinatra
+  if flag_sina
     for upath in urlpaths
       bm.task("(Sina) #{upath}") do
         tuple = sina_app.call(newenv(upath))
@@ -313,7 +323,7 @@ Benchmarker.new(:width=>30, :loop=>100000) do |bm|
 
 
   ### Rack::Multiplexer
-  if flag_multiplexer
+  if flag_mplx
     for upath in urlpaths
       bm.task("(Mplx) #{upath}") do
         tuple = mplx_app1.call(newenv(upath))
@@ -322,7 +332,7 @@ Benchmarker.new(:width=>30, :loop=>100000) do |bm|
     end
   end
 
-  if flag_multiplexer
+  if flag_mplx
     for upath in urlpaths
       bm.task("(Mplx') #{upath}") do
         tuple = mplx_app2.call(newenv(upath))
@@ -334,7 +344,7 @@ Benchmarker.new(:width=>30, :loop=>100000) do |bm|
 
   ### Keight
 
-  if flag_keight
+  if flag_k8
     for upath in urlpaths
       bm.task("(K8) #{upath}") do
         tuple = k8_app.call(newenv(upath))

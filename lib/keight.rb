@@ -1602,15 +1602,12 @@ module K8
       strs = urlpath_rexp.match(req_urlpath).captures
       pvalues = \
           case procs.length
-          when 1; pr0 = procs[0]
-                  [pr0 ? pr0.call(strs[0]) : strs[0]]
-          when 2; pr0, pr1 = procs
-                  [pr0 ? pr0.call(strs[0]) : strs[0],
-                   pr1 ? pr1.call(strs[1]) : strs[1]]
-          when 3; pr0, pr1, pr2 = procs
-                  [pr0 ? pr0.call(strs[0]) : strs[0],
-                   pr1 ? pr1.call(strs[1]) : strs[1],
-                   pr2 ? pr2.call(strs[2]) : strs[2]]
+          when 1; [procs[0] ? procs[0].call(strs[0]) : strs[0]]
+          when 2; [procs[0] ? procs[0].call(strs[0]) : strs[0],
+                   procs[1] ? procs[1].call(strs[1]) : strs[1]]
+          when 3; [procs[0] ? procs[0].call(strs[0]) : strs[0],
+                   procs[1] ? procs[1].call(strs[1]) : strs[1],
+                   procs[2] ? procs[2].call(strs[2]) : strs[2]]
           else  ; procs.zip(strs).map {|pr, v| pr ? pr.call(v) : v }
           end    # ex: ["123"] -> [123]
       #; [!jyxlm] returns action class and methods, parameter names and values.

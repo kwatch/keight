@@ -6,6 +6,7 @@ require 'rack'
 require 'sinatra/base'     rescue nil
 require 'rack-multiplexer' rescue nil
 require 'keight'           rescue nil
+require 'rack/jet_router'  rescue nil
 
 
 if defined?(Rack)
@@ -188,6 +189,48 @@ if defined?(K8)
 end
 
 
+if defined?(Rack::JetRouter)
+
+  jet_app = proc {
+    #
+    jet_proc = proc {|env|
+      [200, {"Content-Type"=>"text/html"}, ["<h1>hello</h1>"]]
+      #req  = Rack::Request.new(env)
+      #resp = Rack::Response.new
+      #[resp.status, resp.headers, ["<h1>index</h1>"]]
+    }
+    methods1 = {:GET=>jet_proc, :POST=>jet_proc}
+    methods2 = {:GET=>jet_proc, :PUT=>jet_proc, :DELETE=>jet_proc}
+    #
+    jet_mapping = [
+        ['/api', [
+            ['/books',           [ ['', methods1], ['/:id', methods2] ] ],
+            ['/books/:book_id/comments',    [ ['', methods1], ['/:id', methods2] ] ],
+            ['/authors',         [ ['', methods1], ['/:id', methods2] ] ],
+            ['/authors/author_id/comments', [ ['', methods1], ['/:id', methods2] ] ],
+            ['/account',         [ ['', methods1], ['/:id', methods2] ] ],
+            ['/orders',          [ ['', methods1], ['/:id', methods2] ] ],
+            ['/ranking',         [ ['', methods1], ['/:id', methods2] ] ],
+            ['/about',           [ ['', methods1], ['/:id', methods2] ] ],
+            ['/news',            [ ['', methods1], ['/:id', methods2] ] ],
+            ['/support',         [ ['', methods1], ['/:id', methods2] ] ],
+        ]],
+        ['/admin', $admin_entries.each_with_object([]) {|x, arr|
+            arr << ["/#{x}",      methods1]
+            arr << ["/#{x}/:id",  methods2]
+        }]
+    ]
+    #
+    jet_opts = {
+      urlpath_cache_size: 0,
+    }
+    #
+    Rack::JetRouter.new(jet_mapping, jet_opts)
+  }.call()
+
+end
+
+
 def _chk(tuple)
   tuple[0] == 200  or raise "200 expected but got #{tuple[0]}"
   GC.start
@@ -209,11 +252,12 @@ require 'benchmarker'
 
 Benchmarker.new(:width=>30, :loop=>100000) do |bm|
 
-  flag_rack = flag_sinatra = flag_multiplexer = flag_keight = false
+  flag_rack = flag_sinatra = flag_multiplexer = flag_keight = flag_jet = false
   flag_rack        = defined?(Rack)
   flag_sinatra     = defined?(Sinatra)
   flag_multiplexer = defined?(Rack::Multiplexer)
   flag_keight      = defined?(K8)
+  flag_jet         = defined?(Rack::JetRouter)
 
   urlpaths = %w[/api/books /api/books/123 /api/support /api/support/123
                 /admin/aaa01 /admin/aaa01/123 /admin/zzz26 /admin/zzz26/123]
@@ -278,6 +322,18 @@ Benchmarker.new(:width=>30, :loop=>100000) do |bm|
     for upath in urlpaths
       bm.task("(K8) #{upath}") do
         tuple = k8_app.call(newenv(upath))
+      end
+      _chk(tuple)
+    end
+  end
+
+
+  ### Rack::JetRouter
+
+  if flag_jet
+    for upath in urlpaths
+      bm.task("(JetR) #{upath}") do
+        tuple = jet_app.call(newenv(upath))
       end
       _chk(tuple)
     end

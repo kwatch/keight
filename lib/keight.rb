@@ -1770,31 +1770,12 @@ module K8
 
     def initialize(urlpath_mapping=[], urlpath_cache_size: 0)
       @router = ActionRouter.new(urlpath_cache_size: urlpath_cache_size)
-      init_default_param_patterns(@router.default_patterns)
+      @router.instance_variable_set('@default_patterns', DEFAULT_PATTERNS)
       #; [!vkp65] mounts urlpath mappings if provided.
       urlpath_mapping.each do |urlpath, klass|
         @router.mount(urlpath, klass)
       end if urlpath_mapping
     end
-
-    def init_default_param_patterns(default_patterns)
-      #; [!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/.
-      x = default_patterns
-      x.register('id',    '\d+') {|val| val.to_i }
-      x.register(/_id\z/, '\d+') {|val| val.to_i }
-      #; [!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'.
-      x.register('ext',   '(?:\.\w+)?')
-      #; [!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/.
-      to_date = proc {|val|
-        #; [!wg9vl] raises 404 error when invalid date (such as 2012-02-30).
-        yr, mo, dy = val.split(/-/).map(&:to_i)
-        Date.new(yr, mo, dy)  rescue
-          raise HttpException.new(404, "#{val}: invalid date.")
-      }
-      x.register('date',    '\d\d\d\d-\d\d-\d\d', &to_date)
-      x.register(/_date\z/, '\d\d\d\d-\d\d-\d\d', &to_date)
-    end
-    protected :init_default_param_patterns
 
     ##
     ## ex:

@@ -1689,6 +1689,22 @@ Oktest.scope do
         end
       end
 
+      spec "[!34o67] keyword arg 'enable_urlpath_param_range' controls to generate range object or not." do
+        arr  = [['/books', BooksAction]]
+        #
+        mapping1 = K8::ActionMapping.new(arr, enable_urlpath_param_range: true)
+        mapping1.instance_exec(self) do |_|
+          tuple = @variable_endpoints.find {|a| a[0] == '/books/{id}' }
+          _.ok {tuple[-1]} == (7..-1)
+        end
+        #
+        mapping2 = K8::ActionMapping.new(arr, enable_urlpath_param_range: false)
+        mapping2.instance_exec(self) do |_|
+          tuple = @variable_endpoints.find {|a| a[0] == '/books/{id}' }
+          _.ok {tuple[-1]} == nil
+        end
+      end
+
     end
 
 

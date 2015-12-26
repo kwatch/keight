@@ -291,6 +291,14 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
   tuple = nil
 
+  puts ""
+  puts "** rack            : #{!flag_rack ? '-' : Rack.release }"
+  puts "** rack-jet_router : #{!flag_jet  ? '-' : Rack::JetRouter::RELEASE}"
+  puts "** rack-multiplexer: #{!flag_mplx ? '-' : Rack::Multiplexer::VERSION}"
+  puts "** sinatra         : #{!flag_sina ? '-' : Sinatra::VERSION}"
+  puts "** keight          : #{!flag_k8   ? '-' : K8::RELEASE}"
+  puts ""
+  puts "** N=#{N}"
 
   ### empty task
 

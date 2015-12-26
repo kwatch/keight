@@ -265,7 +265,6 @@ end
 
 def _chk(tuple)
   tuple[0] == 200  or raise "200 expected but got #{tuple[0]}"
-  GC.start
 end
 
 require 'rack' unless defined?(Rack)
@@ -301,11 +300,9 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
   ### empty task
 
-  GC.start
   bm.empty_task do
     newenv("/api/hello")
   end
-  GC.start
 
 
   ### Rack

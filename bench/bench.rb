@@ -56,6 +56,11 @@ if defined?(Sinatra)
 
   class SinaApp < Sinatra::Base
 
+    set :sessions   , false
+    set :logging    , false
+    set :protection , false
+    set :x_cascade  , false
+
     for x in $api_entries
       get    "/api/#{x}"          do "<h1>index</h1>"  end
       post   "/api/#{x}"          do "<h1>create</h1>" end

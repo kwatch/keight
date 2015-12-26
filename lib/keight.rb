@@ -1412,7 +1412,7 @@ module K8
                                    urlpath_cache_size:  urlpath_cache_size)
     end
 
-    def find(req_path)
+    def lookup(req_path)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
       return @mapping.lookup(req_path)
     end
@@ -1437,12 +1437,12 @@ module K8
         req_meth_ = req_meth
       end
       begin
-        tuple4 = find(req.path)
+        tuple4 = lookup(req.path)
         #; [!vz07j] redirects only when request method is GET or HEAD.
         if tuple4.nil? && req_meth_ == :GET
           #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
           #; [!02dow] returns 301 when urlpath not found but found without tailing '/'.
-          location = find_autoredirect_location(req)
+          location = lookup_autoredirect_location(req)
           return [301, {'Location'=>location}, []] if location
         end
         #; [!rz13i] returns HTTP 404 when urlpath not found.
@@ -1512,9 +1512,9 @@ END
       return false
     end
 
-    def find_autoredirect_location(req)
+    def lookup_autoredirect_location(req)
       location = req.path.end_with?('/') ? req.path[0..-2] : "#{req.path}/"
-      return nil unless find(location)
+      return nil unless lookup(location)
       #; [!2a9c9] adds query string to 'Location' header.
       qs = req.env['QUERY_STRING']
       return qs && ! qs.empty? ? "#{location}?#{qs}" : location

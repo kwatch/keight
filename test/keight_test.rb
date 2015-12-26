@@ -2378,13 +2378,13 @@ Oktest.scope do
     end
 
 
-    topic '#find()' do
+    topic '#lookup()' do
 
       spec "[!o0rnr] returns action class, action methods, urlpath names and values." do
         |app|
-        ret = app.find('/api/books/')
+        ret = app.lookup('/api/books/')
         ok {ret} == [BooksAction, {:GET=>:do_index, :POST=>:do_create}, [], []]
-        ret = app.find('/api/books/123')
+        ret = app.lookup('/api/books/123')
         ok {ret} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, ["id"], [123]]
       end
 

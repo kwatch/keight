@@ -1206,7 +1206,7 @@ module K8
 
     EMPTY_ARRAY = [].freeze     # :nodoc:
 
-    def dispatch(req_urlpath)
+    def lookup(req_urlpath)
       #; [!j34yh] finds from fixed urlpaths at first.
       if (tuple = @fixed_endpoints[req_urlpath])
         _, action_class, action_methods, _, _, _ = tuple
@@ -1414,7 +1414,7 @@ module K8
 
     def find(req_path)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
-      return @mapping.dispatch(req_path)
+      return @mapping.lookup(req_path)
     end
 
     def call(env)

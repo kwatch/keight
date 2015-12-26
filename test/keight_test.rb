@@ -1997,7 +1997,7 @@ Oktest.scope do
     end
 
 
-    topic '#dispatch()' do
+    topic '#lookup()' do
 
       fixture :proc1 do
         proc {|x| x.to_i }
@@ -2018,36 +2018,36 @@ Oktest.scope do
 
       spec "[!jyxlm] returns action class and methods, parameter names and values." do
         |mapping|
-        tuple = mapping.dispatch('/api/books/123')
+        tuple = mapping.lookup('/api/books/123')
         ok {tuple} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, ['id'], [123]]
-        tuple = mapping.dispatch('/api/books/123/comments/999')
+        tuple = mapping.lookup('/api/books/123/comments/999')
         ok {tuple} == [BookCommentsAction, {:GET=>:do_comment}, ['book_id', 'comment_id'], [123, 999]]
       end
 
       spec "[!j34yh] finds from fixed urlpaths at first." do
         |mapping|
         mapping.instance_exec(self) do |_|
-          _.ok {dispatch('/books')} == nil
+          _.ok {lookup('/books')} == nil
           tuple = @fixed_endpoints['/api/books/']
           _.ok {tuple} != nil
           @fixed_endpoints['/books'] = tuple
           expected = [BooksAction, {:GET=>:do_index, :POST=>:do_create}, [], []]
-          _.ok {dispatch('/books')} != nil
-          _.ok {dispatch('/books')} == expected
-          _.ok {dispatch('/api/books/')} == expected
+          _.ok {lookup('/books')} != nil
+          _.ok {lookup('/books')} == expected
+          _.ok {lookup('/api/books/')} == expected
         end
       end
 
       spec "[!95q61] finds from variable urlpath patterns when not found in fixed ones." do
         |mapping|
-        ok {mapping.dispatch('/api/books/123')} == \
+        ok {mapping.lookup('/api/books/123')} == \
           [
             BooksAction,
             {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
             ["id"],
             [123],
           ]
-        ok {mapping.dispatch('/api/books/123/comments/999')} == \
+        ok {mapping.lookup('/api/books/123/comments/999')} == \
           [
             BookCommentsAction,
             {:GET=>:do_comment},
@@ -2058,20 +2058,20 @@ Oktest.scope do
 
       spec "[!sos5i] returns nil when request path not matched to urlpath patterns." do
         |mapping|
-        ok {mapping.dispatch('/api/booking')} == nil
+        ok {mapping.lookup('/api/booking')} == nil
       end
 
       spec "[!1k1k5] converts urlpath param values by converter procs." do
         |mapping|
-        tuple = mapping.dispatch('/api/books/123')
+        tuple = mapping.lookup('/api/books/123')
         ok {tuple[2..3]} == [['id'], [123]]
-        tuple = mapping.dispatch('/api/books/123/comments/999')
+        tuple = mapping.lookup('/api/books/123/comments/999')
         ok {tuple[2..3]} == [['book_id', 'comment_id'], [123, 999]]
       end
 
       spec "[!uqwr7] stores result into cache if cache is enabled." do
         |mapping|
-        tuple = mapping.dispatch('/api/books/111')
+        tuple = mapping.lookup('/api/books/111')
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_lru_cache} == {'/api/books/111' => tuple}
         end
@@ -2079,11 +2079,11 @@ Oktest.scope do
 
       spec "[!3ps5g] deletes item from cache when cache size over limit." do
         |mapping|
-        mapping.dispatch('/api/books/1')
-        mapping.dispatch('/api/books/2')
-        mapping.dispatch('/api/books/3')
-        mapping.dispatch('/api/books/4')
-        mapping.dispatch('/api/books/5')
+        mapping.lookup('/api/books/1')
+        mapping.lookup('/api/books/2')
+        mapping.lookup('/api/books/3')
+        mapping.lookup('/api/books/4')
+        mapping.lookup('/api/books/5')
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_lru_cache.length} == 3
         end
@@ -2092,18 +2092,18 @@ Oktest.scope do
       spec "[!uqwr7] uses LRU as cache algorithm." do
         |mapping|
         mapping.instance_exec(self) do |_|
-          t1 = dispatch('/api/books/1')
-          t2 = dispatch('/api/books/2')
-          t3 = dispatch('/api/books/3')
+          t1 = lookup('/api/books/1')
+          t2 = lookup('/api/books/2')
+          t3 = lookup('/api/books/3')
           _.ok {@urlpath_lru_cache.values} == [t1, t2, t3]
-          t4 = dispatch('/api/books/4')
+          t4 = lookup('/api/books/4')
           _.ok {@urlpath_lru_cache.values} == [t2, t3, t4]
-          t5 = dispatch('/api/books/5')
+          t5 = lookup('/api/books/5')
           _.ok {@urlpath_lru_cache.values} == [t3, t4, t5]
           #
-          dispatch('/api/books/4')
+          lookup('/api/books/4')
           _.ok {@urlpath_lru_cache.values} == [t3, t5, t4]
-          dispatch('/api/books/3')
+          lookup('/api/books/3')
           _.ok {@urlpath_lru_cache.values} == [t5, t4, t3]
         end
       end

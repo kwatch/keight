@@ -1600,7 +1600,19 @@ module K8
       _, action_class, action_methods, urlpath_rexp, pnames, procs = tuple
       #; [!1k1k5] converts urlpath param values by converter procs.
       strs = urlpath_rexp.match(req_urlpath).captures
-      pvalues = strs.zip(procs).map {|s, pr| pr ? pr.call(s) : s }
+      pvalues = \
+          case procs.length
+          when 1; pr0 = procs[0]
+                  [pr0 ? pr0.call(strs[0]) : strs[0]]
+          when 2; pr0, pr1 = procs
+                  [pr0 ? pr0.call(strs[0]) : strs[0],
+                   pr1 ? pr1.call(strs[1]) : strs[1]]
+          when 3; pr0, pr1, pr2 = procs
+                  [pr0 ? pr0.call(strs[0]) : strs[0],
+                   pr1 ? pr1.call(strs[1]) : strs[1],
+                   pr2 ? pr2.call(strs[2]) : strs[2]]
+          else  ; procs.zip(strs).map {|pr, v| pr ? pr.call(v) : v }
+          end    # ex: ["123"] -> [123]
       #; [!jyxlm] returns action class and methods, parameter names and values.
       result = [action_class, action_methods, pnames, pvalues]
       #; [!uqwr7] stores result into cache if cache is enabled.

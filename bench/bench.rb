@@ -302,9 +302,11 @@ Benchmarker.new(:width=>30, :loop=>N) do |bm|
 
   ### empty task
 
+  GC.start
   bm.empty_task do
     newenv("/api/hello")
   end
+  GC.start
 
 
   ### Rack

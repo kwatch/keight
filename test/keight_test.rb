@@ -2323,6 +2323,656 @@ Oktest.scope do
   end
 
 
+  topic K8::ActionMapping do
+
+
+    topic '#initialize()' do
+
+      spec "[!buj0d] prepares LRU cache if cache size specified." do
+        mapping = K8::ActionMapping.new([], urlpath_cache_size: 3)
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_cache_size} == 3
+          _.ok {@urlpath_lru_cache}  == {}
+        end
+        #
+        mapping = K8::ActionMapping.new([], urlpath_cache_size: 0)
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_cache_size} == 0
+          _.ok {@urlpath_lru_cache}  == nil
+        end
+      end
+
+      spec "[!wsz8g] compiles urlpath mapping passed." do
+        mapping = K8::ActionMapping.new([
+            ['/api/books', BooksAction],
+        ])
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_rexp} == %r'\A/api/books(?:/[^/]+?(\z)|/[^/]+?/edit(\z))\z'
+          _.ok {@fixed_endpoints.keys} == ['/api/books/', '/api/books/new']
+          _.ok {@variable_endpoints.map{|x| x[0]}} == ['/api/books/{id}', '/api/books/{id}/edit']
+        end
+      end
+
+    end
+
+
+    topic '#compile()' do
+
+      fixture :mapping do
+        K8::ActionMapping.new([
+            ['/api', [
+                ['/books', BooksAction],
+                ['/books/{book_id}', BookCommentsAction],
+            ]],
+        ])
+      end
+
+      spec "[!6f3vl] compiles urlpath mapping." do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_rexp}.is_a?(Regexp)
+          _.ok {@urlpath_rexp} == Regexp.compile('
+                 \A/api
+                    (?: /books
+                          (?: /[^/]+?(\z) | /[^/]+?/edit(\z) )
+                     |  /books/[^/]+?
+                          (?: /comments(\z) | /comments/[^/]+?(\z) )
+                    )
+                 \z'.gsub(/\s/, ''))
+          _.ok {@fixed_endpoints.keys} == ["/api/books/", "/api/books/new"]
+          _.ok {@variable_endpoints.map{|x| x[0..2] }} == [
+            ["/api/books/{id}", BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}],
+            ["/api/books/{id}/edit", BooksAction, {:GET=>:do_edit}],
+            ["/api/books/{book_id}/comments", BookCommentsAction, {:GET=>:do_comments}],
+            ["/api/books/{book_id}/comments/{comment_id}", BookCommentsAction, {:GET=>:do_comment}],
+          ]
+        end
+      end
+
+      spec "[!w45ad] can compile nested array." do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_rexp} == Regexp.compile('
+            \A  /api
+                    (?: /books
+                            (?: /[^/]+?(\z) | /[^/]+?/edit(\z) )
+                     |  /books/[^/]+?
+                            (?: /comments(\z) | /comments/[^/]+?(\z) )
+                    )
+            \z'.gsub(/\s/, ''))
+          _.ok {@variable_endpoints} == [
+            ["/api/books/{id}",
+              BooksAction,
+              {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+              /\A\/api\/books\/([^\/]+?)\z/,
+              ["id"], [nil],
+            ],
+            ["/api/books/{id}/edit",
+              BooksAction,
+              {:GET=>:do_edit},
+              /\A\/api\/books\/([^\/]+?)\/edit\z/,
+              ["id"], [nil],
+            ],
+            ["/api/books/{book_id}/comments",
+              BookCommentsAction,
+              {:GET=>:do_comments},
+              /\A\/api\/books\/([^\/]+?)\/comments\z/,
+              ["book_id"], [nil],
+            ],
+            ["/api/books/{book_id}/comments/{comment_id}",
+              BookCommentsAction,
+              {:GET=>:do_comment},
+              /\A\/api\/books\/([^\/]+?)\/comments\/([^\/]+?)\z/,
+              ["book_id", "comment_id"], [nil, nil],
+            ],
+          ]
+          _.ok {@fixed_endpoints} == {
+            "/api/books/"   =>["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}, nil, nil, nil],
+            "/api/books/new"=>["/api/books/new", BooksAction, {:GET=>:do_new}, nil, nil, nil],
+          }
+        end
+      end
+
+      spec "[!z2iax] classifies urlpath contains any parameter as variable one." do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          _.ok {@variable_endpoints} == [
+            ["/api/books/{id}",
+              BooksAction,
+              {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+              /\A\/api\/books\/([^\/]+?)\z/,
+              ["id"], [nil],
+            ],
+            ["/api/books/{id}/edit",
+              BooksAction,
+              {:GET=>:do_edit},
+              /\A\/api\/books\/([^\/]+?)\/edit\z/,
+              ["id"], [nil],
+            ],
+            ["/api/books/{book_id}/comments",
+              BookCommentsAction,
+              {:GET=>:do_comments},
+              /\A\/api\/books\/([^\/]+?)\/comments\z/,
+              ["book_id"], [nil],
+            ],
+            ["/api/books/{book_id}/comments/{comment_id}",
+              BookCommentsAction,
+              {:GET=>:do_comment},
+              /\A\/api\/books\/([^\/]+?)\/comments\/([^\/]+?)\z/,
+              ["book_id", "comment_id"], [nil, nil],
+            ],
+          ]
+        end
+      end
+
+      spec "[!rvdes] classifies urlpath contains no parameters as fixed one." do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          _.ok {@fixed_endpoints} == {
+            "/api/books/" => ["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}, nil, nil, nil],
+            "/api/books/new" => ["/api/books/new", BooksAction, {:GET=>:do_new}, nil, nil, nil],
+          }
+        end
+      end
+
+      spec "[!6xwhq] builds action infos for each action methods." do
+        class Ex_6xwhq < K8::Action
+          mapping '',      :GET=>:do_index, :POST=>:do_create
+          mapping '/{id}', :GET=>:do_show,  :PUT=>:do_update
+          def do_index; end
+          def do_create; end
+          def do_show(id); end
+          def do_update(id); end
+        end
+        ok {Ex_6xwhq[:do_create]} == nil
+        ok {Ex_6xwhq[:do_update]} == nil
+        #
+        K8::ActionMapping.new([
+            ['/test', [
+                ['/example4', Ex_6xwhq],
+            ]],
+        ])
+        #
+        ok {Ex_6xwhq[:do_create]} != nil
+        ok {Ex_6xwhq[:do_create].meth} == :POST
+        ok {Ex_6xwhq[:do_create].path} == '/test/example4'
+        ok {Ex_6xwhq[:do_update]} != nil
+        ok {Ex_6xwhq[:do_update].meth} == :PUT
+        ok {Ex_6xwhq[:do_update].path(123)} == '/test/example4/123'
+      end
+
+      spec "[!wd2eb] accepts subclass of Action class." do
+        mapping = K8::ActionMapping.new([
+            ['/api/books', BooksAction],
+            ['/api/books/{book_id}', BookCommentsAction],
+        ])
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_rexp} == Regexp.compile('
+            \A  (?: /api/books
+                       (?: /[^/]+?(\z) | /[^/]+?/edit(\z) )
+                 |  /api/books/[^/]+?
+                       (?: /comments(\z) | /comments/[^/]+?(\z) )
+                )
+            \z'.gsub(/\s/, ''))
+          _.ok {@fixed_endpoints} == {
+            "/api/books/"   =>["/api/books/", BooksAction, {:GET=>:do_index, :POST=>:do_create}, nil, nil, nil],
+            "/api/books/new"=>["/api/books/new", BooksAction, {:GET=>:do_new}, nil, nil, nil],
+          }
+          _.ok {@variable_endpoints} == [
+            ["/api/books/{id}",
+              BooksAction,
+              {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+              /\A\/api\/books\/([^\/]+?)\z/,
+              ["id"], [nil],
+            ],
+            ["/api/books/{id}/edit",
+              BooksAction,
+              {:GET=>:do_edit},
+              /\A\/api\/books\/([^\/]+?)\/edit\z/,
+              ["id"], [nil],
+            ],
+            ["/api/books/{book_id}/comments",
+              BookCommentsAction,
+              {:GET=>:do_comments},
+              /\A\/api\/books\/([^\/]+?)\/comments\z/,
+              ["book_id"], [nil],
+            ],
+            ["/api/books/{book_id}/comments/{comment_id}",
+              BookCommentsAction,
+              {:GET=>:do_comment},
+              /\A\/api\/books\/([^\/]+?)\/comments\/([^\/]+?)\z/,
+              ["book_id", "comment_id"], [nil, nil],
+            ],
+          ]
+        end
+      end
+
+      spec "[!ue766] raises error when action method is not defined in action class." do
+        |mapping|
+        class ExampleAction3 < K8::Action
+          mapping '', :GET=>:do_index, :POST=>:do_create
+          def do_index; end
+        end
+        pr = proc { K8::ActionMapping.new([['/example3', ExampleAction3]]) }
+        expected_msg = ":POST=>:do_create: unknown action method in ExampleAction3."
+        ok {pr}.raise?(K8::UnknownActionMethodError, expected_msg)
+      end
+
+      spec "[!l2kz5] requires library when filepath and classname specified." do
+        dirname  = "test_l2kz5"
+        filename = dirname + "/sample.rb"
+        content = <<-END
+        require 'keight'
+        module Ex_l2kz5
+          class Example_l2kz5 < K8::Action
+            mapping '',      :GET=>:do_index
+            mapping '/{id}', :GET=>:do_show
+            def do_index; end
+            def do_show(id); end
+          end
+        end
+        END
+        Dir.mkdir(dirname) unless File.directory?(dirname)
+        File.open(filename, 'w') {|f| f << content }
+        at_end { File.unlink filename; Dir.rmdir dirname }
+        mapping = K8::ActionMapping.new([
+            ['/api/example', './test_l2kz5/sample:Ex_l2kz5::Example_l2kz5'],
+        ])
+        mapping.instance_exec(self) do |_|
+          _.ok {@fixed_endpoints} == {
+            "/api/example"=>["/api/example", Ex_l2kz5::Example_l2kz5, {:GET=>:do_index}, nil, nil, nil],
+          }
+          _.ok {@variable_endpoints} == [
+            ["/api/example/{id}", Ex_l2kz5::Example_l2kz5, {:GET=>:do_show}, /\A\/api\/example\/([^\/]+?)\z/, ["id"], [nil]],
+          ]
+        end
+      end
+
+      spec "[!irt5g] raises TypeError when unknown object specified." do
+        pr = proc do
+          mapping = K8::ActionMapping.new([
+              ['/api/example', {:GET=>:do_index}],
+          ])
+        end
+        ok {pr}.raise?(TypeError, "Action class or nested array expected, but got {:GET=>:do_index}")
+      end
+
+      spec "[!bcgc9] skips classes which have only fixed urlpaths." do
+        klass = Class.new(K8::Action) do
+          mapping '/', :GET=>:do_index
+          mapping '/new', :GET=>:do_new
+          def do_index; end
+          def do_new; end
+        end
+        mapping = K8::ActionMapping.new([
+            ['/api', [
+                ['/books', BooksAction],
+                ['/samples', klass],
+                ['/books/{book_id}', BookCommentsAction],
+            ]],
+        ])
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_rexp} == Regexp.compile('
+              \A  /api
+                      (?:  /books
+                               (?:/[^/]+?(\z)|/[^/]+?/edit(\z))
+                      |    /books/[^/]+?
+                               (?:/comments(\z)|/comments/[^/]+?(\z))
+                      )
+              \z'.gsub(/\s+/, ''))
+          _.ok {@fixed_endpoints['/api/samples/']} == ["/api/samples/", klass, {:GET=>:do_index}, nil, nil, nil]
+          _.ok {@fixed_endpoints['/api/samples/new']} == ["/api/samples/new", klass, {:GET=>:do_new}, nil, nil, nil]
+        end
+      end
+
+      spec "[!169ad] removes unnecessary grouping." do
+        klass = Class.new(K8::Action) do
+          mapping '/{id}', :GET=>:do_show
+          def do_show(id); end
+        end
+        mapping = K8::ActionMapping.new([
+            ['/api', [
+                ['/test', klass],
+            ]],
+        ])
+        mapping.instance_exec(self) do |_|
+          #_.ok {@urlpath_rexp} == %r'\A(?:/api(?:/test(?:/[^/]+?(\z))))\z'
+          _.ok {@urlpath_rexp} == %r'\A/api/test/[^/]+?(\z)\z'
+        end
+      end
+
+    end
+
+
+    topic '#dispatch()' do
+
+      fixture :proc1 do
+        proc {|x| x.to_i }
+      end
+
+      fixture :mapping do
+        |proc1|
+        dp = K8::DefaultPatterns.new
+        dp.register('id',   '\d+', &proc1)
+        dp.register(/_id$/, '\d+', &proc1)
+        K8::ActionMapping.new([
+            ['/api', [
+                ['/books', BooksAction],
+                ['/books/{book_id}', BookCommentsAction],
+            ]],
+        ], default_patterns: dp, urlpath_cache_size: 3)
+      end
+
+      spec "[!jyxlm] returns action class and methods, parameter names and values." do
+        |mapping|
+        tuple = mapping.dispatch('/api/books/123')
+        ok {tuple} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, ['id'], [123]]
+        tuple = mapping.dispatch('/api/books/123/comments/999')
+        ok {tuple} == [BookCommentsAction, {:GET=>:do_comment}, ['book_id', 'comment_id'], [123, 999]]
+      end
+
+      spec "[!j34yh] finds from fixed urlpaths at first." do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          _.ok {dispatch('/books')} == nil
+          tuple = @fixed_endpoints['/api/books/']
+          _.ok {tuple} != nil
+          @fixed_endpoints['/books'] = tuple
+          expected = [BooksAction, {:GET=>:do_index, :POST=>:do_create}, [], []]
+          _.ok {dispatch('/books')} != nil
+          _.ok {dispatch('/books')} == expected
+          _.ok {dispatch('/api/books/')} == expected
+        end
+      end
+
+      spec "[!95q61] finds from variable urlpath patterns when not found in fixed ones." do
+        |mapping|
+        ok {mapping.dispatch('/api/books/123')} == \
+          [
+            BooksAction,
+            {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
+            ["id"],
+            [123],
+          ]
+        ok {mapping.dispatch('/api/books/123/comments/999')} == \
+          [
+            BookCommentsAction,
+            {:GET=>:do_comment},
+            ["book_id", "comment_id"],
+            [123, 999],
+          ]
+      end
+
+      spec "[!sos5i] returns nil when request path not matched to urlpath patterns." do
+        |mapping|
+        ok {mapping.dispatch('/api/booking')} == nil
+      end
+
+      spec "[!1k1k5] converts urlpath param values by converter procs." do
+        |mapping|
+        tuple = mapping.dispatch('/api/books/123')
+        ok {tuple[2..3]} == [['id'], [123]]
+        tuple = mapping.dispatch('/api/books/123/comments/999')
+        ok {tuple[2..3]} == [['book_id', 'comment_id'], [123, 999]]
+      end
+
+      spec "[!uqwr7] stores result into cache if cache is enabled." do
+        |mapping|
+        tuple = mapping.dispatch('/api/books/111')
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_lru_cache} == {'/api/books/111' => tuple}
+        end
+      end
+
+      spec "[!3ps5g] deletes item from cache when cache size over limit." do
+        |mapping|
+        mapping.dispatch('/api/books/1')
+        mapping.dispatch('/api/books/2')
+        mapping.dispatch('/api/books/3')
+        mapping.dispatch('/api/books/4')
+        mapping.dispatch('/api/books/5')
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_lru_cache.length} == 3
+        end
+      end
+
+      spec "[!uqwr7] uses LRU as cache algorithm." do
+        |mapping|
+        mapping.instance_exec(self) do |_|
+          t1 = dispatch('/api/books/1')
+          t2 = dispatch('/api/books/2')
+          t3 = dispatch('/api/books/3')
+          _.ok {@urlpath_lru_cache.values} == [t1, t2, t3]
+          t4 = dispatch('/api/books/4')
+          _.ok {@urlpath_lru_cache.values} == [t2, t3, t4]
+          t5 = dispatch('/api/books/5')
+          _.ok {@urlpath_lru_cache.values} == [t3, t4, t5]
+          #
+          dispatch('/api/books/4')
+          _.ok {@urlpath_lru_cache.values} == [t3, t5, t4]
+          dispatch('/api/books/3')
+          _.ok {@urlpath_lru_cache.values} == [t5, t4, t3]
+        end
+      end
+
+    end
+
+
+    topic '#_compile_urlpath_pat()' do
+
+      fixture :proc1 do
+        proc {|x| x.to_i }
+      end
+
+      fixture :default_patterns do
+        |proc1|
+        x = K8::DefaultPatterns.new
+        x.register('id',   '\d+', &proc1)
+        x.register(/_id$/, '\d+', &proc1)
+        x
+      end
+
+      spec "[!awfgs] returns regexp string, param names, and converter procs." do
+        |default_patterns, proc1|
+        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping.instance_exec(self) do |_|
+          #
+          actual = _compile_urlpath_pat('/books/{id}')
+          _.ok {actual} == ['/books/\d+', ['id'], [proc1]]
+          #
+          actual = _compile_urlpath_pat('/books/{book_id}/comments/{comment_id}')
+          _.ok {actual} == ['/books/\d+/comments/\d+', ['book_id', 'comment_id'], [proc1, proc1]]
+          #
+          actual = _compile_urlpath_pat('/books/{id:[0-9]+}')
+          _.ok {actual} == ['/books/[0-9]+', ['id'], [nil]]
+        end
+      end
+
+      spec "[!bi7gr] captures urlpath params when 2nd argument is truthy." do
+        |default_patterns, proc1|
+        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping.instance_exec(self) do |_|
+          actual = _compile_urlpath_pat('/books/{id}', true)
+          _.ok {actual} == ['/books/(\d+)', ['id'], [proc1]]
+          #
+          actual = _compile_urlpath_pat('/books/{book_id}/comments/{comment_id}', true)
+          _.ok {actual} == ['/books/(\d+)/comments/(\d+)', ['book_id', 'comment_id'], [proc1, proc1]]
+          #
+          actual = _compile_urlpath_pat('/books/{id:[0-9]+}', true)
+          _.ok {actual} == ['/books/([0-9]+)', ['id'], [nil]]
+        end
+      end
+
+      spec "[!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'" do
+        |default_patterns|
+        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping.instance_exec(self) do |_|
+          _.ok {_compile_urlpath_pat('/item/{key:x|y}', true)}  == ['/item/(x|y)', ['key'], [nil]]
+          _.ok {_compile_urlpath_pat('/item/{key:x|y}', false)} == ['/item/(?:x|y)', ['key'], [nil]]
+          _.ok {_compile_urlpath_pat('/item/{:x|y}',    true)}  == ['/item/(?:x|y)', [], []]
+          _.ok {_compile_urlpath_pat('/item/{:x|y}',    false)} == ['/item/(?:x|y)', [], []]
+        end
+      end
+
+      spec "[!iln54] param names and conveter procs are nil when no urlpath params." do
+        |default_patterns|
+        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping.instance_exec(self) do |_|
+          actual = _compile_urlpath_pat('/books/new')
+          _.ok {actual} == ['/books/new', nil, nil]
+        end
+      end
+
+      spec "[!lhtiz] skips empty param name." do
+        |default_patterns, proc1|
+        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
+          actual = _compile_urlpath_pat('/api/{:\d+}/books')
+          _.ok {actual} == ['/api/\d+/books', [], []]
+          actual = _compile_urlpath_pat('/api/{:\d+}/books/{id}')
+          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc1]]
+        end
+      end
+
+      spec "[!66zas] skips param name starting with '_'." do
+        |default_patterns, proc1|
+        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
+          actual = _compile_urlpath_pat('/api/{_ver:\d+}/books')
+          _.ok {actual} == ['/api/\d+/books', [], []]
+          actual = _compile_urlpath_pat('/api/{_ver:\d+}/books/{id}')
+          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc1]]
+        end
+      end
+
+      spec "[!92jcn] '{' and '}' are available in urlpath param pattern." do
+        |default_patterns, proc1|
+        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
+          actual = _compile_urlpath_pat('/blog/{date:\d{4}-\d{2}-\d{2}}')
+          _.ok {actual} == ['/blog/\d{4}-\d{2}-\d{2}', ['date'], [nil]]
+        end
+      end
+
+    end
+
+
+    topic '#_require_action_class()' do
+
+      spec "[!px9jy] requires file and finds class object." do
+        filename = 'test_px9jy.rb'
+        content = "class Ex_px9jy < K8::Action; end\n"
+        File.open(filename, 'w') {|f| f << content }
+        at_end { File.unlink filename }
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          _.ok { _require_action_class './test_px9jy:Ex_px9jy' } == Ex_px9jy
+        end
+      end
+
+      spec "[!dlcks] don't rescue LoadError when it is not related to argument." do
+        filename = 'test_dlcks.rb'
+        content = "require 'homhomhom'; class Ex_dlcks < K8::Action; end\n"
+        File.open(filename, 'w') {|f| f << content }
+        at_end { File.unlink filename }
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          pr = proc { _require_action_class './test_dlcks:Ex_dlcks' }
+          _.ok {pr}.raise?(LoadError, "cannot load such file -- homhomhom")
+          _.ok {pr.exception.path} == "homhomhom"
+        end
+      end
+
+      spec "[!mngjz] raises error when failed to load file." do
+        filename = 'test_mngjz.rb'
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          pr = proc { _require_action_class './test_mngjz:Ex_mngjz' }
+          _.ok {pr}.raise?(LoadError, "'./test_mngjz:Ex_mngjz': cannot load './test_mngjz'.")
+        end
+      end
+
+      spec "[!8n6pf] class name may have module prefix name." do
+        filename = 'test_8n6pf.rb'
+        content = "module Ex_8n6pf; class Sample < K8::Action; end; end\n"
+        File.open(filename, 'w') {|f| f << content }
+        at_end { File.unlink filename }
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          _.ok { _require_action_class './test_8n6pf:Ex_8n6pf::Sample' } == Ex_8n6pf::Sample
+        end
+      end
+
+      spec "[!6lv7l] raises error when action class not found." do
+        filename = 'test_6lv7l.rb'
+        content = "module Ex_6lv7l; class Sample_6lv7l < K8::Action; end; end\n"
+        File.open(filename, 'w') {|f| f << content }
+        at_end { File.unlink filename }
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          pr = proc { _require_action_class './test_6lv7l:Ex_6lv7l::Sample' }
+          _.ok {pr}.raise?(NameError, "'./test_6lv7l:Ex_6lv7l::Sample': class not found (Ex_6lv7l::Sample).")
+        end
+      end
+
+      spec "[!thf7t] raises TypeError when not a class." do
+        filename = 'test_thf7t.rb'
+        content = "Ex_thf7t = 'XXX'\n"
+        File.open(filename, 'w') {|f| f << content }
+        at_end { File.unlink filename }
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          pr = proc { _require_action_class './test_thf7t:Ex_thf7t' }
+          _.ok {pr}.raise?(TypeError, "'./test_thf7t:Ex_thf7t': class name expected but got \"XXX\".")
+        end
+      end
+
+      spec "[!yqcgx] raises TypeError when not a subclass of K8::Action." do
+        filename = 'test_yqcgx.rb'
+        content = "class Ex_yqcgx; end\n"
+        File.open(filename, 'w') {|f| f << content }
+        at_end { File.unlink filename }
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          pr = proc { _require_action_class './test_yqcgx:Ex_yqcgx' }
+          _.ok {pr}.raise?(TypeError, "'./test_yqcgx:Ex_yqcgx': expected subclass of K8::Action but not.")
+        end
+      end
+
+    end
+
+
+    topic '#each()' do
+
+      fixture :mapping do
+        K8::ActionMapping.new([
+            ['/api', [
+                ['/books', BooksAction],
+                ['/books/{book_id}', BookCommentsAction],
+            ]],
+        ])
+      end
+
+      fixture :expected_tuples do
+        [
+          ['/api/books/',      BooksAction, {:GET=>:do_index, :POST=>:do_create}],
+          ['/api/books/new',   BooksAction, {:GET=>:do_new}],
+          ['/api/books/{id}',  BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}],
+          ['/api/books/{id}/edit', BooksAction, {:GET=>:do_edit}],
+          ['/api/books/{book_id}/comments',  BookCommentsAction, {:GET=>:do_comments}],
+          ['/api/books/{book_id}/comments/{comment_id}',  BookCommentsAction, {:GET=>:do_comment}],
+        ]
+      end
+
+      spec "[!7ynne] yields each urlpath pattern, action class and action methods." do
+        |mapping, expected_tuples|
+        arr = []
+        mapping.each {|x,y,z| arr << [x, y, z] }
+        ok {arr} == expected_tuples
+      end
+
+      spec "[!2gwru] returns Enumerator if block is not provided." do
+        |mapping, expected_tuples|
+        ok {mapping.each}.is_a?(Enumerator)
+        ok {mapping.each.map {|x,y,z| [x, y, z] }} == expected_tuples
+      end
+
+    end
+
+
+  end
+
+
   topic K8::RackApplication do
 
     fixture :app do

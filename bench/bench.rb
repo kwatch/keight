@@ -237,8 +237,7 @@ def _chk(tuple)
 end
 
 require 'rack' unless defined?(Rack)
-$environ = Rack::MockRequest.env_for("http://localhost/")
-$environ['REQUEST_METHOD'] = 'GET'
+$environ = Rack::MockRequest.env_for("http://localhost/", method: 'GET')
 
 def newenv(path)
   env = $environ.dup

@@ -3029,11 +3029,11 @@ Oktest.scope do
   topic K8::RackApplication do
 
     fixture :app do
-      app = K8::RackApplication.new
-      app.mount '/api', [
-        ['/books', BooksAction],
-      ]
-      app
+      K8::RackApplication.new([
+          ['/api', [
+              ['/books', BooksAction],
+          ]],
+      ])
     end
 
 
@@ -3073,23 +3073,6 @@ Oktest.scope do
         END
         expected.gsub!(/^    /, '')
         ok {app.show_mappings()} == expected
-      end
-
-    end
-
-
-    topic '#mount()' do
-
-      spec "[!zwva6] mounts action class to urlpath pattern." do
-        |app|
-        app.mount('/admin/books', AdminBooksAction)
-        ret = app.find('/admin/books/123')
-        ok {ret} == [
-          AdminBooksAction,
-          {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-          ["id"],
-          [123],
-        ]
       end
 
     end

@@ -1777,21 +1777,6 @@ module K8
       end if urlpath_mapping
     end
 
-    ##
-    ## ex:
-    ##   mount '/',         WelcomeAction
-    ##   mount '/books',    BooksAction
-    ##   mount '/admin',    [
-    ##           ['/session',    AdminSessionAction],
-    ##           ['/books',      AdminBooksAction],
-    ##         ]
-    ##
-    def mount(urlpath_pattern, action_class_or_array)
-      #; [!zwva6] mounts action class to urlpath pattern.
-      @router.mount(urlpath_pattern, action_class_or_array)
-      return self
-    end
-
     def find(req_path)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
       return @router.find(req_path)

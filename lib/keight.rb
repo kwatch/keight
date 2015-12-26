@@ -1557,7 +1557,7 @@ module K8
 
   class ActionMapping
 
-    def initialize(urlpath_mapping, default_patterns: nil, urlpath_cache_size: 0)
+    def initialize(urlpath_mapping, default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0)
       @default_patterns   = default_patterns || DefaultPatterns.new
       #; [!buj0d] prepares LRU cache if cache size specified.
       @urlpath_cache_size = urlpath_cache_size

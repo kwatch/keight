@@ -2383,7 +2383,7 @@ Oktest.scope do
             ['/api/books', BooksAction],
         ])
         mapping.instance_exec(self) do |_|
-          _.ok {@urlpath_rexp} == %r'\A/api/books(?:/[^/]+?(\z)|/[^/]+?/edit(\z))\z'
+          _.ok {@urlpath_rexp} == %r'\A/api/books(?:/\d+(\z)|/\d+/edit(\z))\z'
           _.ok {@fixed_endpoints.keys} == ['/api/books/', '/api/books/new']
           _.ok {@variable_endpoints.map{|x| x[0]}} == ['/api/books/{id}', '/api/books/{id}/edit']
         end
@@ -2394,13 +2394,25 @@ Oktest.scope do
 
     topic '#compile()' do
 
+      fixture :proc1 do
+        proc {|x| x.to_i }
+      end
+
+      fixture :proc2 do
+        proc {|x| x.to_i }
+      end
+
       fixture :mapping do
+        |proc1, proc2|
+        dp = K8::DefaultPatterns.new
+        dp.register('id',    '\d+', &proc1)
+        dp.register(/_id\z/, '\d+', &proc2)
         K8::ActionMapping.new([
             ['/api', [
                 ['/books', BooksAction],
                 ['/books/{book_id}', BookCommentsAction],
             ]],
-        ])
+        ], default_patterns: dp)
       end
 
       spec "[!6f3vl] compiles urlpath mapping." do
@@ -2410,9 +2422,9 @@ Oktest.scope do
           _.ok {@urlpath_rexp} == Regexp.compile('
                  \A/api
                     (?: /books
-                          (?: /[^/]+?(\z) | /[^/]+?/edit(\z) )
-                     |  /books/[^/]+?
-                          (?: /comments(\z) | /comments/[^/]+?(\z) )
+                          (?: /\d+(\z) | /\d+/edit(\z) )
+                     |  /books/\d+
+                          (?: /comments(\z) | /comments/\d+(\z) )
                     )
                  \z'.gsub(/\s/, ''))
           _.ok {@fixed_endpoints.keys} == ["/api/books/", "/api/books/new"]
@@ -2426,40 +2438,40 @@ Oktest.scope do
       end
 
       spec "[!w45ad] can compile nested array." do
-        |mapping|
+        |mapping, proc1, proc2|
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_rexp} == Regexp.compile('
             \A  /api
                     (?: /books
-                            (?: /[^/]+?(\z) | /[^/]+?/edit(\z) )
-                     |  /books/[^/]+?
-                            (?: /comments(\z) | /comments/[^/]+?(\z) )
+                            (?: /\d+(\z) | /\d+/edit(\z) )
+                     |  /books/\d+
+                            (?: /comments(\z) | /comments/\d+(\z) )
                     )
             \z'.gsub(/\s/, ''))
           _.ok {@variable_endpoints} == [
             ["/api/books/{id}",
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-              /\A\/api\/books\/([^\/]+?)\z/,
-              ["id"], [nil],
+              /\A\/api\/books\/(\d+)\z/,
+              ["id"], [proc1],
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
-              /\A\/api\/books\/([^\/]+?)\/edit\z/,
-              ["id"], [nil],
+              /\A\/api\/books\/(\d+)\/edit\z/,
+              ["id"], [proc1],
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
-              /\A\/api\/books\/([^\/]+?)\/comments\z/,
-              ["book_id"], [nil],
+              /\A\/api\/books\/(\d+)\/comments\z/,
+              ["book_id"], [proc2],
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
-              /\A\/api\/books\/([^\/]+?)\/comments\/([^\/]+?)\z/,
-              ["book_id", "comment_id"], [nil, nil],
+              /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
+              ["book_id", "comment_id"], [proc2, proc2],
             ],
           ]
           _.ok {@fixed_endpoints} == {
@@ -2470,32 +2482,32 @@ Oktest.scope do
       end
 
       spec "[!z2iax] classifies urlpath contains any parameter as variable one." do
-        |mapping|
+        |mapping, proc1, proc2|
         mapping.instance_exec(self) do |_|
           _.ok {@variable_endpoints} == [
             ["/api/books/{id}",
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-              /\A\/api\/books\/([^\/]+?)\z/,
-              ["id"], [nil],
+              /\A\/api\/books\/(\d+)\z/,
+              ["id"], [proc1],
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
-              /\A\/api\/books\/([^\/]+?)\/edit\z/,
-              ["id"], [nil],
+              /\A\/api\/books\/(\d+)\/edit\z/,
+              ["id"], [proc1],
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
-              /\A\/api\/books\/([^\/]+?)\/comments\z/,
-              ["book_id"], [nil],
+              /\A\/api\/books\/(\d+)\/comments\z/,
+              ["book_id"], [proc2],
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
-              /\A\/api\/books\/([^\/]+?)\/comments\/([^\/]+?)\z/,
-              ["book_id", "comment_id"], [nil, nil],
+              /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
+              ["book_id", "comment_id"], [proc2, proc2],
             ],
           ]
         end
@@ -2538,6 +2550,8 @@ Oktest.scope do
       end
 
       spec "[!wd2eb] accepts subclass of Action class." do
+        _, proc1 = K8::DEFAULT_PATTERNS.lookup('id')
+        _, proc2 = K8::DEFAULT_PATTERNS.lookup('book_id')
         mapping = K8::ActionMapping.new([
             ['/api/books', BooksAction],
             ['/api/books/{book_id}', BookCommentsAction],
@@ -2545,9 +2559,9 @@ Oktest.scope do
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_rexp} == Regexp.compile('
             \A  (?: /api/books
-                       (?: /[^/]+?(\z) | /[^/]+?/edit(\z) )
-                 |  /api/books/[^/]+?
-                       (?: /comments(\z) | /comments/[^/]+?(\z) )
+                       (?: /\d+(\z) | /\d+/edit(\z) )
+                 |  /api/books/\d+
+                       (?: /comments(\z) | /comments/\d+(\z) )
                 )
             \z'.gsub(/\s/, ''))
           _.ok {@fixed_endpoints} == {
@@ -2558,26 +2572,26 @@ Oktest.scope do
             ["/api/books/{id}",
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-              /\A\/api\/books\/([^\/]+?)\z/,
-              ["id"], [nil],
+              /\A\/api\/books\/(\d+)\z/,
+              ["id"], [proc1],
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
-              /\A\/api\/books\/([^\/]+?)\/edit\z/,
-              ["id"], [nil],
+              /\A\/api\/books\/(\d+)\/edit\z/,
+              ["id"], [proc1],
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
-              /\A\/api\/books\/([^\/]+?)\/comments\z/,
-              ["book_id"], [nil],
+              /\A\/api\/books\/(\d+)\/comments\z/,
+              ["book_id"], [proc2],
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
-              /\A\/api\/books\/([^\/]+?)\/comments\/([^\/]+?)\z/,
-              ["book_id", "comment_id"], [nil, nil],
+              /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
+              ["book_id", "comment_id"], [proc2, proc2],
             ],
           ]
         end
@@ -2611,6 +2625,9 @@ Oktest.scope do
         Dir.mkdir(dirname) unless File.directory?(dirname)
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename; Dir.rmdir dirname }
+        #
+        _, proc1 = K8::DEFAULT_PATTERNS.lookup('id')
+        _, proc2 = K8::DEFAULT_PATTERNS.lookup('book_id')
         mapping = K8::ActionMapping.new([
             ['/api/example', './test_l2kz5/sample:Ex_l2kz5::Example_l2kz5'],
         ])
@@ -2619,7 +2636,7 @@ Oktest.scope do
             "/api/example"=>["/api/example", Ex_l2kz5::Example_l2kz5, {:GET=>:do_index}, nil, nil, nil],
           }
           _.ok {@variable_endpoints} == [
-            ["/api/example/{id}", Ex_l2kz5::Example_l2kz5, {:GET=>:do_show}, /\A\/api\/example\/([^\/]+?)\z/, ["id"], [nil]],
+            ["/api/example/{id}", Ex_l2kz5::Example_l2kz5, {:GET=>:do_show}, /\A\/api\/example\/(\d+)\z/, ["id"], [proc1]],
           ]
         end
       end
@@ -2651,9 +2668,9 @@ Oktest.scope do
           _.ok {@urlpath_rexp} == Regexp.compile('
               \A  /api
                       (?:  /books
-                               (?:/[^/]+?(\z)|/[^/]+?/edit(\z))
-                      |    /books/[^/]+?
-                               (?:/comments(\z)|/comments/[^/]+?(\z))
+                               (?:/\d+(\z)|/\d+/edit(\z))
+                      |    /books/\d+
+                               (?:/comments(\z)|/comments/\d+(\z))
                       )
               \z'.gsub(/\s+/, ''))
           _.ok {@fixed_endpoints['/api/samples/']} == ["/api/samples/", klass, {:GET=>:do_index}, nil, nil, nil]
@@ -2672,8 +2689,8 @@ Oktest.scope do
             ]],
         ])
         mapping.instance_exec(self) do |_|
-          #_.ok {@urlpath_rexp} == %r'\A(?:/api(?:/test(?:/[^/]+?(\z))))\z'
-          _.ok {@urlpath_rexp} == %r'\A/api/test/[^/]+?(\z)\z'
+          #_.ok {@urlpath_rexp} == %r'\A(?:/api(?:/test(?:/\d+(\z))))\z'
+          _.ok {@urlpath_rexp} == %r'\A/api/test/\d+(\z)\z'
         end
       end
 

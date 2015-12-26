@@ -157,26 +157,28 @@ if defined?(K8)
     def do_edit(id)     ; "<h1>edit</h1>"; end
   end
   #
-  k8_app_opts = {urlpath_cache_size: 0}
-  k8_app = K8::RackApplication.new(k8_app_opts)
-  k8_app.mount '/api', [
-    ['/books',   DummyAction],
-    ['/books/{id}/comments', DummyAction],
-    ['/authors', DummyAction],
-    ['/authors/{id}/comments', DummyAction],
-    ['/account', DummyAction],
-    ['/orders',  DummyAction],
-    ['/ranking', DummyAction],
-    ['/about',   DummyAction],
-    ['/news',    DummyAction],
-    ['/support', DummyAction],
+  k8_mapping = [
+    ['/api', [
+      ['/books',   DummyAction],
+      ['/books/{id}/comments', DummyAction],
+      ['/authors', DummyAction],
+      ['/authors/{id}/comments', DummyAction],
+      ['/account', DummyAction],
+      ['/orders',  DummyAction],
+      ['/ranking', DummyAction],
+      ['/about',   DummyAction],
+      ['/news',    DummyAction],
+      ['/support', DummyAction],
+    ]],
+    ['/admin', $admin_entries.collect {|x|  # 'aaa01', 'bbb02', ..., 'zzz26'
+      ["/#{x}", DummyAction]
+    }],
   ]
-  pairs = $admin_entries.collect {|x|  # 'aaa01', 'bbb02', ..., 'zzz26'
-    ["/#{x}", DummyAction]
+  k8_app_opts = {
+    urlpath_cache_size: 0,
+    enable_urlpath_param_range: ENV['K8RANGE'] != '0',
   }
-  k8_app.mount '/admin', pairs
-  #
-  k8_app.find('/')     # warm up
+  k8_app = K8::RackApplication.new(k8_mapping, k8_app_opts)
 
 end
 
@@ -186,6 +188,7 @@ def _chk(tuple)
   GC.start
 end
 
+require 'rack' unless defined?(Rack)
 $environ = Rack::MockRequest.env_for("http://localhost/")
 $environ['REQUEST_METHOD'] = 'GET'
 
@@ -203,7 +206,7 @@ Benchmarker.new(:width=>30, :loop=>100000) do |bm|
 
   flag_rack = flag_sinatra = flag_multiplexer = flag_keight = false
   flag_rack        = defined?(Rack)
-  #flag_sinatra     = defined?(Sinatra)
+  flag_sinatra     = defined?(Sinatra)
   flag_multiplexer = defined?(Rack::Multiplexer)
   flag_keight      = defined?(K8)
 

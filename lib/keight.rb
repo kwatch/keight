@@ -15,6 +15,8 @@ require 'digest/sha1'
 
 module K8
 
+  RELEASE  = '$Release: 0.0.0 $'.split()[1]
+
   FILEPATH = __FILE__
 
   HTTP_REQUEST_METHODS = {
@@ -1119,6 +1121,26 @@ module K8
   end
 
 
+  DEFAULT_PATTERNS = proc {
+    x = DefaultPatterns.new
+    #; [!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/.
+    x.register('id',    '\d+') {|val| val.to_i }
+    x.register(/_id\z/, '\d+') {|val| val.to_i }
+    #; [!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'.
+    x.register('ext',   '(?:\.\w+)?')
+    #; [!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/.
+    to_date = proc {|val|
+      #; [!wg9vl] raises 404 error when invalid date (such as 2012-02-30).
+      yr, mo, dy = val.split(/-/).map(&:to_i)
+      Date.new(yr, mo, dy)  rescue
+        raise HttpException.new(404, "#{val}: invalid date.")
+    }
+    x.register('date',    '\d\d\d\d-\d\d-\d\d', &to_date)
+    x.register(/_date\z/, '\d\d\d\d-\d\d-\d\d', &to_date)
+    x
+  }.call()
+
+
   class ActionMethodMapping
 
     def initialize
@@ -1161,373 +1183,248 @@ module K8
   end
 
 
-  class ActionClassMapping
+  class ActionMapping
 
-    def initialize
-      @mappings = []
+    def initialize(urlpath_mapping, default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0,
+                                    enable_urlpath_param_range: true)
+      @default_patterns   = default_patterns || DefaultPatterns.new
+      #; [!34o67] keyword arg 'enable_urlpath_param_range' controls to generate range object or not.
+      @enable_urlpath_param_range = enable_urlpath_param_range
+      #; [!buj0d] prepares LRU cache if cache size specified.
+      @urlpath_cache_size = urlpath_cache_size
+      @urlpath_lru_cache  = urlpath_cache_size > 0 ? {} : nil
+      #; [!wsz8g] compiles urlpath mapping passed.
+      compile(urlpath_mapping)
     end
 
-    ##
-    ## ex:
-    ##   mount '/',              WelcomeAction
-    ##   mount '/books',         BooksAction
-    ##   mount '/admin', [
-    ##           ['/session',    AdminSessionAction],
-    ##           ['/books',      AdminBooksAction],
-    ##         ]
-    ##
-    def mount(urlpath_pattern, action_class)
-      _mount(@mappings, urlpath_pattern, urlpath_pattern, action_class)
-      #; [!w8mee] returns self.
+    def compile(urlpath_mapping)
+      #; [!6f3vl] compiles urlpath mapping.
+      @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
+      @variable_endpoints = []  # urlpath patterns which have any ulrpath param
+      @all_endpoints      = []  # all urlpath patterns (fixed + variable)
+      rexp_str = _compile_array(urlpath_mapping, '', '')
+      @urlpath_rexp       = Regexp.compile("\\A#{rexp_str}\\z")
       return self
     end
 
-    def _mount(mappings, full_urlpath_pattern, urlpath_pattern, action_class)
-      child_mappings = nil
-      #; [!4l8xl] can accept array of pairs of urlpath and action class.
-      if action_class.is_a?(Array)
-        array = action_class
-        parent = full_urlpath_pattern
-        child_mappings = []
-        array.each {|upath, klass| _mount(child_mappings, "#{parent}#{upath}", upath, klass) }
-        action_class = nil
-      #; [!ne804] when target class name is string...
-      elsif action_class.is_a?(String)
-        str = action_class
-        action_class = _load_action_class(str, "mount('#{str}')")
-      #; [!lvxyx] raises error when not an action class.
+    EMPTY_ARRAY = [].freeze     # :nodoc:
+
+    def lookup(req_urlpath)
+      #; [!j34yh] finds from fixed urlpaths at first.
+      if (tuple = @fixed_endpoints[req_urlpath])
+        _, action_class, action_methods = tuple
+        pnames = pvalues = EMPTY_ARRAY
+        return action_class, action_methods, pnames, pvalues
+      end
+      #; [!uqwr7] uses LRU as cache algorithm.
+      cache = @urlpath_lru_cache
+      if cache && (result = cache.delete(req_urlpath))
+        cache[req_urlpath] = result    # delete & append to simulate LRU
+        return result
+      end
+      #; [!sos5i] returns nil when request path not matched to urlpath patterns.
+      m = @urlpath_rexp.match(req_urlpath)
+      return nil unless m
+      #; [!95q61] finds from variable urlpath patterns when not found in fixed ones.
+      index = m.captures.find_index('')
+      tuple = @variable_endpoints[index]
+      _, action_class, action_methods, urlpath_rexp, pnames, procs, range = tuple
+      #; [!1k1k5] converts urlpath param values by converter procs.
+      if range
+        str = req_urlpath[range]
+        pvalues = [procs[0] ? procs[0].call(str) : str]
       else
-        action_class.is_a?(Class) && action_class < BaseAction  or
-          raise ArgumentError.new("mount('#{urlpath_pattern}'): Action class expected but got: #{action_class.inspect}")
+        strs = urlpath_rexp.match(req_urlpath).captures
+        pvalues = \
+          case procs.length
+          when 1; [procs[0] ? procs[0].call(strs[0]) : strs[0]]
+          when 2; [procs[0] ? procs[0].call(strs[0]) : strs[0],
+                   procs[1] ? procs[1].call(strs[1]) : strs[1]]
+          when 3; [procs[0] ? procs[0].call(strs[0]) : strs[0],
+                   procs[1] ? procs[1].call(strs[1]) : strs[1],
+                   procs[2] ? procs[2].call(strs[2]) : strs[2]]
+          else  ; procs.zip(strs).map {|pr, v| pr ? pr.call(v) : v }
+          end    # ex: ["123"] -> [123]
       end
-      #; [!30cib] raises error when action method is not defined in action class.
-      _validate_action_method_existence(action_class) if action_class
-      #; [!10yv2] build action infos for each action methods.
-      action_class._build_action_info(full_urlpath_pattern) if action_class
-      #; [!flb11] mounts action class to urlpath.
-      mappings << [urlpath_pattern, action_class || child_mappings]
-    end
-    private :_mount
-
-    def _validate_action_method_existence(action_class)
-      action_class._action_method_mapping.each do |_, action_methods|
-        action_methods.each do |req_meth, action_method_name|
-          action_class.method_defined?(action_method_name)  or
-            raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_method_name.inspect}: unknown action method in #{action_class}.")
-        end
+      #; [!jyxlm] returns action class and methods, parameter names and values.
+      result = [action_class, action_methods, pnames, pvalues]
+      #; [!uqwr7] stores result into cache if cache is enabled.
+      if cache
+        cache[req_urlpath] = result
+        #; [!3ps5g] deletes item from cache when cache size over limit.
+        cache.shift() if cache.length > @urlpath_cache_size
       end
-    end
-
-    def _load_action_class(str, error)
-      #; [!9brqr] raises error when string format is invalid.
-      filepath, classname = str.split(/:/, 2)
-      classname  or
-        raise ArgumentError.new("#{error}: expected 'file/path:ClassName'.")
-      #; [!jpg56] loads file.
-      #; [!vaazw] raises error when failed to load file.
-      #; [!eiovd] raises original LoadError when it raises in loading file.
-      begin
-        require filepath
-      rescue LoadError => ex
-        raise unless ex.path == filepath
-        raise ArgumentError.new("#{error}: failed to require file.")
-      end
-      #; [!au27n] finds target class.
-      #; [!k9bpm] raises error when target class not found.
-      begin
-        action_class = classname.split(/::/).inject(Object) {|c, x| c.const_get(x) }
-      rescue NameError
-        raise ArgumentError.new("#{error}: no such action class.")
-      end
-      #; [!t6key] raises error when target class is not an action class.
-      action_class.is_a?(Class) && action_class < BaseAction  or
-        raise ArgumentError.new("#{error}: not an action class.")
-      return action_class
-    end
-    private :_load_action_class
-
-    def traverse(&block)
-      _traverse(@mappings, "", &block)
-      self
+      #
+      return result
     end
 
-    def _traverse(mappings, base_urlpath_pat, &block)
-      #; [!ds0fp] yields with event (:enter, :map or :exit).
-      mappings.each do |urlpath_pattern, action_class|
-        yield :enter, base_urlpath_pat, urlpath_pattern, action_class, nil
-        curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pattern}"
-        if action_class.is_a?(Array)
-          child_mappings = action_class
-          _traverse(child_mappings, curr_urlpath_pat, &block)
-        else
-          action_method_mapping = action_class._action_method_mapping
-          action_method_mapping.each do |upath_pat, action_methods|
-            yield :map, curr_urlpath_pat, upath_pat, action_class, action_methods
-          end
-        end
-        yield :exit, base_urlpath_pat, urlpath_pattern, action_class, nil
-      end
-    end
-    private :_traverse
-
-    def each_mapping
-      traverse() do
-        |event, base_urlpath_pat, urlpath_pat, action_class, action_methods|
-        next unless event == :map
-        full_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
-        #; [!driqt] yields full urlpath pattern, action class and action methods.
-        yield full_urlpath_pat, action_class, action_methods
+    def each
+      #; [!2gwru] returns Enumerator if block is not provided.
+      return to_enum(:each) unless block_given?
+      #; [!7ynne] yields each urlpath pattern, action class and action methods.
+      @all_endpoints.each do |tuple|
+        urlpath_pat, action_class, action_methods, _ = tuple
+        yield urlpath_pat, action_class, action_methods
       end
       self
-    end
-
-  end
-
-
-  class ActionFinder
-
-    def initialize(action_class_mapping, default_patterns=nil, urlpath_cache_size: 0)
-      @default_patterns = default_patterns || K8::DefaultPatterns.new
-      @urlpath_cache_size = urlpath_cache_size
-      #; [!wb9l8] enables urlpath cache when urlpath_cache_size > 0.
-      @urlpath_cache = urlpath_cache_size > 0 ? {} : nil   # LRU cache of variable urlpath
-      #; [!dnu4q] calls '#_construct()'.
-      _construct(action_class_mapping)
     end
 
     private
 
-    def _construct(action_class_mapping)
-      ##
-      ## Example of @rexp:
-      ##     \A                                  # ...(0)
-      ##     (:?                                 # ...(1)
-      ##         /api                            # ...(2)
-      ##             (?:                         # ...(3)
-      ##                 /books                  # ...(2)
-      ##                     (?:                 # ...(3)
-      ##                         /\d+(\z)        # ...(4)
-      ##                     |                   # ...(5)
-      ##                         /\d+/edit(\z)   # ...(4)
-      ##                     )                   # ...(6)
-      ##             |                           # ...(7)
-      ##                 /authors                # ...(2)
-      ##                     (:?                 # ...(4)
-      ##                         /\d+(\z)        # ...(4)
-      ##                     |                   # ...(5)
-      ##                         /\d+/edit(\z)   # ...(4)
-      ##                     )                   # ...(6)
-      ##             )                           # ...(6)
-      ##     |                                   # ...(7)
-      ##         /admin                          # ...(2)
-      ##             (:?                         # ...(3)
-      ##                 ....
-      ##             )                           # ...(6)
-      ##     )                                   # ...(8)
-      ##
-      ## Example of @dict (fixed urlpaths):
-      ##     {
-      ##       "/api/books"                      # ...(9)
-      ##           => [BooksAction,   {:GET=>:do_index, :POST=>:do_create}],
-      ##       "/api/books/new"
-      ##           => [BooksAction,   {:GET=>:do_new}],
-      ##       "/api/authors"
-      ##           => [AuthorsAction, {:GET=>:do_index, :POST=>:do_create}],
-      ##       "/api/authors/new"
-      ##           => [AuthorsAction, {:GET=>:do_new}],
-      ##       "/admin/books"
-      ##           => ...
-      ##       ...
-      ##     }
-      ##
-      ## Example of @list (variable urlpaths):
-      ##     [
-      ##       [                                 # ...(10)
-      ##         %r'\A/api/books/(\d+)\z',
-      ##         ["id"], [proc {|x| x.to_i }],
-      ##         BooksAction,
-      ##         {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-      ##       ],
-      ##       [
-      ##         %r'\A/api/books/(\d+)/edit\z',
-      ##         ["id"], [proc {|x| x.to_i }],
-      ##         BooksAction,
-      ##         {:GET=>:do_edit},
-      ##       ],
-      ##       ...
-      ##     ]
-      ##
-      @dict = {}
-      @list = []
-      #; [!956fi] builds regexp object for variable urlpaths (= containing urlpath params).
-      buf = ['\A']                         # ...(0)
-      buf << '(?:'                         # ...(1)
-      action_class_mapping.traverse do
-        |event, base_urlpath_pat, urlpath_pat, action_class, action_methods|
-        first_p = buf[-1] == '(?:'
-        case event
-        when :map
-          full_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
-          if full_urlpath_pat =~ /\{.*?\}/
-            buf << '|' unless first_p      # ...(5)
-            buf << _compile(urlpath_pat, '', '(\z)').first  # ...(4)
-            full_urlpath_rexp_str, param_names, param_converters = \
-                _compile(full_urlpath_pat, '\A', '\z', true)
-            #; [!sl9em] builds list of variable urlpaths (= containing urlpath params).
-            @list << [Regexp.compile(full_urlpath_rexp_str),
-                      param_names, param_converters,
-                      action_class, action_methods]   # ...(9)
-          else
-            #; [!6tgj5] builds dict of fixed urlpaths (= no urlpath params).
-            @dict[full_urlpath_pat] = [action_class, action_methods] # ...(10)
-          end
-        when :enter
-          buf << '|' unless first_p        # ...(7)
-          buf << _compile(urlpath_pat, '', '').first  # ...(2)
-          buf << '(?:'                     # ...(3)
-        when :exit
-          if first_p
-            buf.pop()   # '(?:'
-            buf.pop()   # urlpath
-            buf.pop() if buf[-1] == '|'
-          else
-            buf << ')'                     # ...(6)
-          end
+    def _compile_array(mapping, base_urlpath_pat, urlpath_pat)
+      buf = []
+      curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
+      mapping.each do |child_urlpath_pat, target|
+        child = child_urlpath_pat
+        #; [!w45ad] can compile nested array.
+        if target.is_a?(Array)
+          buf << _compile_array(target, curr_urlpath_pat, child)
+        #; [!wd2eb] accepts subclass of Action class.
+        elsif target.is_a?(Class) && target < Action
+          buf << _compile_class(target, curr_urlpath_pat, child)
+        #; [!l2kz5] requires library when filepath and classname specified.
+        elsif target.is_a?(String)
+          klass = _require_action_class(target)
+          buf << _compile_class(klass,  curr_urlpath_pat, child)
+        #; [!irt5g] raises TypeError when unknown object specified.
         else
-          raise "** internal error: event=#{event.inspect}"
+          raise TypeError.new("Action class or nested array expected, but got #{target.inspect}")
         end
       end
-      buf << ')'                           # ...(8)
-      @rexp = Regexp.compile(buf.join())
-      buf.clear()
+      #; [!bcgc9] skips classes which have only fixed urlpaths.
+      buf.compact!
+      rexp_str = _build_rexp_str(urlpath_pat, buf)
+      return rexp_str   # ex: '/api(?:/books/\d+(\z)|/authors/\d+(\z))'
     end
 
-    def _compile(urlpath_pattern, start_pat='', end_pat='', grouping=false)
-      #; [!izsbp] compiles urlpath pattern into regexp string and param names.
-      #; [!olps9] allows '{}' in regular expression.
-      #parse_rexp = /(.*?)<(\w*)(?::(.*?))?>/
-      #parse_rexp = /(.*?)\{(\w*)(?::(.*?))?\}/
-      #parse_rexp  = /(.*?)\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
-      parse_rexp = /(.*?)\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
-      param_names = []
-      converters  = []
-      s = ""
-      s << start_pat
-      urlpath_pattern.scan(parse_rexp) do |text, name, pat|
-        proc_ = nil
-        pat, proc_ = @default_patterns.lookup(name) if pat.nil? || pat.empty?
-        named = !name.empty?
-        param_names << name if named
-        converters << proc_ if named
-        #; [!vey08] uses grouping when 4th argument is true.
-        #; [!2zil2] don't use grouping when 4th argument is false.
-        #; [!rda92] ex: '/{id:\d+}' -> '/(\d+)'
-        #; [!jyz2g] ex: '/{:\d+}'   -> '/\d+'
-        #; [!hy3y5] ex: '/{:xx|yy}' -> '/(?:xx|yy)'
-        #; [!gunsm] ex: '/{id:xx|yy}' -> '/(xx|yy)'
-        if named && grouping
-          pat = "(#{pat})"
-        elsif pat =~ /\|/
-          pat = "(?:#{pat})"
+    def _compile_class(action_class, base_urlpath_pat, urlpath_pat)
+      buf = []
+      curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
+      action_class._action_method_mapping.each do |child_urlpath_pat, methods|
+        #; [!ue766] raises error when action method is not defined in action class.
+        _validate_action_method_existence(action_class, methods)
+        #; ex: '/api/books/{id}' -> '\A/api/books/(\d+)\z', ['id'], [proc{|x| x.to_i}]
+        fullpath_pat = "#{curr_urlpath_pat}#{child_urlpath_pat}"
+        rexp_str, pnames, procs = _compile_urlpath_pat(fullpath_pat, true)
+        #; [!z2iax] classifies urlpath contains any parameter as variable one.
+        if pnames
+          fullpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
+          range = @enable_urlpath_param_range ? _range_of_urlpath_param(fullpath_pat) : nil
+          tuple = [fullpath_pat, action_class, methods, fullpath_rexp, pnames.freeze, procs, range]
+          @variable_endpoints << tuple
+          buf << (_compile_urlpath_pat(child_urlpath_pat).first << '(\z)')
+        #; [!rvdes] classifies urlpath contains no parameters as fixed one.
+        else
+          tuple = [fullpath_pat, action_class, methods]
+          @fixed_endpoints[fullpath_pat] = tuple
         end
-        s << Regexp.escape(text) << pat
+        #
+        @all_endpoints << tuple
       end
-      m = Regexp.last_match
-      rest = m ? m.post_match : urlpath_pattern
-      s << Regexp.escape(rest) << end_pat
-      ## ex: ['/api/books/(\d+)', ["id"], [proc {|x| x.to_i }]]
-      return s, param_names, converters
+      #; [!6xwhq] builds action infos for each action methods.
+      action_class._build_action_info(curr_urlpath_pat) if action_class
+      #
+      rexp_str = _build_rexp_str(urlpath_pat, buf)
+      return rexp_str    # ex: '/books(?:/\d+(\z)|/\d+/edit(\z))'
     end
 
-    public
+    ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
+    def _build_rexp_str(urlpath_pat, buf)
+      return nil if buf.empty?
+      prefix = _compile_urlpath_pat(urlpath_pat).first
+      #; [!169ad] removes unnecessary grouping.
+      return "#{prefix}#{buf.first}" if buf.length == 1
+      return "#{prefix}(?:#{buf.join('|')})"
+    ensure
+      buf.clear()   # for GC
+    end
 
-    def find(req_path)
-      action_class, action_methods = @dict[req_path]
-      if action_class
-        #; [!p18w0] urlpath params are empty when matched to fixed urlpath pattern.
-        param_names  = []
-        param_values = []
-      #; [!gzy2w] fetches variable urlpath from LRU cache if LRU cache is enabled.
-      elsif (cache = @urlpath_cache) && (tuple = cache.delete(req_path))
-        cache[req_path] = tuple   # Hash in Ruby >=1.9 keeps keys' order!
-        action_class, action_methods, param_names, param_values = tuple
-      else
-        #; [!ps5jm] returns nil when not matched to any urlpath patterns.
-        m = @rexp.match(req_path)      or return nil
-        i = m.captures.find_index('')  or return nil
-        #; [!t6yk0] urlpath params are not empty when matched to variable urlpath apttern.
-        (full_urlpath_rexp,   # ex: /\A\/api\/books\/(\d+)\z/
-         param_names,         # ex: ["id"]
-         param_converters,    # ex: [proc {|x| x.to_i }]
-         action_class,        # ex: BooksAction
-         action_methods,      # ex: {:GET=>:do_show, :PUT=>:do_edit, ...}
-        ) = @list[i]
-        #; [!0o3fe] converts urlpath param values according to default patterns.
-        values = full_urlpath_rexp.match(req_path).captures
-        procs = param_converters
-        #param_values = procs.zip(values).map {|pr, v| pr ? pr.call(v) : v }
-        param_values = \
-            case procs.length
-            when 1; pr0 = procs[0]
-                    [pr0 ? pr0.call(values[0]) : values[0]]
-            when 2; pr0, pr1 = procs
-                    [pr0 ? pr0.call(values[0]) : values[0],
-                     pr1 ? pr1.call(values[1]) : values[1]]
-            else  ; procs.zip(values).map {|pr, v| pr ? pr.call(v) : v }
-            end    # ex: ["123"] -> [123]
-        #; [!v2zbx] caches variable urlpath into LRU cache if cache is enabled.
-        #; [!nczw6] LRU cache size doesn't growth over max cache size.
-        if cache
-          cache.shift() if cache.length > @urlpath_cache_size - 1
-          cache[req_path] = [action_class, action_methods, param_names, param_values]
+    #; [!92jcn] '{' and '}' are available in urlpath param pattern.
+    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?))?\}/
+    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
+    URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+    URLPATH_PARAM_REXP_NOGROUP = /\{(?:\w*)(?::(?:[^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+    proc {|rx1, rx2|
+      rx1.source.gsub(/\(([^?])/, '(?:\1') == rx2.source  or
+        raise "*** assertion failed: #{rx1.source.inspect} != #{rx2.source.inspect}"
+    }.call(URLPATH_PARAM_REXP, URLPATH_PARAM_REXP_NOGROUP)
+
+    ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
+    def _compile_urlpath_pat(urlpath_pat, enable_capture=false)
+      #; [!iln54] param names and conveter procs are nil when no urlpath params.
+      pnames = nil   # urlpath parameter names  (ex: ['id'])
+      procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])
+      #
+      rexp_str = urlpath_pat.gsub(URLPATH_PARAM_REXP) {
+        pname, s, proc_ = $1, $2, nil
+        s, proc_ = @default_patterns.lookup(pname) if s.nil?
+        #; [!lhtiz] skips empty param name.
+        #; [!66zas] skips param name starting with '_'.
+        skip = pname.empty? || pname.start_with?('_')
+        pnames ||= []; pnames << pname unless skip
+        procs  ||= []; procs  << proc_ unless skip
+        #; [!bi7gr] captures urlpath params when 2nd argument is truthy.
+        #; [!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'
+        if enable_capture && ! skip
+          s = "(#{s})"
+        elsif s =~ /\|/
+          s = "(?:#{s})"
         end
+        s
+      }
+      #; [!awfgs] returns regexp string, param names, and converter procs.
+      return rexp_str, pnames, procs   # ex: '/books/(\d+)', ['id'], [proc{|x| x.to_i}]}]
+    end
+
+    ## raises error when action method is not defined in action class
+    def _validate_action_method_existence(action_class, action_methods)
+      action_methods.each do |req_meth, action_method_name|
+        action_class.method_defined?(action_method_name)  or
+          raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_method_name.inspect}: unknown action method in #{action_class}.")
       end
-      #; [!ndktw] returns action class, action methods, urlpath names and values.
-      ## ex: [BooksAction, {:GET=>:do_show}, ["id"], [123]]
-      return action_class, action_methods, param_names, param_values
     end
 
-  end
-
-
-  ## Router consists of urlpath mapping and finder.
-  class ActionRouter
-
-    def initialize(urlpath_cache_size: 0)
-      @mapping = ActionClassMapping.new
-      @default_patterns = DefaultPatterns.new
-      @finder  = nil
-      #; [!l1elt] saves finder options.
-      @finder_opts = {:urlpath_cache_size=>urlpath_cache_size}
+    ## range object to retrieve urlpath parameter value faster than Regexp matching
+    ## ex:
+    ##   urlpath_pat == '/books/{id}/edit'
+    ##   arr = urlpath_pat.split(/\{.*?\}/, -1)           #=> ['/books/', '/edit']
+    ##   range = (arr[0].length .. - (arr[01].length+1))  #=> 7..-6 (Range object)
+    ##   p "/books/123/edit"[range]                       #=> '123'
+    def _range_of_urlpath_param(urlpath_pattern)
+      rexp = URLPATH_PARAM_REXP_NOGROUP
+      arr = urlpath_pattern.split(rexp, -1)            # ex: ['/books/', '/edit']
+      return nil unless arr.length == 2
+      return (arr[0].length .. - (arr[1].length+1))    # ex: 7..-6  (Range object)
     end
 
-    attr_reader :default_patterns
-
-    def register(urlpath_param_name, default_pattern='[^/]*?', &converter)
-      #; [!boq80] registers urlpath param pattern and converter.
-      @default_patterns.register(urlpath_param_name, default_pattern, &converter)
-      self
-    end
-
-    def mount(urlpath_pattern, action_class)
-      #; [!uc996] mouts action class to urlpath.
-      @mapping.mount(urlpath_pattern, action_class)
-      #; [!trs6w] removes finder object.
-      @finder = nil
-      self
-    end
-
-    def each_mapping(&block)
-      #; [!2kq9h] yields with full urlpath pattern, action class and action methods.
-      @mapping.each_mapping(&block)
-    end
-
-    def find(req_path)
-      #; [!zsuzg] creates finder object automatically if necessary.
-      #; [!9u978] urlpath_cache_size keyword argument will be passed to router oubject.
-      @finder ||= ActionFinder.new(@mapping, @default_patterns, @finder_opts)
-      #; [!m9klu] returns action class, action methods, urlpath param names and values.
-      return @finder.find(req_path)
+    ## ex: './api/admin/books:Admin::BookAPI'  ->  Admin::BookAPI
+    def _require_action_class(filepath_and_classname)
+      #; [!px9jy] requires file and finds class object.
+      str = filepath_and_classname   # ex: './admin/api/book:Admin::BookAPI'
+      filepath, classname = filepath_and_classname.split(':', 2)
+      begin
+        require filepath
+      rescue LoadError => ex
+        #; [!dlcks] don't rescue LoadError when it is not related to argument.
+        raise unless ex.path == filepath
+        #; [!mngjz] raises error when failed to load file.
+        raise LoadError.new("'#{str}': cannot load '#{filepath}'.")
+      end
+      #; [!8n6pf] class name may have module prefix name.
+      #; [!6lv7l] raises error when action class not found.
+      begin
+        klass = classname.split('::').inject(Object) {|cls, x| cls.const_get(x) }
+      rescue NameError
+        raise NameError.new("'#{str}': class not found (#{classname}).")
+      end
+      #; [!thf7t] raises TypeError when not a class.
+      klass.is_a?(Class)  or
+        raise TypeError.new("'#{str}': class name expected but got #{klass.inspect}.")
+      #; [!yqcgx] raises TypeError when not a subclass of K8::Action.
+      klass < Action  or
+        raise TypeError.new("'#{str}': expected subclass of K8::Action but not.")
+      #
+      return klass
     end
 
   end
@@ -1535,52 +1432,18 @@ module K8
 
   class RackApplication
 
-    def initialize(urlpath_mapping=[], urlpath_cache_size: 0)
-      @router = ActionRouter.new(urlpath_cache_size: urlpath_cache_size)
-      init_default_param_patterns(@router.default_patterns)
-      #; [!vkp65] mounts urlpath mappings if provided.
-      urlpath_mapping.each do |urlpath, klass|
-        @router.mount(urlpath, klass)
-      end if urlpath_mapping
+    def initialize(urlpath_mapping=[], default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0,
+                                       enable_urlpath_param_range: true)
+      #; [!vkp65] mounts urlpath mappings.
+      @mapping = ActionMapping.new(urlpath_mapping,
+                                   default_patterns:    default_patterns,
+                                   urlpath_cache_size:  urlpath_cache_size,
+                                   enable_urlpath_param_range: enable_urlpath_param_range)
     end
 
-    def init_default_param_patterns(default_patterns)
-      #; [!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/.
-      x = default_patterns
-      x.register('id',    '\d+') {|val| val.to_i }
-      x.register(/_id\z/, '\d+') {|val| val.to_i }
-      #; [!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'.
-      x.register('ext',   '(?:\.\w+)?')
-      #; [!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/.
-      to_date = proc {|val|
-        #; [!wg9vl] raises 404 error when invalid date (such as 2012-02-30).
-        yr, mo, dy = val.split(/-/).map(&:to_i)
-        Date.new(yr, mo, dy)  rescue
-          raise HttpException.new(404, "#{val}: invalid date.")
-      }
-      x.register('date',    '\d\d\d\d-\d\d-\d\d', &to_date)
-      x.register(/_date\z/, '\d\d\d\d-\d\d-\d\d', &to_date)
-    end
-    protected :init_default_param_patterns
-
-    ##
-    ## ex:
-    ##   mount '/',         WelcomeAction
-    ##   mount '/books',    BooksAction
-    ##   mount '/admin',    [
-    ##           ['/session',    AdminSessionAction],
-    ##           ['/books',      AdminBooksAction],
-    ##         ]
-    ##
-    def mount(urlpath_pattern, action_class_or_array)
-      #; [!zwva6] mounts action class to urlpath pattern.
-      @router.mount(urlpath_pattern, action_class_or_array)
-      return self
-    end
-
-    def find(req_path)
+    def lookup(req_path)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
-      return @router.find(req_path)
+      return @mapping.lookup(req_path)
     end
 
     def call(env)
@@ -1603,12 +1466,12 @@ module K8
         req_meth_ = req_meth
       end
       begin
-        tuple4 = find(req.path)
+        tuple4 = lookup(req.path)
         #; [!vz07j] redirects only when request method is GET or HEAD.
         if tuple4.nil? && req_meth_ == :GET
           #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
           #; [!02dow] returns 301 when urlpath not found but found without tailing '/'.
-          location = find_autoredirect_location(req)
+          location = lookup_autoredirect_location(req)
           return [301, {'Location'=>location}, []] if location
         end
         #; [!rz13i] returns HTTP 404 when urlpath not found.
@@ -1678,9 +1541,9 @@ END
       return false
     end
 
-    def find_autoredirect_location(req)
+    def lookup_autoredirect_location(req)
       location = req.path.end_with?('/') ? req.path[0..-2] : "#{req.path}/"
-      return nil unless find(location)
+      return nil unless lookup(location)
       #; [!2a9c9] adds query string to 'Location' header.
       qs = req.env['QUERY_STRING']
       return qs && ! qs.empty? ? "#{location}?#{qs}" : location
@@ -1690,7 +1553,7 @@ END
 
     def each_mapping(&block)
       #; [!cgjyv] yields full urlpath pattern, action class and action methods.
-      @router.each_mapping(&block)
+      @mapping.each(&block)
       self
     end
 

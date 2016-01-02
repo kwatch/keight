@@ -794,11 +794,11 @@ Oktest.scope do
         infos = BooksAction._build_action_info('/api/books')
         #
         ok {infos[:do_index]}.is_a?(K8::ActionInfo)
-        ok {infos[:do_index].meth} == :GET
+        ok {infos[:do_index].method} == :GET
         ok {infos[:do_index].path} == '/api/books/'
         #
         ok {infos[:do_update]}.is_a?(K8::ActionInfo)
-        ok {infos[:do_update].meth} == :PUT
+        ok {infos[:do_update].method} == :PUT
         ok {infos[:do_update].path(123)} == '/api/books/123'
       end
 
@@ -812,11 +812,11 @@ Oktest.scope do
         cls = BooksAction
         #
         ok {cls[:do_create]}.is_a?(K8::ActionInfo)
-        ok {cls[:do_create].meth} == :POST
+        ok {cls[:do_create].method} == :POST
         ok {cls[:do_create].path} == '/api/books/'
         #
         ok {cls[:do_show]}.is_a?(K8::ActionInfo)
-        ok {cls[:do_show].meth} == :GET
+        ok {cls[:do_show].method} == :GET
         ok {cls[:do_show].path(123)} == '/api/books/123'
       end
 
@@ -1878,10 +1878,10 @@ Oktest.scope do
         ])
         #
         ok {Ex_6xwhq[:do_create]} != nil
-        ok {Ex_6xwhq[:do_create].meth} == :POST
+        ok {Ex_6xwhq[:do_create].method} == :POST
         ok {Ex_6xwhq[:do_create].path} == '/test/example4'
         ok {Ex_6xwhq[:do_update]} != nil
-        ok {Ex_6xwhq[:do_update].meth} == :PUT
+        ok {Ex_6xwhq[:do_update].method} == :PUT
         ok {Ex_6xwhq[:do_update].path(123)} == '/test/example4/123'
       end
 

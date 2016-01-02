@@ -171,6 +171,19 @@ module K8
       return s
     end
 
+    @action.(:'mapping:yaml', "action mappings in YAML format")
+    def do_mapping_yaml()
+      s = ""
+      _do_mapping do |urlpath_pat, action_class, action_methods|
+        arr = action_methods.map {|k, v| "#{k}: #{v}" }
+        s << "- urlpath: '#{urlpath_pat}'\n"
+        s << "  class:   #{action_class.name}\n"
+        s << "  method:  {#{arr.join(', ')}}\n"
+        s << "\n"
+      end
+      return s
+    end
+
     @action.(:configs, "list config keys and values")
     @option.("--getenv", "show actual ENV value")
     def do_configs(getenv: false)

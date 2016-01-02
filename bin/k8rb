@@ -164,10 +164,12 @@ module K8
     @option.("--json", "in JSON format")
     @option.("--yaml", "in YAML format")
     @option.("--jquery", "for jQuery.ajax()")
-    def do_mapping(json: false, yaml: false, jquery: false)
+    @option.("--angular", "for AngularJS")
+    def do_mapping(json: false, yaml: false, jquery: false, angular: false)
       return json ? _do_mapping_in_json_format() \
            : yaml ? _do_mapping_in_yaml_format() \
-           : jquery ? _do_mapping_in_javascript_format() \
+           : jquery ? _do_mapping_in_javascript_format('type') \
+           : angular ? _do_mapping_in_javascript_format('method') \
            :        _do_mapping_in_text_format()
     end
 
@@ -200,7 +202,7 @@ module K8
       return s
     end
 
-    def _do_mapping_in_javascript_format()
+    def _do_mapping_in_javascript_format(attr)
       rexp = K8::ActionMapping::URLPATH_PARAM_REXP
       defs = {}
       _do_mapping do |urlpath_pat, action_class, action_methods|
@@ -223,7 +225,7 @@ module K8
           #
           action_methods.each do |req_meth, action_method|
             buf << sep; sep = ','
-            js_code = "return{type:'#{req_meth}',url:#{js_urlpath}}"
+            js_code = "return{#{attr}:'#{req_meth}',url:#{js_urlpath}}"
             buf << "#{action_method}:function(#{args.join(',')}){#{js_code}}\n"
           end
         end

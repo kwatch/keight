@@ -149,10 +149,29 @@ module K8
             next
           end
         end
+        #
+        _download_necessary_libraries(project_name)
+        #
         return
       end
       0
     end
+
+    def _download_necessary_libraries(project_name)
+      puts ""
+      Dir.chdir(project_name) do
+        puts "$ cd #{project_name}"
+        rexp = /%>\/(jquery|modernizr)\/(\d+\.\d+\.\d+)/
+        File.open("app/template/_layout.html.eruby") {|f|
+          f.collect {|line| [$1, $2] if line =~ rexp }.compact()
+        }.each do |library, version|
+          puts "$ #{@script_name} cdnjs #{library} #{version}"
+          do_cdnjs(library, version)
+        end
+        puts "$ cd -"
+      end
+    end
+    private :_download_necessary_libraries
 
     @action.(:mapping, "show action mappings")
     @option.("--format={text|json|yaml|javascript|jquery|angular}", "output format")

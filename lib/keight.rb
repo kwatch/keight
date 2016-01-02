@@ -447,8 +447,8 @@ module K8
     def initialize(env)
       #; [!yb9k9] sets @env.
       @env = env
-      #; [!yo22o] sets @meth as Symbol value.
-      @meth = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
+      #; [!yo22o] sets @method as Symbol value.
+      @method = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
         raise HTTPException.new(400, "#{env['REQUEST_METHOD'].inspect}: unknown request method.")
       #; [!twgmi] sets @path.
       @path = (x = env['PATH_INFO'])
@@ -456,7 +456,13 @@ module K8
       @path = env['SCRIPT_NAME'] if x.nil? || x.empty?
     end
 
-    attr_reader :env, :meth, :path
+    attr_reader :env, :method, :path
+
+    def method(name=nil)
+      #; [!084jo] returns current request method when argument is not specified.
+      #; [!gwskf] calls Object#method() when argument specified.
+      return name ? super : @method
+    end
 
     def header(name)
       #; [!1z7wj] returns http header value from environment.
@@ -623,7 +629,7 @@ module K8
       #; [!cr0zj] parses JSON when content type is 'application/json'.
       #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
       #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
-      if @meth == :GET || @meth == :HEAD
+      if @method == :GET || @method == :HEAD
         return params_query()
       end
       case @env['CONTENT_TYPE']
@@ -936,7 +942,7 @@ module K8
       return false if @req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
       #; [!vwrqv] returns true when request method is one of POST, PUT, or DELETE.
       #; [!jfhla] returns true when request method is GET or HEAD.
-      req_meth = @req.meth
+      req_meth = @req.method
       return req_meth == :POST || req_meth == :PUT || req_meth == :DELETE
     end
 

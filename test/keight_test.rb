@@ -352,11 +352,11 @@ Oktest.scope do
         ok {req.env}.same?(env)
       end
 
-      spec "[!yo22o] sets @meth as Symbol value." do
+      spec "[!yo22o] sets @method as Symbol value." do
         req1 = K8::Request.new(new_env("GET"))
-        ok {req1.meth} == :GET
+        ok {req1.method} == :GET
         req2 = K8::Request.new(new_env("POST"))
-        ok {req2.meth} == :POST
+        ok {req2.method} == :POST
       end
 
       spec "[!twgmi] sets @path." do
@@ -370,6 +370,26 @@ Oktest.scope do
         ok {K8::Request.new(env).path} == "/index.cgi"
         env.delete('PATH_INFO')
         ok {K8::Request.new(env).path} == "/index.cgi"
+      end
+
+    end
+
+
+    topic '#method()' do
+
+      fixture :req do
+        K8::Request.new({"REQUEST_METHOD"=>"POST"})
+      end
+
+      spec "[!084jo] returns current request method when argument is not specified." do
+        |req|
+        ok {req.method} == :POST
+      end
+
+      spec "[!gwskf] calls Object#method() when argument specified." do
+        |req|
+        ok {req.method(:method)} != :POST
+        ok {req.method(:method)}.is_a?(Method)
       end
 
     end

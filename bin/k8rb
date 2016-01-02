@@ -155,7 +155,13 @@ module K8
       load_config()
       require './config/urlpath_mapping'
       app = K8::RackApplication.new($urlpath_mapping)
-      return app.show_mappings()
+      s = ""
+      app.each_mapping do |urlpath_pat, action_class, action_methods, |
+        action_methods.each do |req_meth, action_method|
+          s << "%-6s %-30s # %s\#%s\n" % [req_meth, urlpath_pat, action_class.name, action_method]
+        end
+      end
+      return s
     end
 
     @action.(:configs, "list config keys and values")

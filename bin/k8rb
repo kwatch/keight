@@ -405,9 +405,9 @@ module K8
         File.directory?(basedir)  or
           raise OptionError.new("#{basedir}: not a directory.")
         url = "https://cdnjs.com/libraries/#{library}/#{version}"
-        rexp = %r">https://cdnjs\.cloudflare\.com/ajax/libs/#{library}/#{Regexp.escape(version)}/([-.\w]+)<"
+        rexp = %r">https://cdnjs\.cloudflare\.com/ajax/libs/#{library}/#{Regexp.escape(version)}/([-.\w]+(?:\&\#x2F;[-.\w]+)*)<"
         filenames = open(url) {|f|
-          f.collect {|s| $1 if s =~ rexp }.compact()
+          f.collect {|s| $1.gsub(/\&\#x2F;/, '/') if s =~ rexp }.compact()
         }
         if filenames.empty?
           $stderr.puts "#{library} #{version}: no files (GET #{url})."
@@ -420,6 +420,8 @@ module K8
         filenames.each do |filename|
           fileurl  = "#{baseurl}/#{library}/#{version}/#{filename}"
           filepath = "#{basedir}/#{library}/#{version}/#{filename}"
+          dir = File.dirname(filepath)
+          Dir.mkdir(dir) unless File.exist?(dir)
           print filepath, ' '
           content = open(fileurl) {|f| f.read }
           File.open(filepath, 'w') {|f| f.write(content) }

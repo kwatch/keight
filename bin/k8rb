@@ -163,9 +163,11 @@ module K8
     @action.(:mapping, "show action mappings")
     @option.("--json", "in JSON format")
     @option.("--yaml", "in YAML format")
-    def do_mapping(json: false, yaml: false)
+    @option.("--jquery", "for jQuery.ajax()")
+    def do_mapping(json: false, yaml: false, jquery: false)
       return json ? _do_mapping_in_json_format() \
            : yaml ? _do_mapping_in_yaml_format() \
+           : jquery ? _do_mapping_in_javascript_format() \
            :        _do_mapping_in_text_format()
     end
 
@@ -196,6 +198,39 @@ module K8
         s << "\n"
       end
       return s
+    end
+
+    def _do_mapping_in_javascript_format()
+      rexp = K8::ActionMapping::URLPATH_PARAM_REXP
+      defs = {}
+      _do_mapping do |urlpath_pat, action_class, action_methods|
+        (defs[action_class.name] ||= []) << [urlpath_pat, action_methods]
+      end
+      buf = []
+      defs.each do |action_class_name, pairs|
+        if action_class_name =~ /\A\w+\z/
+          buf << "#{action_class_name}:{\n"
+        else
+          buf << "'#{action_class_name}':{\n"
+        end
+        sep = ' '
+        pairs.each do |urlpath_pat, action_methods|
+          args = []; i = 0
+          urlpath_pat.scan(rexp) {|x, _| args << (x.empty? ? "_#{i+=1}" : x) }
+          a = args.dup()
+          js_urlpath = "'" + urlpath_pat.gsub(rexp) {|x, _| "'+#{a.shift}+'" } + "'"
+          js_urlpath.gsub!(/\+''/, '')
+          #
+          action_methods.each do |req_meth, action_method|
+            buf << sep; sep = ','
+            js_code = "return{type:'#{req_meth}',url:#{js_urlpath}}"
+            buf << "#{action_method}:function(#{args.join(',')}){#{js_code}}\n"
+          end
+        end
+        buf << "},\n"
+      end
+      buf[-1] = "}\n" if buf[-1] == "},\n"
+      return buf.join()
     end
 
     def _do_mapping_in_text_format()

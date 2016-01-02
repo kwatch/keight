@@ -1042,7 +1042,7 @@ module K8
       return name ? super : @method
     end
 
-    def path(*args)
+    def urlpath(*args)
       return @urlpath_format % args
     end
 
@@ -1050,9 +1050,9 @@ module K8
       #; [!qyhkm] returns '/api/books/123' when method is POST.
       #; [!kogyx] returns '/api/books/123?_method=PUT' when method is not POST.
       if @method == 'POST'
-        return path(*args)
+        return urlpath(*args)
       else
-        return "#{path(*args)}?_method=#{@method}"
+        return "#{urlpath(*args)}?_method=#{@method}"
       end
     end
 
@@ -1079,23 +1079,23 @@ module K8
   end
 
   class ActionInfo0 < ActionInfo    # :nodoc:
-    def path(); @urlpath_format; end
+    def urlpath(); @urlpath_format; end
   end
 
   class ActionInfo1 < ActionInfo    # :nodoc:
-    def path(a); @urlpath_format % [a]; end
+    def urlpath(a); @urlpath_format % [a]; end
   end
 
   class ActionInfo2 < ActionInfo    # :nodoc:
-    def path(a, b); @urlpath_format % [a, b]; end
+    def urlpath(a, b); @urlpath_format % [a, b]; end
   end
 
   class ActionInfo3 < ActionInfo    # :nodoc:
-    def path(a, b, c); @urlpath_format % [a, b, c]; end
+    def urlpath(a, b, c); @urlpath_format % [a, b, c]; end
   end
 
   class ActionInfo4 < ActionInfo    # :nodoc:
-    def path(a, b, c, d); @urlpath_format % [a, b, c, d]; end
+    def urlpath(a, b, c, d); @urlpath_format % [a, b, c, d]; end
   end
 
   ActionInfo::SUBCLASSES << ActionInfo0 << ActionInfo1 << ActionInfo2 << ActionInfo3 << ActionInfo4

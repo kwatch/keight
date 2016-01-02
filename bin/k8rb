@@ -137,8 +137,8 @@ module K8
             o.mkdir("#{project_name}/#{base}", descs[base+"/"])
           elsif File.file?(path)
             content = path =~ /\Astatic\/lib|\.gz\z/  \
-            ? File.read(path, encoding: 'ascii-8bit')  \
-            : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
+                    ? File.read(path, encoding: 'ascii-8bit')  \
+                    : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
             o.mkfile("#{project_name}/#{base}", content, descs[base])
           else
             next

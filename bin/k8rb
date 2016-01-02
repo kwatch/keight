@@ -137,8 +137,8 @@ module K8
             o.mkdir("#{project_name}/#{base}", descs[base+"/"])
           elsif File.file?(path)
             content = path =~ /\Astatic\/lib|\.gz\z/  \
-            ? File.read(path, encoding: 'ascii-8bit')  \
-            : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
+                    ? File.read(path, encoding: 'ascii-8bit')  \
+                    : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
             o.mkfile("#{project_name}/#{base}", content, descs[base])
           else
             next
@@ -150,16 +150,111 @@ module K8
     end
 
     @action.(:mapping, "show action mappings")
-    def do_mapping()
+    @option.("--format={text|json|yaml|javascript|jquery|angular}", "output format")
+    def do_mapping(format: nil)
       ENV['APP_MODE'] ||= 'dev'
       load_config()
       require './config/urlpath_mapping'
-      app = K8::RackApplication.new
-      $urlpath_mapping.each do |urlpath, children|
-        app.mount(urlpath, children)
-      end
-      return app.show_mappings()
+      return \
+        case format
+        when nil         ; _do_mapping_in_text_format()
+        when 'text'      ; _do_mapping_in_text_format()
+        when 'json'      ; _do_mapping_in_json_format()
+        when 'yaml'      ; _do_mapping_in_yaml_format()
+        when 'javascript'; _do_mapping_in_javascript_format(nil)
+        when 'jquery'    ; _do_mapping_in_javascript_format('type')
+        when 'angular'   ; _do_mapping_in_javascript_format('method')
+        else
+          raise OptionError.new("#{format}: expected one of text/json/yaml/javascript/jquery/angular.")
+        end
     end
+
+    private
+
+    def _do_mapping(&block)
+      app = K8::RackApplication.new($urlpath_mapping)
+      app.each_mapping do |urlpath_pat, action_class, action_methods, |
+        yield urlpath_pat, action_class, action_methods
+      end
+    end
+    private :_do_mapping
+
+    def _do_mapping_in_json_format()
+      s = %Q`{ "mappings": [\n`.dup()
+      i = 0
+      _do_mapping do |urlpath_pat, action_class, action_methods|
+        i += 1
+        arr = action_methods.map {|k, v| %Q`"#{k}": "#{v}"` }
+        s << (i == 1 ? '  ' : ', ')
+        s << %Q`{"urlpath": "#{urlpath_pat}"`
+        s << %Q`, "class": \"#{action_class.name}"`
+        s << %Q`, "method": {#{arr.join(', ')}}}\n`
+      end
+      s << "] }\n"
+      return s
+    end
+
+    def _do_mapping_in_yaml_format()
+      s = ""
+      _do_mapping do |urlpath_pat, action_class, action_methods|
+        arr = action_methods.map {|k, v| "#{k}: #{v}" }
+        s << "- urlpath: '#{urlpath_pat}'\n"
+        s << "  class:   #{action_class.name}\n"
+        s << "  method:  {#{arr.join(', ')}}\n"
+        s << "\n"
+      end
+      return s
+    end
+
+    def _do_mapping_in_javascript_format(attr)
+      rexp = K8::ActionMapping::URLPATH_PARAM_REXP
+      defs = {}
+      _do_mapping do |urlpath_pat, action_class, action_methods|
+        (defs[action_class.name] ||= []) << [urlpath_pat, action_methods]
+      end
+      buf = []
+      defs.each do |action_class_name, pairs|
+        if action_class_name =~ /\A\w+\z/
+          buf << "#{action_class_name}:{\n"
+        else
+          buf << "'#{action_class_name}':{\n"
+        end
+        sep = ' '
+        pairs.each do |urlpath_pat, action_methods|
+          args = []; i = 0
+          urlpath_pat.scan(rexp) {|x, _| args << (x.empty? ? "_#{i+=1}" : x) }
+          a = args.dup()
+          js_urlpath = "'" + urlpath_pat.gsub(rexp) {|x, _| "'+#{a.shift}+'" } + "'"
+          js_urlpath.gsub!(/\+''/, '')
+          #
+          action_methods.each do |req_meth, action_method|
+            buf << sep; sep = ','
+            if attr
+              js_code = "return{#{attr}:'#{req_meth}',url:#{js_urlpath}}"
+              buf << "#{action_method}:function(#{args.join(',')}){#{js_code}}\n"
+            else
+              js_code = "function(#{args.join(',')}){return#{js_urlpath}}"
+              buf << "#{action_method}:{method:'#{req_meth}',urlpath:#{js_code}}\n"
+            end
+          end
+        end
+        buf << "},\n"
+      end
+      buf[-1] = "}\n" if buf[-1] == "},\n"
+      return buf.join()
+    end
+
+    def _do_mapping_in_text_format()
+      s = ""
+      _do_mapping do |urlpath_pat, action_class, action_methods|
+        action_methods.each do |req_meth, action_method|
+          s << "%-6s %-30s # %s\#%s\n" % [req_meth, urlpath_pat, action_class.name, action_method]
+        end
+      end
+      return s
+    end
+
+    public
 
     @action.(:configs, "list config keys and values")
     @option.("--getenv", "show actual ENV value")

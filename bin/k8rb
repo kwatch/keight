@@ -157,14 +157,15 @@ module K8
       require './config/urlpath_mapping'
       return \
         case format
-        when nil      ; _do_mapping_in_text_format()
-        when 'text'   ; _do_mapping_in_text_format()
-        when 'json'   ; _do_mapping_in_json_format()
-        when 'yaml'   ; _do_mapping_in_yaml_format()
+        when nil         ; _do_mapping_in_text_format()
+        when 'text'      ; _do_mapping_in_text_format()
+        when 'json'      ; _do_mapping_in_json_format()
+        when 'yaml'      ; _do_mapping_in_yaml_format()
         when 'javascript'; _do_mapping_in_javascript_format(nil)
-        when 'jquery' ; _do_mapping_in_javascript_format('type')
-        when 'angular'; _do_mapping_in_javascript_format('method')
-        else          ; raise OptionError.new("#{format}: expected one of text/json/yaml/javascript/jquery/angular.")
+        when 'jquery'    ; _do_mapping_in_javascript_format('type')
+        when 'angular'   ; _do_mapping_in_javascript_format('method')
+        else
+          raise OptionError.new("#{format}: expected one of text/json/yaml/javascript/jquery/angular.")
         end
     end
 

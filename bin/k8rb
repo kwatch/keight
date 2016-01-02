@@ -164,32 +164,51 @@ module K8
     @option.("--json", "in JSON format")
     @option.("--yaml", "in YAML format")
     def do_mapping(json: false, yaml: false)
-      s = ""
-      s << %Q`{ "mappings": [\n` if json
+      return json ? _do_mapping_in_json_format() \
+           : yaml ? _do_mapping_in_yaml_format() \
+           :        _do_mapping_in_text_format()
+    end
+
+    private
+
+    def _do_mapping_in_json_format()
+      s = %Q`{ "mappings": [\n`.dup()
       i = 0
       _do_mapping do |urlpath_pat, action_class, action_methods|
         i += 1
-        if json
-          arr = action_methods.map {|k, v| %Q`"#{k}": "#{v}"` }
-          s << (i == 1 ? '  ' : ', ')
-          s << %Q`{"urlpath": "#{urlpath_pat}"`
-          s << %Q`, "class": \"#{action_class.name}"`
-          s << %Q`, "method": {#{arr.join(', ')}}}\n`
-        elsif yaml
-          arr = action_methods.map {|k, v| "#{k}: #{v}" }
-          s << "- urlpath: '#{urlpath_pat}'\n"
-          s << "  class:   #{action_class.name}\n"
-          s << "  method:  {#{arr.join(', ')}}\n"
-          s << "\n"
-        else
-          action_methods.each do |req_meth, action_method|
-            s << "%-6s %-30s # %s\#%s\n" % [req_meth, urlpath_pat, action_class.name, action_method]
-          end
-        end
+        arr = action_methods.map {|k, v| %Q`"#{k}": "#{v}"` }
+        s << (i == 1 ? '  ' : ', ')
+        s << %Q`{"urlpath": "#{urlpath_pat}"`
+        s << %Q`, "class": \"#{action_class.name}"`
+        s << %Q`, "method": {#{arr.join(', ')}}}\n`
       end
-      s << "] }\n" if json
+      s << "] }\n"
       return s
     end
+
+    def _do_mapping_in_yaml_format()
+      s = ""
+      _do_mapping do |urlpath_pat, action_class, action_methods|
+        arr = action_methods.map {|k, v| "#{k}: #{v}" }
+        s << "- urlpath: '#{urlpath_pat}'\n"
+        s << "  class:   #{action_class.name}\n"
+        s << "  method:  {#{arr.join(', ')}}\n"
+        s << "\n"
+      end
+      return s
+    end
+
+    def _do_mapping_in_text_format()
+      s = ""
+      _do_mapping do |urlpath_pat, action_class, action_methods|
+        action_methods.each do |req_meth, action_method|
+          s << "%-6s %-30s # %s\#%s\n" % [req_meth, urlpath_pat, action_class.name, action_method]
+        end
+      end
+      return s
+    end
+
+    public
 
     @action.(:configs, "list config keys and values")
     @option.("--getenv", "show actual ENV value")

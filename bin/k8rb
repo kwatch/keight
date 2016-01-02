@@ -368,6 +368,7 @@ module K8
     @option.("-d, --basedir=DIR", "base directory (default: 'static/lib')")
     def do_cdnjs(library=nil, version=nil, basedir: nil)
       require 'open-uri'
+      require 'fileutils'
       library.nil? || library =~ /\A\*?[-.\w]+\*?\z/  or
         raise OptionError.new("#{library}: invalid library name.")
       version.nil? || version =~ /\A\d+(\.\d+)+[-.\w]+\z/  or
@@ -413,15 +414,11 @@ module K8
           $stderr.puts "#{library} #{version}: no files (GET #{url})."
           return 1
         end
-        ["#{basedir}/#{library}", "#{basedir}/#{library}/#{version}"].each do |x|
-          Dir.mkdir(x) unless File.directory?(x)
-        end
         baseurl = "https://cdnjs.cloudflare.com/ajax/libs"
         filenames.each do |filename|
           fileurl  = "#{baseurl}/#{library}/#{version}/#{filename}"
           filepath = "#{basedir}/#{library}/#{version}/#{filename}"
-          dir = File.dirname(filepath)
-          Dir.mkdir(dir) unless File.exist?(dir)
+          FileUtils.mkdir_p(File.dirname(filepath))
           print filepath, ' '
           content = open(fileurl) {|f| f.read }
           File.open(filepath, 'w') {|f| f.write(content) }

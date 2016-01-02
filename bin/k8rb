@@ -149,14 +149,21 @@ module K8
       0
     end
 
-    @action.(:mapping, "show action mappings")
-    def do_mapping()
+    def _do_mapping(&block)
       ENV['APP_MODE'] ||= 'dev'
       load_config()
       require './config/urlpath_mapping'
       app = K8::RackApplication.new($urlpath_mapping)
-      s = ""
       app.each_mapping do |urlpath_pat, action_class, action_methods, |
+        yield urlpath_pat, action_class, action_methods
+      end
+    end
+    private :_do_mapping
+
+    @action.(:mapping, "show action mappings")
+    def do_mapping()
+      s = ""
+      _do_mapping do |urlpath_pat, action_class, action_methods|
         action_methods.each do |req_meth, action_method|
           s << "%-6s %-30s # %s\#%s\n" % [req_meth, urlpath_pat, action_class.name, action_method]
         end

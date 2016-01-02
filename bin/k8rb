@@ -161,11 +161,21 @@ module K8
     private :_do_mapping
 
     @action.(:mapping, "show action mappings")
+    @option.("--json", "in JSON format")
     @option.("--yaml", "in YAML format")
-    def do_mapping(yaml: false)
+    def do_mapping(json: false, yaml: false)
       s = ""
+      s << %Q`{ "mappings": [\n` if json
+      i = 0
       _do_mapping do |urlpath_pat, action_class, action_methods|
-        if yaml
+        i += 1
+        if json
+          arr = action_methods.map {|k, v| %Q`"#{k}": "#{v}"` }
+          s << (i == 1 ? '  ' : ', ')
+          s << %Q`{"urlpath": "#{urlpath_pat}"`
+          s << %Q`, "class": \"#{action_class.name}"`
+          s << %Q`, "method": {#{arr.join(', ')}}}\n`
+        elsif yaml
           arr = action_methods.map {|k, v| "#{k}: #{v}" }
           s << "- urlpath: '#{urlpath_pat}'\n"
           s << "  class:   #{action_class.name}\n"
@@ -177,6 +187,7 @@ module K8
           end
         end
       end
+      s << "] }\n" if json
       return s
     end
 

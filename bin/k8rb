@@ -154,10 +154,7 @@ module K8
       ENV['APP_MODE'] ||= 'dev'
       load_config()
       require './config/urlpath_mapping'
-      app = K8::RackApplication.new
-      $urlpath_mapping.each do |urlpath, children|
-        app.mount(urlpath, children)
-      end
+      app = K8::RackApplication.new($urlpath_mapping)
       return app.show_mappings()
     end
 

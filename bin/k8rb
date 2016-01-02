@@ -150,7 +150,7 @@ module K8
     end
 
     @action.(:mapping, "show action mappings")
-    @option.("--format={text|json|yaml|js|jquery|angular}", "output format")
+    @option.("--format={text|json|yaml|javascript|jquery|angular}", "output format")
     def do_mapping(format: nil)
       ENV['APP_MODE'] ||= 'dev'
       load_config()
@@ -161,10 +161,10 @@ module K8
         when 'text'   ; _do_mapping_in_text_format()
         when 'json'   ; _do_mapping_in_json_format()
         when 'yaml'   ; _do_mapping_in_yaml_format()
-        when 'js'     ; _do_mapping_in_javascript_format(nil)
+        when 'javascript'; _do_mapping_in_javascript_format(nil)
         when 'jquery' ; _do_mapping_in_javascript_format('type')
         when 'angular'; _do_mapping_in_javascript_format('method')
-        else          ; raise OptionError.new("#{format}: expected one of text/json/yaml/js/jquery/angular.")
+        else          ; raise OptionError.new("#{format}: expected one of text/json/yaml/javascript/jquery/angular.")
         end
     end
 

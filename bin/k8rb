@@ -161,18 +161,18 @@ module K8
     private :_do_mapping
 
     @action.(:mapping, "show action mappings")
-    @option.("--json", "in JSON format")
-    @option.("--yaml", "in YAML format")
-    @option.("--js",   "for JavaScript")
-    @option.("--jquery", "for jQuery.ajax()")
-    @option.("--angular", "for AngularJS")
-    def do_mapping(json: false, yaml: false, js: false, jquery: false, angular: false)
-      return json ? _do_mapping_in_json_format() \
-           : yaml ? _do_mapping_in_yaml_format() \
-           : js   ? _do_mapping_in_javascript_format(nil) \
-           : jquery ? _do_mapping_in_javascript_format('type') \
-           : angular ? _do_mapping_in_javascript_format('method') \
-           :        _do_mapping_in_text_format()
+    @option.("--format={json|yaml|js|jquery|angular}", "output format")
+    def do_mapping(format: nil)
+      return \
+        case format
+        when nil      ; _do_mapping_in_text_format()
+        when 'json'   ; _do_mapping_in_json_format()
+        when 'yaml'   ; _do_mapping_in_yaml_format()
+        when 'js'     ; _do_mapping_in_javascript_format(nil)
+        when 'jquery' ; _do_mapping_in_javascript_format('type')
+        when 'angular'; _do_mapping_in_javascript_format('method')
+        else          ; raise OptionError.new("#{format}: expected one of json/yaml/js/jquery/angular.")
+        end
     end
 
     private

@@ -149,20 +149,12 @@ module K8
       0
     end
 
-    def _do_mapping(&block)
-      ENV['APP_MODE'] ||= 'dev'
-      load_config()
-      require './config/urlpath_mapping'
-      app = K8::RackApplication.new($urlpath_mapping)
-      app.each_mapping do |urlpath_pat, action_class, action_methods, |
-        yield urlpath_pat, action_class, action_methods
-      end
-    end
-    private :_do_mapping
-
     @action.(:mapping, "show action mappings")
     @option.("--format={json|yaml|js|jquery|angular}", "output format")
     def do_mapping(format: nil)
+      ENV['APP_MODE'] ||= 'dev'
+      load_config()
+      require './config/urlpath_mapping'
       return \
         case format
         when nil      ; _do_mapping_in_text_format()
@@ -176,6 +168,14 @@ module K8
     end
 
     private
+
+    def _do_mapping(&block)
+      app = K8::RackApplication.new($urlpath_mapping)
+      app.each_mapping do |urlpath_pat, action_class, action_methods, |
+        yield urlpath_pat, action_class, action_methods
+      end
+    end
+    private :_do_mapping
 
     def _do_mapping_in_json_format()
       s = %Q`{ "mappings": [\n`.dup()

@@ -20,15 +20,16 @@ module K8
     @__current = nil
     @__actions = []
 
-    @action = proc do |action_name, desc|
+    @action = proc do |action_name, desc, dict|
       options = []
       method_name = nil
-      tuple = [action_name, desc, options, method_name]
+      (dict ||= {})[:desc] = desc
+      tuple = [action_name, dict, options, method_name]
       @__current = tuple
       @__actions << tuple
     end
 
-    @option = proc do |optdef_str, desc|
+    @option = proc do |optdef_str, desc, opts|
       tuple = @__current  or
         raise "@option.() is called without @action.()"
       tuple[2] << [optdef_str, desc]
@@ -70,7 +71,8 @@ module K8
         sb <<   "  #{script} ACTION [..OPTIONS..]"
         sb <<   ""
         sb <<   "Actions:"
-        self.class.each_action do |action_name, desc, options, _|
+        self.class.each_action do |action_name, dict, options, _|
+          desc = dict[:desc]
           next unless desc
           help = desc.lines.first.chomp()
           sb << "  #{script} %-15s # #{help}" % [action_name, help]
@@ -80,7 +82,7 @@ module K8
       else
         tuple = self.class.find_action(action_name)  or
           raise K8::OptionError.new("help #{action_name}: no such action.")
-        action_name, desc, options, method_name = tuple
+        action_name, dict, options, method_name = tuple
         pnames = self.method(method_name).parameters.collect {|kind, pname|
           case kind
           when :req  ;  pname
@@ -93,7 +95,7 @@ module K8
         }.compact()
         pnames.unshift('') unless pnames.empty?
         argstr = pnames.join(' ')
-        sb <<   "#{script} #{action_name}  - #{desc}"
+        sb <<   "#{script} #{action_name}  - #{dict[:desc]}"
         sb <<   ""
         sb <<   "Usage:"
         if options.empty?
@@ -106,6 +108,11 @@ module K8
             optstr = optdef_str.sub(/\A\s*--/, '    --').sub(/\s+\#\w+\s*\z/, '')
             sb << "  %-20s # %s" % [optstr, optdesc] if optdesc
           end
+        end
+        if dict[:example]
+          sb << ""
+          sb << "Examples:"
+          sb << dict[:example].gsub(/%SCRIPT%/, script)
         end
       end
       sb << ""

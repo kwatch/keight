@@ -435,7 +435,9 @@ module K8
         FileUtils.mkdir_p(File.dirname(filepath))
         print filepath, ' '
         content = open(fileurl) {|f| f.read }
-        File.open(filepath, 'w') {|f| f.write(content) }
+        if _file_changed(filepath, content)
+          File.open(filepath, 'w') {|f| f.write(content) }
+        end
         puts "(#{_bytesize(content)} byte)"
       end
       return 0
@@ -447,6 +449,12 @@ module K8
       else
         return version_str
       end
+    end
+
+    def _file_changed(filepath, expected)
+      return true unless File.exist?(filepath)
+      actual = File.read(filepath, encoding: expected.encoding)
+      return actual != expected
     end
 
     def _bytesize(string)

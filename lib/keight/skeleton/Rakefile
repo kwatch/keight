@@ -53,10 +53,13 @@ task :server do |t|
 end
 
 
+desc "install gems and download libs"
+task :setup => ['setup:gems', 'setup:static']
+
 namespace :setup do
 
   desc "install required libraries"
-  task :install do |t|
+  task :gems do |t|
     gem_home_required()
     run "gem install bundler"
     puts ""

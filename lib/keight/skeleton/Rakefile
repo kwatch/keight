@@ -46,6 +46,13 @@ END
 end
 
 
+desc "start server process"
+task :server do |t|
+  port = ENV['port'] || ENV['PORT'] || 8000
+  run "rackup -p #{port} -E production -s puma config.ru"
+end
+
+
 namespace :setup do
 
   desc "install required libraries"

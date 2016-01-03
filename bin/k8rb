@@ -382,31 +382,7 @@ module K8
         return _cdnjs_find(library)
       ## download files
       else
-        basedir ||= "static/lib"
-        File.exist?(basedir)  or
-          raise OptionError.new("#{basedir}: directory not exist.")
-        File.directory?(basedir)  or
-          raise OptionError.new("#{basedir}: not a directory.")
-        url = "https://cdnjs.com/libraries/#{library}/#{version}"
-        rexp = %r">https://cdnjs\.cloudflare\.com/ajax/libs/#{library}/#{Regexp.escape(version)}/([-.\w]+(?:\&\#x2F;[-.\w]+)*)<"
-        filenames = open(url) {|f|
-          f.collect {|s| $1.gsub(/\&\#x2F;/, '/') if s =~ rexp }.compact()
-        }
-        if filenames.empty?
-          $stderr.puts "#{library} #{version}: no files (GET #{url})."
-          return 1
-        end
-        baseurl = "https://cdnjs.cloudflare.com/ajax/libs"
-        filenames.each do |filename|
-          fileurl  = "#{baseurl}/#{library}/#{version}/#{filename}"
-          filepath = "#{basedir}/#{library}/#{version}/#{filename}"
-          FileUtils.mkdir_p(File.dirname(filepath))
-          print filepath, ' '
-          content = open(fileurl) {|f| f.read }
-          File.open(filepath, 'w') {|f| f.write(content) }
-          puts "(#{_bytesize(content)} byte)"
-        end
-        return 0
+        return _cdnjs_download(library, version, basedir)
       end
     end
 
@@ -435,6 +411,34 @@ module K8
         return 1
       end
       return (versions << "").join("\n")
+    end
+
+    def _cdnjs_download(library, version, basedir=nil)
+      basedir ||= "static/lib"
+      File.exist?(basedir)  or
+        raise OptionError.new("#{basedir}: directory not exist.")
+      File.directory?(basedir)  or
+        raise OptionError.new("#{basedir}: not a directory.")
+      url = "https://cdnjs.com/libraries/#{library}/#{version}"
+      rexp = %r">https://cdnjs\.cloudflare\.com/ajax/libs/#{library}/#{Regexp.escape(version)}/([-.\w]+(?:\&\#x2F;[-.\w]+)*)<"
+      filenames = open(url) {|f|
+        f.collect {|s| $1.gsub(/\&\#x2F;/, '/') if s =~ rexp }.compact()
+      }
+      if filenames.empty?
+        $stderr.puts "#{library} #{version}: no files (GET #{url})."
+        return 1
+      end
+      baseurl = "https://cdnjs.cloudflare.com/ajax/libs"
+      filenames.each do |filename|
+        fileurl  = "#{baseurl}/#{library}/#{version}/#{filename}"
+        filepath = "#{basedir}/#{library}/#{version}/#{filename}"
+        FileUtils.mkdir_p(File.dirname(filepath))
+        print filepath, ' '
+        content = open(fileurl) {|f| f.read }
+        File.open(filepath, 'w') {|f| f.write(content) }
+        puts "(#{_bytesize(content)} byte)"
+      end
+      return 0
     end
 
     def _normalized_version(version_str)

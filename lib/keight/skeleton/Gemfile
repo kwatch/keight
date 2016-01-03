@@ -12,9 +12,9 @@
 
 source 'https://rubygems.org'
 
-gem 'rack'
-gem 'rack-test_app'
-gem 'keight'
-gem 'baby_erubis'
-gem 'minitest'
-gem 'minitest-ok'
+gem 'rack'                , '~> 1.6'
+gem 'rack-test_app'       , '~> 1.0'
+gem 'keight'              , '~> 0.2'
+gem 'baby_erubis'         , '~> 2.1.1'
+gem 'minitest'            , '~> 5.4'
+gem 'minitest-ok'         , '~> 0.1'

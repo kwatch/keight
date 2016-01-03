@@ -376,17 +376,7 @@ module K8
         raise OptionError.new("#{version}: version number expected.")
       ## list or search libraries
       if library.nil? || library.start_with?('*') || library.end_with?('*')
-        url  = "https://cdnjs.com/libraries"
-        rexp = %r'href="/libraries/([-.\w]+)"'
-        libs = open(url) {|f|
-          #f.grep(rexp) { $1 }  # not work
-          f.collect {|s| $1 if s =~ rexp }.compact.sort.uniq
-        }
-        if library
-          libs = libs.select {|s| s.end_with?(library[1..-1]) } if library.start_with?('*')
-          libs = libs.select {|s| s.start_with?(library[0..-2]) } if library.end_with?('*')
-        end
-        return (libs << "").join("\n")
+        return _cdnjs_list(library)
       ## list versions
       elsif version.nil?
         url = "https://cdnjs.com/libraries/#{library}"
@@ -427,6 +417,20 @@ module K8
         end
         return 0
       end
+    end
+
+    def _cdnjs_list(library)
+      url  = "https://cdnjs.com/libraries"
+      rexp = %r'href="/libraries/([-.\w]+)"'
+      libs = open(url) {|f|
+        #f.grep(rexp) { $1 }  # not work
+        f.collect {|s| $1 if s =~ rexp }.compact.sort.uniq
+      }
+      if library
+        libs = libs.select {|s| s.end_with?(library[1..-1]) } if library.start_with?('*')
+        libs = libs.select {|s| s.start_with?(library[0..-2]) } if library.end_with?('*')
+      end
+      return (libs << "").join("\n")
     end
 
     def _normalized_version(version_str)

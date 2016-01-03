@@ -437,8 +437,11 @@ module K8
         content = open(fileurl) {|f| f.read }
         if _file_changed(filepath, content)
           File.open(filepath, 'w') {|f| f.write(content) }
+          s = ""
+        else
+          s = " (not changed)"
         end
-        puts "(#{_bytesize(content)} byte)"
+        puts "(#{_bytesize(content)} byte)#{s}"
       end
       return 0
     end

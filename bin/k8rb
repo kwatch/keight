@@ -120,9 +120,10 @@ module K8
       return sb.join("\n")
     end
 
-    @action.(:init, "create project files")
+    @action.(:project, "create project files")
     @option.("-s, --skeleton=DIR", "directory of skeleton files")
-    def do_init(project_name, dir: nil)
+    def do_project(name, dir: nil)
+      project_name = name
       dir ||= K8::FILEPATH.sub(/\.rb\z/, '') + "/skeleton"
       if dir
         File.directory?(dir)  or

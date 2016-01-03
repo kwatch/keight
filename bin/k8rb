@@ -8,8 +8,6 @@
 ###
 
 
-require 'digest/sha1'
-
 require 'keight'
 require 'baby_erubis'
 
@@ -22,15 +20,16 @@ module K8
     @__current = nil
     @__actions = []
 
-    @action = proc do |action_name, desc|
+    @action = proc do |action_name, desc, dict|
       options = []
       method_name = nil
-      tuple = [action_name, desc, options, method_name]
+      (dict ||= {})[:desc] = desc
+      tuple = [action_name, dict, options, method_name]
       @__current = tuple
       @__actions << tuple
     end
 
-    @option = proc do |optdef_str, desc|
+    @option = proc do |optdef_str, desc, opts|
       tuple = @__current  or
         raise "@option.() is called without @action.()"
       tuple[2] << [optdef_str, desc]
@@ -72,7 +71,8 @@ module K8
         sb <<   "  #{script} ACTION [..OPTIONS..]"
         sb <<   ""
         sb <<   "Actions:"
-        self.class.each_action do |action_name, desc, options, _|
+        self.class.each_action do |action_name, dict, options, _|
+          desc = dict[:desc]
           next unless desc
           help = desc.lines.first.chomp()
           sb << "  #{script} %-15s # #{help}" % [action_name, help]
@@ -82,7 +82,7 @@ module K8
       else
         tuple = self.class.find_action(action_name)  or
           raise K8::OptionError.new("help #{action_name}: no such action.")
-        action_name, desc, options, method_name = tuple
+        action_name, dict, options, method_name = tuple
         pnames = self.method(method_name).parameters.collect {|kind, pname|
           case kind
           when :req  ;  pname
@@ -95,7 +95,7 @@ module K8
         }.compact()
         pnames.unshift('') unless pnames.empty?
         argstr = pnames.join(' ')
-        sb <<   "#{script} #{action_name}  - #{desc}"
+        sb <<   "#{script} #{action_name}  - #{dict[:desc]}"
         sb <<   ""
         sb <<   "Usage:"
         if options.empty?
@@ -108,6 +108,11 @@ module K8
             optstr = optdef_str.sub(/\A\s*--/, '    --').sub(/\s+\#\w+\s*\z/, '')
             sb << "  %-20s # %s" % [optstr, optdesc] if optdesc
           end
+        end
+        if dict[:example]
+          sb << ""
+          sb << "Examples:"
+          sb << dict[:example].gsub(/%SCRIPT%/, script)
         end
       end
       sb << ""
@@ -144,10 +149,29 @@ module K8
             next
           end
         end
+        #
+        _download_necessary_libraries(project_name)
+        #
         return
       end
       0
     end
+
+    def _download_necessary_libraries(project_name)
+      puts ""
+      Dir.chdir(project_name) do
+        puts "$ cd #{project_name}"
+        rexp = /%>\/(jquery|modernizr)\/(\d+\.\d+\.\d+)/
+        File.open("app/template/_layout.html.eruby") {|f|
+          f.collect {|line| [$1, $2] if line =~ rexp }.compact()
+        }.each do |library, version|
+          puts "$ #{@script_name} cdnjs #{library} #{version}"
+          do_cdnjs(library, version)
+        end
+        puts "$ cd -"
+      end
+    end
+    private :_download_necessary_libraries
 
     @action.(:mapping, "show action mappings")
     @option.("--format={text|json|yaml|javascript|jquery|angular}", "output format")
@@ -339,6 +363,82 @@ module K8
       end
     end
     private :__var_dump
+
+    @action.(:cdnjs, "search or download libraries from cdnjs.com")
+    @option.("-d, --basedir=DIR", "base directory (default: 'static/lib')")
+    def do_cdnjs(library=nil, version=nil, basedir: nil)
+      require 'open-uri'
+      require 'fileutils'
+      library.nil? || library =~ /\A\*?[-.\w]+\*?\z/  or
+        raise OptionError.new("#{library}: invalid library name.")
+      version.nil? || version =~ /\A\d+(\.\d+)+[-.\w]+\z/  or
+        raise OptionError.new("#{version}: version number expected.")
+      ## list or search libraries
+      if library.nil? || library.start_with?('*') || library.end_with?('*')
+        url  = "https://cdnjs.com/libraries"
+        rexp = %r'href="/libraries/([-.\w]+)"'
+        libs = open(url) {|f|
+          #f.grep(rexp) { $1 }  # not work
+          f.collect {|s| $1 if s =~ rexp }.compact.sort.uniq
+        }
+        if library
+          libs = libs.select {|s| s.end_with?(library[1..-1]) } if library.start_with?('*')
+          libs = libs.select {|s| s.start_with?(library[0..-2]) } if library.end_with?('*')
+        end
+        return (libs << "").join("\n")
+      ## list versions
+      elsif version.nil?
+        url = "https://cdnjs.com/libraries/#{library}"
+        rexp = %r'<option value="(.*?)".*?>\1</option>'
+        versions = open(url) {|f|
+          f.collect {|s| $1 if s =~ rexp }.compact()
+        }.sort_by {|verstr| _normalized_version(verstr) }
+        if versions.empty?
+          $stderr.puts "#{library}: no such library (GET #{url})."
+          return 1
+        end
+        return (versions << "").join("\n")
+      ## download files
+      else
+        basedir ||= "static/lib"
+        File.exist?(basedir)  or
+          raise OptionError.new("#{basedir}: directory not exist.")
+        File.directory?(basedir)  or
+          raise OptionError.new("#{basedir}: not a directory.")
+        url = "https://cdnjs.com/libraries/#{library}/#{version}"
+        rexp = %r">https://cdnjs\.cloudflare\.com/ajax/libs/#{library}/#{Regexp.escape(version)}/([-.\w]+(?:\&\#x2F;[-.\w]+)*)<"
+        filenames = open(url) {|f|
+          f.collect {|s| $1.gsub(/\&\#x2F;/, '/') if s =~ rexp }.compact()
+        }
+        if filenames.empty?
+          $stderr.puts "#{library} #{version}: no files (GET #{url})."
+          return 1
+        end
+        baseurl = "https://cdnjs.cloudflare.com/ajax/libs"
+        filenames.each do |filename|
+          fileurl  = "#{baseurl}/#{library}/#{version}/#{filename}"
+          filepath = "#{basedir}/#{library}/#{version}/#{filename}"
+          FileUtils.mkdir_p(File.dirname(filepath))
+          print filepath, ' '
+          content = open(fileurl) {|f| f.read }
+          File.open(filepath, 'w') {|f| f.write(content) }
+          puts "(#{_bytesize(content)} byte)"
+        end
+        return 0
+      end
+    end
+
+    def _normalized_version(version_str)
+      if version_str =~ /\A(\d+(?:\.\d+)*)(.*)/
+        return $1.split('.').map {|n| "%05d" % n.to_i }.join('.') + $2
+      else
+        return version_str
+      end
+    end
+
+    def _bytesize(string)
+      return string.bytesize.to_s.reverse.gsub(/(...)/, '\1,').sub(/,\z/, '').reverse
+    end
 
 
     if ENV['DEBUG']

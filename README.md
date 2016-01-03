@@ -18,15 +18,15 @@ Benchmarks
 
 Measured with `app.call(env)` style in order to exclude server overhead:
 
-| FW      | Request            | sec/1000req | req/sec  |
-|:--------|:-------------------|------------:|---------:|
-| Rails   | GET /api/hello     |      7.5188 |    133.0 |
-| Rails   | GET /api/hello/123 |      8.0030 |    125.0 |
-| Sinatra | GET /api/hello     |      1.5034 |    665.2 |
-| Sinatra | GET /api/hello/123 |      1.6328 |    612.4 |
-| Rack    | GET /api/hello     |      0.0789 |  12674.3 |
-| Keight  | GET /api/hello     |      0.0773 |  12936.6 |
-| Keight  | GET /api/hello/123 |      0.1385 |   7220.2 |
+| Framework | Request            | usec/req | req/sec  |
+|:----------|:-------------------|---------:|---------:|
+| Rails     | GET /api/hello     |    738.7 |   1353.7 |
+| Rails     | GET /api/hello/123 |    782.2 |   1278.4 |
+| Sinatra   | GET /api/hello     |    144.1 |   6938.3 |
+| Sinatra   | GET /api/hello/123 |    158.4 |   6313.8 |
+| Rack      | GET /api/hello     |      9.9 | 101050.9 |
+| Keight    | GET /api/hello     |      7.6 | 132432.8 |
+| Keight    | GET /api/hello/123 |     10.6 |  94705.9 |
 
 * Ruby     2.2.3
 * Rails    4.2.4
@@ -48,7 +48,7 @@ $ export GEM_HOME=$PWD/gems
 $ export PATH=$GEM_HOME/bin:$PATH
 
 $ gem install keight
-$ vi hello.rb
+$ vi hello.rb      # see below
 $ vi config.ru     # != 'config.rb'
 $ rackup -p 8000 config.ru
 ```
@@ -81,38 +81,45 @@ class HelloAction < K8::Action
 end
 ```
 
-config.rb:
+config.ru:
 
 ```ruby
 # -*- coding: utf-8 -*-
 require 'keight'
 require './hello'
 
-app = K8::RackApplication.new()
-app.mount '/hello', HelloAction
-
-### or
-#mapping = [
-#  ['/api', [
-#    ['/hello'         , "./hello:HelloAction"],
-#  ]],
-#]
-#app = K8::RackApplication.new(mapping)
+mapping = [
+  ['/api', [
+    ['/hello'     , HelloAction],
+    ## or
+    #['/hello'    , "./hello:HelloAction"],
+  ]],
+]
+app = K8::RackApplication.new(mapping)
 
 run app
 ```
 
-Open http://localhost:8000/hello or http://localhost:8000/hello/123
+Open http://localhost:8000/api/hello or http://localhost:8000/api/hello/123
 with your browser.
 
 Do you like it? If so, try `k8rb init myapp1` to generate project skeleton.
 
 ```console
-$ k8rb init myapp1
+$ mkdir gems                         # if necessary
+$ export GEM_HOME=$PWD/gems          # if necessary
+$ export PATH=$GEM_HOME/bin:$PATH    # if necessary
+$ gem install -N keight
+$ k8rb help                          # show help
+$ k8rb init myapp1                   # create new project
 $ cd myapp1/
+$ gem install -N bundler             # if necessary
+$ bundler install
 $ export APP_ENV=dev    # 'dev', 'prod', or 'stg'
-$ k8rb mapping
-$ k8rb configs
+$ k8rb help mapping
+$ k8rb mapping                       # list urlpath mappings
+$ k8rb mapping --format=javascript   # or jquery,angular,json,yaml
+$ k8rb configs                       # list config parameters
 $ rackup -p 8000 -E production config.ru
 $ open http://127.0.0.1:8000/
 $ ab -n 1000 -c 10 http://127.0.0.1:8000/api/hello
@@ -132,7 +139,7 @@ require 'keight'
 class HelloAction < K8::Action
 
   ## mapping
-  mapping '',    :GET=>:do_hello_world
+  mapping '',                    :GET=>:do_hello_world
   mapping '/{name:[a-zA-Z]+}',   :GET=>:do_hello
 
   ## request, response, and helpers
@@ -199,7 +206,7 @@ class HelloAction < K8::Action
   end
 
   def handle_exception(ex)   # exception handler
-    meth = "on_#{ex.class}"
+    meth = "error_#{ex.class.name}"
     return __send__(meth, ex) if respond_to?(meth)
     super
   end
@@ -230,9 +237,141 @@ app = K8::RackApplication.new(urlpath_mapping, opts)
 
 ## misc
 p HelloAction[:do_update].method        #=> :GET
-p HelloAction[:do_update].urlpath(123)  #=> '/api/books/123'
+p HelloAction[:do_update].urlpath(123)  #=> "/api/books/123"
 p HelloAction[:do_update].form_action_attr(123)
-                                        #=> '/api/books/123?_method=PUT'
+                                        #=> "/api/books/123?_method=PUT"
+```
+
+
+Topics
+------
+
+
+### Make Routing More Faster
+
+Specify `urlpath_cache_size: n` (where n is 100 or so) to
+`K8::RackApplication.new()`.
+
+```ruby
+urlpath_mapping = [
+  ....
+]
+rack_app = K8::RackApplication.new(urlpath_mapping,
+                                   urlpath_cache_size: 100)  # !!!
+```
+
+In general, there are two type of URL path pattern: fixed and variable.
+
+* Fixed URL path pattern doesn't contain any URL path parameter.<br>
+  Example: `/`, `/api/books`, `/api/books/new`.
+* Variable URL path pattern contains one or more URL path parameters.<br>
+  Example: `/api/books/{id}`, `/api/books/new.{format:html|json}`.
+
+Keight.rb caches fixed patterns and doesn't variable ones, therefore
+routing for fixed URL path is faster than variable one.
+
+If `urlpath_cache_size: n` is specified, Keight.rb caches latest `n` entries
+of request path matched to variable URL path pattern.
+This will make routing for variable one much faster.
+
+
+### Default Pattern of URL Path Parameter
+
+URL path parameter `{id}` and `{xxx_id}` are regarded as `{id:\d+}` and
+`{xxx_id:\d+}` respectively and converted into positive interger automatically.
+For example:
+
+```ruby
+class BooksAction < K8::Action
+  mapping '/{id}', :GET=>:do_show
+  def do_show(id)
+    p id.class    #=> Fixnum
+    ....
+  end
+end
+```
+
+URL path parameter `{date}` and `{xxx_date}` are regarded as
+`{date:\d\d\d\d-\d\d-\d\d}` and `{xxx_date:\d\d\d\d-\d\d-\d\d}` respectively
+and converted into Date object automatically.
+For example:
+
+```ruby
+class BlogAPI < K8::Action
+  mapping '/{date}', :GET=>:list_entries
+  def list_entries(date)
+    p date.class    #=> Date
+    ....
+  end
+end
+```
+
+**If you specify `{id:\d+}` or `{date:\d\d\d\d-\d\d-\d\d}` explicitly,
+URL path parameter value is not converted into integer nor Date object.**
+In other words, you can cancel automatic conversion by specifing regular
+expression of URL path parameters.
+
+
+### Nested Routing
+
+```ruby
+urlpath_mapping = [
+    ['/api', [
+        ['/books'                      , BookAPI],
+        ['/books/{book_id}/comments'   , BookCommentsAPI],
+    ]],
+]
+```
+
+
+### URL Path Helpers
+
+```ruby
+p BooksAPI[:do_index].method          #=> :GET
+p BooksAPI[:do_index].urlpath()       #=> "/api/books"
+
+p BooksAPI[:do_update].method         #=> :PUT
+p BooksAPI[:do_update].urlpath(123)   #=> "/api/books/123"
+p BooksAPI[:do_update].form_action_attr(123)   #=> "/api/books/123?_method=PUT"
+```
+
+(Notice that these are availabe after `K8::RackApplication` object is created.)
+
+
+### Routing for JavaScript
+
+Keight.rb can generate JavaScript routing file.
+
+```console
+$ k8rb init myapp1
+$ cd myapp1/
+$ k8rb mapping --format=javascript | less  # or 'jquery', 'angular'
+$ mkdir -p static/js
+$ jsfile=static/js/urlpath_mapping.js
+$ rm -f $jsfile
+$ echo 'var Mapping = {'           >> $jsfile
+$ k8rb mapping --format=javascript >> $jsfile
+$ echo '};'                        >> $jsfile
+```
+
+
+### Download JavaScript Libraries
+
+Keight.rb can download Javascript or CSS libraries from [cdnjs.com].
+It is good idea to make layout of JavaScript libraries to be same as CDN.
+
+[cdnjs.com]: https://cdnjs.com/
+
+```console
+$ k8rb init myapp1
+$ cd myapp1/
+$ k8rb help cdnjs
+$ k8rb cdnjs                 # list libraries
+$ k8rb cdnjs 'jquery*'       # search libraries
+$ k8rb cdnjs jquery          # list versions
+$ k8rb cdnjs jquery 2.1.4    # download library
+## or
+$ k8rb cdnjs --basedir=static/lib jquery 2.1.4
 ```
 
 
@@ -264,21 +403,6 @@ Try `k8rb init myapp1; cd myapp1; less config.ru`.
 #### Can I use Rack::Request and Rack::Response instead of Keight's?
 
 Try `K8::REQUEST_CLASS = Rack::Request; K8::RESPONSE_CLASS = Rack::Response`.
-
-
-#### What `urlpath_cache_size: 0` means?
-
-`K8::RackApplication` can take `urlpath_cache_size: n` keyword arugment.
-
-* If `n == 0` then Keight.rb doesn't cache urlpath mapping containig
-  urlpath parameters such as `/api/books/{id}`.
-* If `n > 0` then Keight.rb caches latest `n` entries of urlpath mapping
-  containing urlpath parameters.
-* Keight.rb always caches urlpath mapping which has no urlpath parameters.
-  For example, `/api/books` is always cached regardless
-  `urlpath_cache_size:` value.
-
-If you need more performance, try `urlpath_cache_size: 1000` or so.
 
 
 License and Copyright

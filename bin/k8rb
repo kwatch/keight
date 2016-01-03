@@ -151,28 +151,22 @@ module K8
           end
         end
         #
-        _download_necessary_libraries(project_name)
-        #
-        return
+        msg = <<-END
+
+        ##
+        ## File copied.
+        ## Please run 'rake setup' in '#{project_name}' directory, for example:
+        ##
+        ##    $ cd #{project_name}
+        ##    $ rake setup
+        ##    $ rake server port=8000
+        ##    $ open http://localhost:8000/
+        ##
+        END
+        return msg.gsub(/^        /, '')
       end
       0
     end
-
-    def _download_necessary_libraries(project_name)
-      puts ""
-      Dir.chdir(project_name) do
-        puts "$ cd #{project_name}"
-        rexp = /%>\/(jquery|modernizr)\/(\d+\.\d+\.\d+)/
-        File.open("app/template/_layout.html.eruby") {|f|
-          f.collect {|line| [$1, $2] if line =~ rexp }.compact()
-        }.each do |library, version|
-          puts "$ #{@script_name} cdnjs #{library} #{version}"
-          do_cdnjs(library, version)
-        end
-        puts "$ cd -"
-      end
-    end
-    private :_download_necessary_libraries
 
     @action.(:mapping, "show action mappings")
     @option.("--format={text|json|yaml|javascript|jquery|angular}", "output format")

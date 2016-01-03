@@ -379,16 +379,7 @@ module K8
         return _cdnjs_list(library)
       ## list versions
       elsif version.nil?
-        url = "https://cdnjs.com/libraries/#{library}"
-        rexp = %r'<option value="(.*?)".*?>\1</option>'
-        versions = open(url) {|f|
-          f.collect {|s| $1 if s =~ rexp }.compact()
-        }.sort_by {|verstr| _normalized_version(verstr) }
-        if versions.empty?
-          $stderr.puts "#{library}: no such library (GET #{url})."
-          return 1
-        end
-        return (versions << "").join("\n")
+        return _cdnjs_find(library)
       ## download files
       else
         basedir ||= "static/lib"
@@ -431,6 +422,19 @@ module K8
         libs = libs.select {|s| s.start_with?(library[0..-2]) } if library.end_with?('*')
       end
       return (libs << "").join("\n")
+    end
+
+    def _cdnjs_find(library)
+      url = "https://cdnjs.com/libraries/#{library}"
+      rexp = %r'<option value="(.*?)".*?>\1</option>'
+      versions = open(url) {|f|
+        f.collect {|s| $1 if s =~ rexp }.compact()
+      }.sort_by {|verstr| _normalized_version(verstr) }
+      if versions.empty?
+        $stderr.puts "#{library}: no such library (GET #{url})."
+        return 1
+      end
+      return (versions << "").join("\n")
     end
 
     def _normalized_version(version_str)

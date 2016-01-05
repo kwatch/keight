@@ -18,13 +18,12 @@ See https://github.com/kwatch/keight/tree/ruby for details.
 END
 
   o.files         = Dir[*%w[
-                      README.md MIT-LICENSE keight.gemspec setup.rb Rakefile
+                      README.md CHANGES.txt MIT-LICENSE keight.gemspec setup.rb Rakefile
                       bin/k8rb
                       lib/keight.rb lib/keight/**/*.{[a-z]*} lib/keight/**/.{[a-z]*}
                       test/*_test.rb test/data/* test/oktest.rb
                       bench/bench.rb bench/benchmarker.rb
                     ]]
-                      #lib/keight.rb lib/keight/**/*
   o.executables   = ["k8rb"]
   o.bindir        = ["bin"]
   #o.test_files   = o.files.grep(/^test\//)

@@ -159,6 +159,7 @@ module K8
         ##
         ##    $ cd #{project_name}
         ##    $ rake setup
+        ##    $ export APP_ENV='dev'      # or 'prod', 'stg', 'test'
         ##    $ rake server port=8000
         ##    $ open http://localhost:8000/
         ##

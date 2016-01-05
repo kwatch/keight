@@ -134,8 +134,8 @@ require 'keight'
 class HelloAction < K8::Action
 
   ## mapping
-  mapping '',                    :GET=>:do_hello_world
-  mapping '/{name:[a-zA-Z]+}',   :GET=>:do_hello
+  mapping '',              :GET=>:do_hello_world
+  mapping '/{name:\w+}',   :GET=>:do_hello
 
   ## request, response, and helpers
 
@@ -201,7 +201,7 @@ class HelloAction < K8::Action
   end
 
   def handle_exception(ex)   # exception handler
-    meth = "error_#{ex.class.name}"
+    meth = "on_#{ex.class.name}"
     return __send__(meth, ex) if respond_to?(meth)
     super
   end

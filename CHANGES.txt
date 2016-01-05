@@ -2,7 +2,7 @@ Changes
 =======
 
 
-Release 0.2.0 (2016-01-03)
+Release 0.2.0 (2016-01-06)
 --------------------------
 
 * [change] `K8::RackApplication#mount()` is removed.

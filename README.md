@@ -405,4 +405,4 @@ License and Copyright
 
 $License: MIT License $
 
-$Copyright: copyright(c) 2014-2015 kuwata-lab.com all rights reserved $
+$Copyright: copyright(c) 2014-2016 kuwata-lab.com all rights reserved $

@@ -1,0 +1,64 @@
+Changes
+=======
+
+
+Release 0.2.0 (2016-01-03)
+--------------------------
+
+* [change] `K8::RackApplication#mount()` is removed.
+  Use `K8::RackApplication.new([...])` instead.
+
+* [change] `k8rb init` is renamed to `k8rb project`.
+
+    $ k8rb project myapp1
+    $ cd myapp1
+
+* [enhance] Auto redirection support.
+  For example, `GET /books` is defined and `GET /books/` is requested,
+  then it will be redirected to `GET /books`.
+
+* [enhance] Performance improved for variable urlpath.
+
+* [enhance] Implement urlpath helpers.
+
+    p BookAPI[:do_update].method          #=> :PUT
+    p BookAPI[:do_update].urlpath(123)    #=> '/api/books/123'
+    p BookAPI[:do_update].form_action_attr(123)  #=> '/api/books/123?_method=PUT'
+
+* [change] `k8rb mapping` now prints output in text format, not YAML format.
+
+* [enhance] `k8rb mapping` supports `--format=FORMAT` option.
+
+    $ k8rb mapping --format=text   # or yaml/json/javascript/jquery/angular
+
+* [enhance] `k8rb` command supports `cdnjs` action which download JavaScript
+  libraries from cdnjs.com.
+
+    $ k8rb cdnjs                   # list library
+    $ k8rb cdnjs 'jquery*'         # search library
+    $ k8rb cdnjs jquery            # list versions
+    $ k8rb cdnjs jquery 2.1.4      # download library
+
+* [change] `k8rb init` command downloads jquery and modernizr from cdnjs.com.
+
+* [change] `K8::Mock` and `K8::TestApp` are removed.
+  Use rack-test_app gem instead.
+
+* [bugfix] Document fixed.
+
+* [internal] Remove `K8::ActionClassMapping`, 'K8::ActionRouter' and
+  'K8::ActionFinder' classes.
+
+* [internal] Define new class `K8::ActionMapping` instead of remove classes.
+
+
+Release 0.1.0 (2015-10-27)
+--------------------------
+
+* Public release
+
+
+Release 0.0.1 (2015-10-26)
+--------------------------
+
+* Test release

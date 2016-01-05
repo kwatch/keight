@@ -370,7 +370,7 @@ module K8
       version.nil? || version =~ /\A\d+(\.\d+)+[-.\w]+\z/  or
         raise OptionError.new("#{version}: version number expected.")
       ## list or search libraries
-      if library.nil? || library.start_with?('*') || library.end_with?('*')
+      if library.nil? || library.include?('*')
         return _cdnjs_list(library)
       ## list versions
       elsif version.nil?
@@ -389,8 +389,11 @@ module K8
         f.collect {|s| $1 if s =~ rexp }.compact.sort.uniq
       }
       if library
-        libs = libs.select {|s| s.end_with?(library[1..-1]) } if library.start_with?('*')
-        libs = libs.select {|s| s.start_with?(library[0..-2]) } if library.end_with?('*')
+        s = Regexp.escape(library)   # ex: '*foo.js*'    -> '\*foo\.js\*'
+        s = s.gsub(/\\\*/, '.*')     # ex: '\*foo\.js\*' -> '.*foo\.js.*'
+        s = "\\A#{s}\\z"             # ex: '.*foo\.js.*' -> '\A.*foo\.js.*\z'
+        rexp = Regexp.compile(s)
+        libs = libs.grep(rexp)
       end
       return (libs << "").join("\n")
     end

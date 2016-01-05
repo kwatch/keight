@@ -103,7 +103,7 @@ run app
 Open http://localhost:8000/api/hello or http://localhost:8000/api/hello/123
 with your browser.
 
-Do you like it? If so, try `k8rb init myapp1` to generate project skeleton.
+Do you like it? If so, try `k8rb project myapp1` to generate project skeleton.
 
 ```console
 $ mkdir gems                         # if necessary
@@ -111,7 +111,7 @@ $ export GEM_HOME=$PWD/gems          # if necessary
 $ export PATH=$GEM_HOME/bin:$PATH    # if necessary
 $ gem install -N keight
 $ k8rb help                          # show help
-$ k8rb init myapp1                   # create new project
+$ k8rb project myapp1                # create new project
 $ cd myapp1/
 $ gem install -N bundler             # if necessary
 $ bundler install
@@ -343,7 +343,7 @@ p BooksAPI[:do_update].form_action_attr(123)   #=> "/api/books/123?_method=PUT"
 Keight.rb can generate JavaScript routing file.
 
 ```console
-$ k8rb init myapp1
+$ k8rb project myapp1
 $ cd myapp1/
 $ k8rb mapping --format=javascript | less  # or 'jquery', 'angular'
 $ mkdir -p static/js
@@ -363,7 +363,7 @@ It is good idea to make layout of JavaScript libraries to be same as CDN.
 [cdnjs.com]: https://cdnjs.com/
 
 ```console
-$ k8rb init myapp1
+$ k8rb project myapp1
 $ cd myapp1/
 $ k8rb help cdnjs
 $ k8rb cdnjs                 # list libraries
@@ -387,17 +387,17 @@ I don't think Keight.rb is so fast. Other frameworks are just too slow.
 
 #### How to setup template engine?
 
-Try `k8rb init myapp1; cd myapp1; less app/action.rb`.
+Try `k8rb project myapp1; cd myapp1; less app/action.rb`.
 
 
 #### How to support static files?
 
-Try `k8rb init myapp1; cd myapp1; less app/action.rb`.
+Try `k8rb project myapp1; cd myapp1; less app/action.rb`.
 
 
 #### How to setup session?
 
-Try `k8rb init myapp1; cd myapp1; less config.ru`.
+Try `k8rb project myapp1; cd myapp1; less config.ru`.
 
 
 #### Can I use Rack::Request and Rack::Response instead of Keight's?

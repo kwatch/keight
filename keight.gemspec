@@ -8,7 +8,7 @@ Gem::Specification.new do |o|
   o.email         = "kwa(at)kuwata-lab.com"
   o.platform      = Gem::Platform::RUBY
   o.homepage      = "https://github.com/kwatch/keight/tree/ruby"
-  o.license       = "MIT Lisense"
+  o.license       = "MIT"   # ref: http://spdx.org/licenses/
   o.summary       = "Jet-speed webapp framework for Ruby"
   o.description   = <<'END'
 Keight.rb is the crazy-fast webapp framework for Ruby.

@@ -113,19 +113,14 @@ $ gem install -N keight
 $ k8rb help                          # show help
 $ k8rb project myapp1                # create new project
 $ cd myapp1/
-$ gem install -N bundler             # if necessary
-$ bundler install
+$ rake setup                         # install gems and download libs
 $ export APP_ENV=dev    # 'dev', 'prod', or 'stg'
 $ k8rb help mapping
 $ k8rb mapping                       # list urlpath mappings
 $ k8rb mapping --format=javascript   # or jquery,angular,json,yaml
 $ k8rb configs                       # list config parameters
-$ rackup -p 8000 -E production config.ru
-$ open http://127.0.0.1:8000/
-$ ab -n 1000 -c 10 http://127.0.0.1:8000/api/hello
-## or:
-$ gem install puma
-$ rackup -p 8000 -E production -s puma config.ru
+$ rake server port=8000
+$ open http://localhost:8000/
 $ ab -n 10000 -c 100 http://localhost:8000/api/hello
 ```
 

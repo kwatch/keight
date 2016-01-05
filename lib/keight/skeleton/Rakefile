@@ -46,14 +46,39 @@ END
 end
 
 
+desc "start server process"
+task :server do |t|
+  port = ENV['port'] || ENV['PORT'] || 8000
+  run "rackup -p #{port} -E production -s puma config.ru"
+end
+
+
+desc "install gems and download libs"
+task :setup => ['setup:gems', 'setup:static']
+
 namespace :setup do
 
   desc "install required libraries"
-  task :install do |t|
+  task :gems do |t|
     gem_home_required()
     run "gem install bundler"
     puts ""
     run "bundler install"
+  end
+
+  desc "download jquery.js etc from cdnjs"
+  task :static do |t|
+    filename = "app/template/_layout.html.eruby"
+    rexp = %r'<script src=".*?\/([-.\w]+)\/(\d+(?:\.\d+)+[-.\w]+)/[^"]*?\.js"'
+    done = {}
+    File.read(filename).scan(rexp) do
+      library, version = $1, $2
+      key = "#{library}--#{version}"
+      unless done[key]
+        run "k8rb cdnjs #{library} #{version}"
+        done[key] = true
+      end
+    end
   end
 
 end

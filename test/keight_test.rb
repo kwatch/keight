@@ -1468,27 +1468,27 @@ Oktest.scope do
         info = K8::ActionInfo.create('GET', '/books')
         ok {info}.is_a?(K8::ActionInfo0)
         ok {info.urlpath} == '/books'
-        ok {->{ info.urlpath('a') }}.raise?(ArgumentError, "wrong number of arguments (1 for 0)")
+        ok {->{ info.urlpath('a') }}.raise?(ArgumentError, /^wrong number of arguments \((1 for 0|given 1, expected 0)\)$/)
         #
         info = K8::ActionInfo.create('GET', '/books/{id}')
         ok {info}.is_a?(K8::ActionInfo1)
         ok {info.urlpath('a')} == '/books/a'
-        ok {->{ info.urlpath() }}.raise?(ArgumentError, "wrong number of arguments (0 for 1)")
+        ok {->{ info.urlpath() }}.raise?(ArgumentError, /^wrong number of arguments \((0 for 1|given 0, expected 1)\)$/)
         #
         info = K8::ActionInfo.create('GET', '/books/{id}/comments/{comment_id}')
         ok {info}.is_a?(K8::ActionInfo2)
         ok {info.urlpath('a', 'b')} == '/books/a/comments/b'
-        ok {->{info.urlpath('a')}}.raise?(ArgumentError, "wrong number of arguments (1 for 2)")
+        ok {->{info.urlpath('a')}}.raise?(ArgumentError, /^wrong number of arguments \((1 for 2|given 1, expected 2)\)$/)
         #
         info = K8::ActionInfo.create('GET', '/books/{id}/{title}/{code}')
         ok {info}.is_a?(K8::ActionInfo3)
         ok {info.urlpath('a', 'b', 'c')} == '/books/a/b/c'
-        ok {->{info.urlpath(1,2)}}.raise?(ArgumentError, "wrong number of arguments (2 for 3)")
+        ok {->{info.urlpath(1,2)}}.raise?(ArgumentError, /^wrong number of arguments \((2 for 3|given 2, expected 3)\)$/)
         #
         info = K8::ActionInfo.create('GET', '/books/{id}/{title}/{code}/{ref}')
         ok {info}.is_a?(K8::ActionInfo4)
         ok {info.urlpath('a', 'b', 'c', 'd')} == '/books/a/b/c/d'
-        ok {->{info.urlpath}}.raise?(ArgumentError, "wrong number of arguments (0 for 4)")
+        ok {->{info.urlpath}}.raise?(ArgumentError, /^wrong number of arguments \((0 for 4|given 0, expected 4)\)$/)
       end
 
       spec "[!x5yx2] returns ActionInfo object when number of urlpath parameter > 4." do

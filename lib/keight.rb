@@ -372,6 +372,69 @@ module K8
       end
     end
 
+
+    ##
+    ## Temporary file which is removed automatically at end of response.
+    ##
+    ## Example:
+    ##
+    ##     def do_download_csv()
+    ##       ## generate temporary filepath
+    ##       tmpfile = K8::Util::TemporaryFile.new
+    ##       p tmpfile.path      #=> ex: '/var/tmp/tmp-0372042668525.tmp'
+    ##       p File.exist?(tmpfile.path)   #=> false
+    ##       ## create temporary file and content
+    ##       sql = "select * from table1"
+    ##       system("psql dbname -A -F',' -c \"#{sql}\" | gzip > #{tmpfile.path}")
+    ##       p File.exist?(tmpfile.path)   #=> true
+    ##       ## set resonse headers
+    ##       @resp.headers['Content-Type']        = 'text/csv;charset=UTF-8'
+    ##       @resp.headers['Content-Length']      = File.size(tmpfile.path)
+    ##       @resp.headers['Content-Disposition'] = 'attachment;filename="file1.csv"'
+    ##       @resp.headers['Content-Encoding']    = "gzip"
+    ##       ## return temporary file
+    ##       return tmpfile  # will be removed automatically at end of response!!
+    ##     end
+    ##
+    class TemporaryFile
+
+      TMPDIR     = (ENV['TMPDIR'] || proc {require 'etc'; Etc.systmpdir}.call || '/tmp').chomp('/')
+      CHUNK_SIZE = 8 * 1024   # 8KB
+
+      def self.new_path(tmpdir=nil)
+        #; [!hvnzd] generates new temorary filepath under temporary directory.
+        #; [!ulb2e] uses default temporary directory path if tmpdir is not specified.
+        tmpdir ||= TMPDIR
+        randstr = rand().to_s[2..14]
+        return "#{tmpdir}/tmp-#{randstr}.tmp"
+      end
+
+      def initialize(path=nil, tmpdir: nil, chunk_size: nil)
+        #; [!ljilm] generates temporary filepath automatically when filepath is not specified.
+        @path       = path || self.class.new_path(tmpdir)
+        @tmpdir     = tmpdir if tmpdir
+        @chunk_size = chunk_size if chunk_size
+      end
+
+      attr_reader :path
+
+      def each
+        #; [!d9suq] opens temporary file with binary mode.
+        #; [!68xdj] reads chunk size data from temporary file per iteration.
+        size = @chunk_size || CHUNK_SIZE
+        File.open(@path, 'rb') do |f|
+          yield f.read(size)
+        end
+      ensure
+        #; [!i0dmd] removes temporary file automatically at end of loop.
+        #; [!347an] removes temporary file even if error raised in block.
+        File.unlink @path
+        self
+      end
+
+    end
+
+
   end
 
 

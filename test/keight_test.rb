@@ -4,6 +4,7 @@ $LOAD_PATH << "lib"  unless $LOAD_PATH.include?("lib")
 $LOAD_PATH << "test" unless $LOAD_PATH.include?("test")
 
 require 'stringio'
+require 'set'
 
 require 'rack/test_app'
 require 'oktest'
@@ -254,6 +255,94 @@ Oktest.scope do
         pr = proc { K8::Util.http_utc_time(t) }
         ok {pr}.raise?(ArgumentError, /\Ahttp_utc_time\(2015-02-03 04:05:06 [-+]\d{4}\): expected UTC time but got local time.\z/)
       end
+
+    end
+
+
+    topic 'TemporaryFile' do
+
+
+      topic '.new_path()' do
+
+        spec "[!hvnzd] generates new temorary filepath under temporary directory." do
+          fpath = K8::Util::TemporaryFile.new_path('/var/tmp')
+          ok {fpath}.start_with?('/var/tmp/')
+          ok {fpath} =~ %r`\A/var/tmp/tmp-\d+\.tmp\z`
+          #
+          paths = 1000.times.map { K8::Util::TemporaryFile.new_path('/var/tmp') }
+          ok {Set.new(paths).size} == 1000
+        end
+
+        spec "[!ulb2e] uses default temporary directory path if tmpdir is not specified." do
+          fpath = K8::Util::TemporaryFile.new_path()
+          ok {fpath}.start_with?(K8::Util::TemporaryFile::TMPDIR + '/')
+          ok {fpath} =~ %r"\A#{Regexp.escape(K8::Util::TemporaryFile::TMPDIR)}/tmp-\d+\.tmp\z"
+        end
+
+      end
+
+
+      topic '#initialize()' do
+
+        spec "[!ljilm] generates temporary filepath automatically when filepath is not specified." do
+          n = 1000
+          paths = n.times.map { K8::Util::TemporaryFile.new().path }
+          ok {Set.new(paths).size} == n
+        end
+
+      end
+
+
+      topic '#each()' do
+
+        spec "[!d9suq] opens temporary file with binary mode." do
+          tmpf = K8::Util::TemporaryFile.new()
+          File.open(tmpf.path, 'wb') {|f| f.write("hogehoge") }
+          called = false
+          tmpf.each do |s|
+            called = true
+            ok {s.encoding} == Encoding::BINARY
+          end
+          ok {called} == true
+        end
+
+        spec "[!68xdj] reads chunk size data from temporary file per iteration." do
+          tmpf = K8::Util::TemporaryFile.new(chunk_size: 3)
+          File.open(tmpf.path, 'wb') {|f| f.write("hogehoge") }
+          i = 0
+          tmpf.each do |s|
+            case i
+            when 0; ok {s} == "hog"
+            when 1; ok {s} == "eho"
+            when 2; ok {s} == "ge"
+            else
+              raise "unreachable"
+            end
+            i += 1
+          end
+        end
+
+        spec "[!i0dmd] removes temporary file automatically at end of loop." do
+          tmpf = K8::Util::TemporaryFile.new()
+          File.open(tmpf.path, 'wb') {|f| f.write("hogehoge") }
+          ok {tmpf.path}.file_exist?
+          tmpf.each do |s|
+            ok {tmpf.path}.file_exist?
+          end
+          ok {tmpf.path}.NOT.file_exist?
+        end
+
+        spec "[!347an] removes temporary file even if error raised in block." do
+          tmpf = K8::Util::TemporaryFile.new()
+          File.open(tmpf.path, 'wb') {|f| f.write("hogehoge") }
+          ok {tmpf.path}.file_exist?
+          pr = proc { tmpf.each {|s| 1/0 } }
+          ok {pr}.raise?(ZeroDivisionError)
+          ok {tmpf.path}.NOT.file_exist?
+        end
+
+      end
+
 
     end
 

@@ -462,7 +462,7 @@ module K8
 
       CHUNK_SIZE = 8 * 1024
 
-      def initialize(command, input=nil, chunk_size: nil, &teardown)
+      def initialize(command, input: nil, chunk_size: nil, &teardown)
         #; [!j95pi] takes shell command and input string.
         @command    = command  # ex: "psql -AF',' dbname | gzip"
         @input      = input    # ex: "select * from table1"

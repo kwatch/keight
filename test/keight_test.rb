@@ -366,7 +366,7 @@ Oktest.scope do
         spec "[!j95pi] takes shell command and input string." do
           command = "psql -AF',' dbname | gzip"
           input   = "select * from table1"
-          sc = K8::Util::ShellCommand.new(command, input)
+          sc = K8::Util::ShellCommand.new(command, input: input)
           ok {sc.command} == command
           ok {sc.input}   == input
           #
@@ -398,7 +398,7 @@ Oktest.scope do
 
         spec "[!d766y] writes input string if provided to initializer." do |sc|
           input = "a\nb\nc\n"
-          sc = K8::Util::ShellCommand.new("cat -n", input, chunk_size: 2)
+          sc = K8::Util::ShellCommand.new("cat -n", input: input, chunk_size: 2)
           sc.start()
           buf = ""
           sc.each {|s| buf << s }

@@ -97,6 +97,17 @@ Oktest.scope do
     return Rack::TestApp.new_env(meth, path, opts)
   end
 
+  def capture_output
+    stdout_bkup, stderr_bkup, $stdout, $stderr = \
+      $stdout, $stderr, StringIO.new, StringIO.new
+    begin
+      yield
+      return $stdout.string, $stderr.string
+    ensure
+      $stdout, $stderr = stdout_bkup, stderr_bkup
+    end
+  end
+
 
   topic K8::Util do
 
@@ -339,6 +350,191 @@ Oktest.scope do
           pr = proc { tmpf.each {|s| 1/0 } }
           ok {pr}.raise?(ZeroDivisionError)
           ok {tmpf.path}.NOT.file_exist?
+        end
+
+      end
+
+
+    end
+
+
+    topic K8::Util::ShellCommand do
+
+
+      topic '#initialize()' do
+
+        spec "[!j95pi] takes shell command and input string." do
+          command = "psql -AF',' dbname | gzip"
+          input   = "select * from table1"
+          sc = K8::Util::ShellCommand.new(command, input)
+          ok {sc.command} == command
+          ok {sc.input}   == input
+          #
+          sc2 = K8::Util::ShellCommand.new(command)
+          ok {sc2.command} == command
+          ok {sc2.input}   == nil
+        end
+
+      end
+
+
+      topic '#start()' do
+
+        fixture :sc do
+          K8::Util::ShellCommand.new("echo yes")
+        end
+
+        spec "[!66uck] not allowed to start more than once." do |sc|
+          ok {proc { sc.start() }}.NOT.raise?(Exception)
+          ok {proc { sc.start() }}.raise?(K8::Util::ShellCommandError, 'Already started (comand: "echo yes")')
+        end
+
+        spec "[!9seos] invokes shell command." do |sc|
+          ok {sc.pid} == nil
+          sc.start()
+          ok {sc.pid} != nil
+          ok {sc.pid}.is_a?(Fixnum)
+        end
+
+        spec "[!d766y] writes input string if provided to initializer." do |sc|
+          input = "a\nb\nc\n"
+          sc = K8::Util::ShellCommand.new("cat -n", input, chunk_size: 2)
+          sc.start()
+          buf = ""
+          sc.each {|s| buf << s }
+          ok {buf} == ("     1	a\n" + \
+                       "     2	b\n" + \
+                       "     3	c\n")
+        end
+
+        spec "[!f651x] reads first chunk data." do
+          sc = K8::Util::ShellCommand.new("echo abcdefg", chunk_size: 2)
+          t = sc.instance_variable_get('@tuple')
+          ok {t} == nil
+          sc.start()
+          t = sc.instance_variable_get('@tuple')
+          ok {t} != nil
+          sout, serr, waiter, chunk = t
+          ok {chunk} == "ab"
+        end
+
+        spec "[!cjstj] raises ShellCommandError when command prints something to stderr." do
+          sc = K8::Util::ShellCommand.new("echo abcdefg 1>&2")
+          capture_output do
+            pr = proc { sc.start() }
+            ok {pr}.raise?(K8::Util::ShellCommandError, "abcdefg\n")
+          end
+        end
+
+        spec "[!bt12n] saves stdout, stderr, command process, and first chunk data." do
+          sc = K8::Util::ShellCommand.new("echo abcdefg", chunk_size: 2)
+          sc.start()
+          t = sc.instance_variable_get('@tuple')
+          ok {t} != nil
+          sout, serr, waiter, chunk = t
+          ok {sout}.is_a?(IO)
+          ok {serr}.is_a?(IO)
+          ok {waiter}.is_a?(Process::Waiter)
+          ok {chunk} == "ab"
+        end
+
+        spec "[!kgnel] yields callback (if given) when command invoked successfully." do
+          sc = K8::Util::ShellCommand.new("echo abcdefg")
+          called = false
+          sc.start() do
+            called = true
+          end
+          ok {called} == true      # called
+          #
+          capture_output do
+            sc = K8::Util::ShellCommand.new("echo abcdefg 1>&2")
+            called = false
+            sc.start() do
+              called = true
+            end rescue nil
+            ok {called} == false   # not called
+          end
+        end
+
+        spec "[!2989u] closes both stdout and stderr when error raised." do
+          skip_when(true, "hard to test")
+        end
+
+        spec "[!fp98i] returns self." do
+          sc = K8::Util::ShellCommand.new("echo abcdefg")
+          ok {sc.start()}.same?(sc)
+        end
+
+      end
+
+
+      topic '#each()' do
+
+        fixture :sc do
+          K8::Util::ShellCommand.new("echo yes")
+        end
+
+        spec "[!ssgmm] '#start()' should be called before '#each()'." do |sc|
+          ok {proc { sc.each() }}.raise?(K8::Util::ShellCommandError, 'Not started yet (command: "echo yes").')
+        end
+
+        spec "[!vpmbw] yields each chunk data." do |sc|
+          sc = K8::Util::ShellCommand.new("echo abcdef", chunk_size: 2)
+          sc.start()
+          arr = []
+          sc.each {|s| arr << s }
+          ok {arr} == ["ab", "cd", "ef", "\n"]
+        end
+
+        spec "[!70xdy] logs stderr output." do
+          buf = ""
+          sout, serr = capture_output do
+            sc = K8::Util::ShellCommand.new("time echo abcdef")
+            sc.start()
+            sc.each {|s| buf << s }
+          end
+          ok {buf} == "abcdef\n"
+          ok {sout} == ""
+          ok {serr} != ""
+          ok {serr} == ("[ERROR] ShellCommand: \"time echo abcdef\" #-------\n" + \
+                        "        0.00 real         0.00 user         0.00 sys\n" + \
+                        "--------------------\n")
+        end
+
+        spec "[!2wll8] closes stdout and stderr, even if error raised." do
+          sc = K8::Util::ShellCommand.new("echo abcdef")
+          sc.start()
+          sout, serr, _, _ = sc.instance_variable_get('@tuple')
+          ok {sout.closed?} == false
+          ok {serr.closed?} == false
+          sc.each {|s| s }
+          ok {sout.closed?} == true
+          ok {serr.closed?} == true
+          #
+          sc = K8::Util::ShellCommand.new("time echo abcdef")
+          sc.start()
+          sout, serr, _, _ = sc.instance_variable_get('@tuple')
+          ok {sout.closed?} == false
+          ok {serr.closed?} == false
+          capture_output do sc.each {|s| s } end
+          ok {sout.closed?} == true
+          ok {serr.closed?} == true
+        end
+
+        spec "[!0ebq5] calls callback specified to initializer with error object." do
+          arg = false
+          sc = K8::Util::ShellCommand.new("echo abcdef") {|x| arg = x }
+          ok {arg} == false
+          sc.start()
+          ok {arg} == false
+          sc.each {|s| s }
+          ok {arg} == nil
+        end
+
+        spec "[!ln8we] returns self." do |sc|
+          sc.start()
+          ret = sc.each {|s| s }
+          ok {ret}.same?(sc)
         end
 
       end

@@ -212,8 +212,7 @@ class ActionMapping(object):
     def lookup(req_urlpath):
         raise NotImplementedError("%s.lookup(): not implemented yet." % self.__class__.__name__)
 
-    def _urlpath_pat2rexp(self, pat, begin='', end='', capture=True):
-        pnames = []
+    def _upath_pat2rexp(self, pat, begin='', end='', capture=True):
         buf = [begin]
         pos = 0
         for m in self.URLPATH_PARAMETER_REXP.finditer(pat):
@@ -222,12 +221,11 @@ class ActionMapping(object):
             rexp_str = m.group(2) or '[^/]+'
             pos = m.end(0)
             if capture and pname:
-                buf.extend((re_escape(text), '(',   rexp_str, ')', ))
+                buf.extend((re_escape(text), '(?P<%s>' % pname, rexp_str, ')', ))
             else:
-                buf.extend((re_escape(text), '(?:', rexp_str, ')', ))
-            pnames.append(pname)
+                buf.extend((re_escape(text), '(?:',             rexp_str, ')', ))
         buf.extend((re_escape(pat[pos:]), end))
-        return "".join(buf), pnames
+        return "".join(buf)
 
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
         action_class = load_class(class_string)
@@ -243,11 +241,6 @@ class ActionMapping(object):
             raise TypeError("%s: Action class expected." % action_class.__name__)
         if not hasattr(action_class, '__mapping__'):
             raise ValueError("%s: No action methods." % action_class.__name__)
-
-    def _update_param_args(self, pargs, pnames, pvalues):
-        for k, v in zip(pnames, pvalues):
-            if k:
-                pargs[k] = v
 
 
 class ActionEagerMapping(ActionMapping):
@@ -265,7 +258,7 @@ class ActionEagerMapping(ActionMapping):
         length = len(rexp_buf)
         #
         for upath_pat, item in mappings:
-            rexp_str, _ = self._urlpath_pat2rexp(upath_pat, '', '', False)
+            rexp_str = self._upath_pat2rexp(upath_pat, '', '', False)
             rexp_buf.append(rexp_str)
             n = len(rexp_buf)
             #
@@ -302,22 +295,24 @@ class ActionEagerMapping(ActionMapping):
         for upath_pat, action_methods in action_method_mapping:
             full_upath_pat = base_upath_pat + upath_pat
             if '{' in full_upath_pat:
-                rexp_str, pnames = self._urlpath_pat2rexp(full_upath_pat, '^', '$')
-                #rexp = re_compile(rexp_str, 0)
+                #rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '$')
+                #upath_rexp = re_compile(rexp_str, 0)
                 #
                 arr = self.URLPATH_PARAMETER_REXP.split(full_upath_pat)
                 if len(arr) == 2:
-                    rexp = (len(arr[0]), -len(arr[1]))  # pair instead of rexp
+                    pname = self.URLPATH_PARAMETER_REXP.search(full_upath_pat).group(1)
+                    upath_rexp = (pname, len(arr[0]), -len(arr[1]))  # instead of rexp
                 else:
-                    rexp = re_compile(rexp_str, 0)
+                    rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '$')
+                    upath_rexp = re_compile(rexp_str, 0)
                 #
-                tupl = (full_upath_pat, action_class, action_methods, pnames, rexp)
+                tupl = (action_class, action_methods, upath_rexp)
                 self._variable_urlpaths.append(tupl)
-                rexp_strs.append(self._urlpath_pat2rexp(upath_pat, '', r'($)', False)[0])
+                rexp_strs.append(self._upath_pat2rexp(upath_pat, '', r'($)', False))
             else:
-                tupl = (full_upath_pat, action_class, action_methods, (), None)
+                tupl = (action_class, action_methods)
                 self._fixed_urlpaths[full_upath_pat] = tupl
-            self._all_urlpaths.append(tupl)
+            self._all_urlpaths.append((full_upath_pat, action_class, action_methods))
         if rexp_strs:
             if len(rexp_strs) == 1:
                 rexp_buf.append(rexp_strs[0])
@@ -327,29 +322,28 @@ class ActionEagerMapping(ActionMapping):
     def lookup(self, req_urlpath):
         tupl = self._fixed_urlpaths.get(req_urlpath)
         if tupl:
-            _, action_class, action_methods, pnames, _ = tupl
+            action_class, action_methods = tupl
             pargs = {}
             return action_class, action_methods, pargs
         #for tupl in self._variable_urlpaths:
-        #    _, action_class, action_methods, pnames, rexp = tupl
-        #    m = rexp.match(req_urlpath)
+        #    action_class, action_methods, upath_rexp = tupl
+        #    m = upath_rexp.match(req_urlpath)
         #    if m:
-        #        pargs = { k: v for k, v in zip(pnames, m.groups()) if k }
+        #        pargs = m.groupdict()
         #        return action_class, action_methods, pargs
         #return None
-        m1 = self._variable_rexp.match(req_urlpath)
-        if m1 is None:
+        m = self._variable_rexp.match(req_urlpath)
+        if m is None:
             return None
-        idx = m1.groups().index('')
-        _, action_class, action_methods, pnames, rexp = self._variable_urlpaths[idx]
-        if isinstance(rexp, tuple):
-            start, end = rexp
+        idx = m.groups().index('')
+        action_class, action_methods, upath_rexp = self._variable_urlpaths[idx]
+        if isinstance(upath_rexp, tuple):
+            pname, start, end = upath_rexp
             pval = req_urlpath[start:end] if end else req_urlpath[start:]
-            pname = pnames[0]
             pargs = {pname: pval} if pname else {}
         else:
-            m2 = rexp.match(req_urlpath)
-            pargs = { k: v for k, v in zip(pnames, m2.groups()) if k }
+            m = upath_rexp.match(req_urlpath)
+            pargs = m.groupdict()
         return action_class, action_methods, pargs
 
     def __iter__(self):
@@ -377,14 +371,13 @@ class ActionEagerMapping2(ActionMapping):
             else:
                 raise TypeError("%r: Action class expected" % (item,))
             if '{' in upath_pat:
-                rexp_str, pnames = self._urlpath_pat2rexp(upath_pat, '', '(?=[/.]|$)')
-                rexp = re_compile(rexp_str, 0)
-                beginning = upath_pat.split('{', 1)[0]
+                rexp_str = self._upath_pat2rexp(upath_pat, '', '(?=[/.]|$)')
+                upath_rexp = re_compile(rexp_str, 0)
+                upath_prefix = upath_pat.split('{', 1)[0]
             else:
-                rexp = None
-                pnames = ()
-                beginning = upath_pat
-            tuples.append((beginning, rexp, pnames, children, None, None))
+                upath_rexp = None
+                upath_prefix = upath_pat
+            tuples.append((upath_prefix, upath_rexp, children, None, None))
         return tuples
 
     def _register(self, action_class, base_upath_pat, has_params):
@@ -393,47 +386,43 @@ class ActionEagerMapping2(ActionMapping):
             raise ValueError("%s: There is no action method mapping." % action_class.__name__)
         tuples = []
         for upath_pat, action_methods in action_method_mapping:
-            urlpath_pat = base_upath_pat + upath_pat
+            full_upath_pat = base_upath_pat + upath_pat
+            self._all_urlpaths.append((full_upath_pat, action_class, action_methods))
             if '{' in upath_pat:
-                rexp_str, pnames = self._urlpath_pat2rexp(upath_pat, '', '$')
+                rexp_str = self._upath_pat2rexp(upath_pat, '', '$')
                 upath_rexp = re_compile(rexp_str, 0)
                 upath_prefix = upath_pat.split('{', 1)[0]
-                tupl = (upath_prefix, upath_rexp, pnames, None, action_class, action_methods)
-                tuples.append(tupl)
             elif has_params:
-                upath_prefix = upath_pat
                 upath_rexp = None
-                pnames = ()
-                tupl = (upath_prefix, upath_rexp, pnames, None, action_class, action_methods)
-                tuples.append(tupl)
+                upath_prefix = upath_pat
             else:
-                self._fixed_urlpaths[urlpath_pat] = (action_class, action_methods)
-            self._all_urlpaths.append((urlpath_pat, action_class, action_methods))
+                self._fixed_urlpaths[full_upath_pat] = (action_class, action_methods)
+                continue
+            tupl = (upath_prefix, upath_rexp, None, action_class, action_methods)
+            tuples.append(tupl)
         return tuples
 
     def lookup(self, req_urlpath):
+        pargs = {}
         tupl = self._fixed_urlpaths.get(req_urlpath)
         if tupl:
             action_class, action_methods = tupl
-            pargs = {}
             return action_class, action_methods, pargs
-        return self._lookup(self._variable_urlpath_tuples, req_urlpath, {})
+        return self._lookup(self._variable_urlpath_tuples, req_urlpath, pargs)
 
     def _lookup(self, tuples, req_path, pargs):
         for tupl in tuples:
-            upath_prefix, upath_rexp, pnames, children, action_class, action_methods = tupl
+            upath_prefix, upath_rexp, children, action_class, action_methods = tupl
             if not req_path.startswith(upath_prefix):
                 continue
             #if not req_path.startswith(tupl[0]):
             #    continue
-            #upath_prefix, upath_rexp, pnames, children, action_class, action_methods = tupl
+            #upath_prefix, upath_rexp, children, action_class, action_methods = tupl
             if upath_rexp:
                 m = upath_rexp.match(req_path)
                 if not m:
                     continue
-                for k, v in zip(pnames, m.groups()):
-                    if k:
-                        pargs[k] = v
+                pargs.update(m.groupdict())
                 remaining = req_path[m.end(0):]
             else:
                 remaining = req_path[len(upath_prefix):]
@@ -469,7 +458,7 @@ class ActionLazyMapping(ActionMapping):
         rexp_buf.append('(?:')
         length = len(rexp_buf)
         for upath_pat, item in self._reorder_mappings(mappings):
-            rexp_str, _ = self._urlpath_pat2rexp(upath_pat, '', '', False)
+            rexp_str = self._upath_pat2rexp(upath_pat, '', '', False)
             rexp_buf.append(rexp_str)
             n = len(rexp_buf)
             #
@@ -479,12 +468,11 @@ class ActionLazyMapping(ActionMapping):
             else:
                 action_class = item
                 if '{' in full_upath_pat:
-                    rexp_str, pnames = self._urlpath_pat2rexp(full_upath_pat, '^', '(?=[/.]|$)')
+                    rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '(?=[/.]|$)')
                     full_upath_rexp = re_compile(rexp_str, 0)
                 else:
                     full_upath_rexp = None
-                    pnames = ()
-                t = [full_upath_pat, full_upath_rexp, pnames, action_class, None]
+                t = [full_upath_pat, full_upath_rexp, action_class, None]
                 self._variable_urlpaths.append(t)
                 #
                 rexp_buf.append('((?=[/.]|$))')
@@ -505,27 +493,26 @@ class ActionLazyMapping(ActionMapping):
         return rexp_buf
 
     def lookup(self, req_urlpath):
-        pargs = {}
-        #
         pair = self._fixed_urlpaths.get(req_urlpath)
         if pair:
             action_class, action_methods = pair
-            return action_class, action_methods, pargs
+            return action_class, action_methods, {}
         #
         m = self._urlpath_rexp.match(req_urlpath)
         if not m:
             return None
         idx = m.groups().index('')
         tupl = self._variable_urlpaths[idx]
-        base_upath_pat, base_upath_rexp, pnames, action_class, arr = tupl
+        base_upath_pat, base_upath_rexp, action_class, arr = tupl
         if isinstance(action_class, basestring):
             action_class = self._load_action_class(action_class)
-            tupl[3] = action_class
+            tupl[2] = action_class
         if base_upath_rexp:
             m = base_upath_rexp.match(req_urlpath)
-            self._update_param_args(pargs, pnames, m.groups())
+            pargs = m.groupdict()
             remaining = req_urlpath[m.end(0):]
         else:
+            pargs = None
             remaining = req_urlpath[len(base_upath_pat):]
         #
         if arr is None:
@@ -538,18 +525,20 @@ class ActionLazyMapping(ActionMapping):
                     if upath_pat == remaining:
                         found = action_methods
                 else:
-                    rexp_str, pnames = self._urlpath_pat2rexp(upath_pat, '^', '$')
+                    rexp_str = self._upath_pat2rexp(upath_pat, '^', '$')
                     upath_rexp = re_compile(rexp_str, 0)
-                    arr.append([upath_rexp, pnames, action_methods])
-            tupl[4] = arr
+                    arr.append([upath_rexp, action_methods])
+            tupl[3] = arr
             if found:
                 action_methods = found
-                return action_class, action_methods, pargs
-        for upath_rexp, pnames, action_methods in arr:
+                return action_class, action_methods, pargs or {}
+        for upath_rexp, action_methods in arr:
             m = upath_rexp.match(remaining)
             if m:
-                if pnames:
-                    self._update_param_args(pargs, pnames, m.groups())
+                if pargs is None:
+                    pargs = m.groupdict()
+                else:
+                    pargs.update(m.groupdict())
                 return action_class, action_methods, pargs
         #
         return None

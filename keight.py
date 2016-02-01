@@ -569,6 +569,69 @@ class ActionLazyMapping(ActionMapping):
                 yield base_upath_pat + upath_pat, action_class, action_methods
 
 
+class ActionHashedMapping(ActionMapping):
+
+    def __init__(self, mappings):
+        self._fixed_entries = {}
+        self._variable_entries = []
+        self._build(mappings, '')
+        d, n = self._hashing(self._variable_entries)
+        self._hashed_variable_entries = d
+        self._hashed_length = n
+        del self._variable_entries
+
+    def _build(self, mappings, base_upath_pat):
+        for upath_pat, item in mappings:
+            curr_upath_pat = base_upath_pat + upath_pat
+            if item is None:
+                pass
+            elif isinstance(item, list):
+                self._build(item, curr_upath_pat)
+            else:
+                self._register(item, curr_upath_pat)
+
+    def _register(self, action_class, curr_upath_pat):
+        if isinstance(action_class, basestring):
+            action_class = self._load_action_class(action_class)
+        self._validate_action_class(action_class)
+        for upath_pat, action_methods in action_class.__mapping__:
+            full_upath_pat = curr_upath_pat + upath_pat
+            if '{' in full_upath_pat:
+                t = (full_upath_pat, action_class, action_methods)
+                self._variable_entries.append(t)
+            else:
+                t = (action_class, action_methods)
+                self._fixed_entries[full_upath_pat] = t
+
+    def _hashing(self, variable_entries):
+        n = min( upath_pat.index('{') for upath_pat, _, _ in variable_entries )
+        d = {}
+        for urlpath_pat, action_class, action_methods in variable_entries:
+            prefix = urlpath_pat[:n]
+            rexp_str = self._upath_pat2rexp(urlpath_pat[n:], '', '$')
+            t = (re.compile(rexp_str), action_class, action_methods)
+            d.setdefault(prefix, []).append(t)
+        return d, n
+
+    def lookup(self, req_urlpath):
+        tupl = self._fixed_entries.get(req_urlpath)
+        if tupl:
+            action_class, action_methods = tupl
+            return action_class, action_methods, {}
+        #
+        n = self._hashed_length
+        prefix    = req_urlpath[:n]
+        remaining = req_urlpath[n:]
+        tuples = self._hashed_variable_entries.get(prefix)
+        if tuples:
+            for upath_rexp, action_class, action_methods in tuples:
+                m = upath_rexp.match(remaining)
+                if m:
+                    return action_class, action_methods, m.groupdict()
+        #
+        return None
+
+
 class Request(object):
 
     def __init__(self, env):
@@ -904,13 +967,15 @@ class WSGIApplication(object):
     RESPONSE = Response
     #RESPONSE = Response2
 
-    def __init__(self, mappings, _=None, lazy=False):
+    def __init__(self, mappings, _=None, lazy=False, hashing=None):
         if _ is not None:
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
         if isinstance(mappings, ActionMapping):
             self.mapping = mappings
         elif lazy:
             self.mapping = ActionLazyMapping(mappings)
+        elif hashing:
+            self.mapping = ActionHashedMapping(mappings)
         else:
             self.mapping = ActionEagerMapping(mappings)
 

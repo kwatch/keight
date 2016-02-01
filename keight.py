@@ -10,6 +10,18 @@ __all__ = (
 )
 
 import sys, os, re, json, traceback
+try:
+    import re2
+    def re_compile(pattern):
+        return re2._compile(pattern)
+except ImportError:
+    def re_compile(pattern):
+        return re._compile(pattern, 0)
+
+def re_compile(pattern):
+    return re._compile(pattern, 0)
+
+
 setup_testing_defaults = None  # import from wsgi.util
 BytesIO = None   # io.BytesIO or cStringIO.StringIO
 
@@ -50,10 +62,10 @@ def dict2json(jdict):
                       separators=_dict2json_seps, encoding=ENCODING)
 _dict2json_seps = (',', ':')
 
-try:
-    re_compile = re._compile    # not cache
-except AttributeError:
-    re_compile = re.compile     # with cache
+#try:
+#    re_compile = re._compile    # not cache
+#except AttributeError:
+#    re_compile = re.compile     # with cache
 
 def re_escape(text):
     return re.sub(r'([-+\\.*?{}()&^$|\[\]])', r'\\\1', text)
@@ -131,8 +143,12 @@ class Action(BaseAction):
             content = content.encode(ENCODING)
         if isinstance(content, bytes):
             ctype = ctype or self.detect_content_type(content)
-            self.resp.headers.setdefault('Content-Type', ctype)
-            self.resp.headers['Content-Length'] = len(content)
+            resp = self.resp
+            #resp.headers.setdefault('Content-Type', ctype)
+            #resp.headers['Content-Length'] = str(len(content))
+            if not resp.content_type:
+                resp.content_type = ctype
+            resp.content_length = len(content)
             return [content]
         #
         return content   # TODO
@@ -207,7 +223,7 @@ class ActionMapping(object):
     REQUEST_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH',
                        'HEAD', 'OPTIONS', 'TRACE', 'LINK', 'UNLINK', ]
 
-    URLPATH_PARAMETER_REXP = re_compile(r'\{(\w*)(?::(.*?))?\}', 0)
+    URLPATH_PARAMETER_REXP = re.compile(r'\{(\w*)(?::(.*?))?\}')  # not re_compile()!
 
     def lookup(req_urlpath):
         raise NotImplementedError("%s.lookup(): not implemented yet." % self.__class__.__name__)
@@ -251,7 +267,7 @@ class ActionEagerMapping(ActionMapping):
         self._all_urlpaths      = []
         rexp_buf = self._build(mappings, "", ['^'])
         rexp_buf.append('$')
-        self._variable_rexp = re_compile(''.join(rexp_buf), 0)
+        self._variable_rexp = re_compile(''.join(rexp_buf))
 
     def _build(self, mappings, base_upath_pat, rexp_buf):
         rexp_buf.append('(?:')
@@ -296,7 +312,7 @@ class ActionEagerMapping(ActionMapping):
             full_upath_pat = base_upath_pat + upath_pat
             if '{' in full_upath_pat:
                 #rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '$')
-                #upath_rexp = re_compile(rexp_str, 0)
+                #upath_rexp = re_compile(rexp_str)
                 #
                 arr = self.URLPATH_PARAMETER_REXP.split(full_upath_pat)
                 if len(arr) == 2:
@@ -304,7 +320,7 @@ class ActionEagerMapping(ActionMapping):
                     upath_rexp = (pname, len(arr[0]), -len(arr[1]))  # instead of rexp
                 else:
                     rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '$')
-                    upath_rexp = re_compile(rexp_str, 0)
+                    upath_rexp = re_compile(rexp_str)
                 #
                 tupl = (action_class, action_methods, upath_rexp)
                 self._variable_urlpaths.append(tupl)
@@ -372,7 +388,7 @@ class ActionEagerMapping2(ActionMapping):
                 raise TypeError("%r: Action class expected" % (item,))
             if '{' in upath_pat:
                 rexp_str = self._upath_pat2rexp(upath_pat, '', '(?=[/.]|$)')
-                upath_rexp = re_compile(rexp_str, 0)
+                upath_rexp = re_compile(rexp_str)
                 upath_prefix = upath_pat.split('{', 1)[0]
             else:
                 upath_rexp = None
@@ -390,7 +406,7 @@ class ActionEagerMapping2(ActionMapping):
             self._all_urlpaths.append((full_upath_pat, action_class, action_methods))
             if '{' in upath_pat:
                 rexp_str = self._upath_pat2rexp(upath_pat, '', '$')
-                upath_rexp = re_compile(rexp_str, 0)
+                upath_rexp = re_compile(rexp_str)
                 upath_prefix = upath_pat.split('{', 1)[0]
             elif has_params:
                 upath_rexp = None
@@ -424,6 +440,8 @@ class ActionEagerMapping2(ActionMapping):
                     continue
                 pargs.update(m.groupdict())
                 remaining = req_path[m.end(0):]
+                #pargs['id'] = req_path[1:]
+                #remaining = ""
             else:
                 remaining = req_path[len(upath_prefix):]
             if children:
@@ -446,7 +464,7 @@ class ActionLazyMapping(ActionMapping):
         self._variable_urlpaths = []
         rexp_buf = self._nested_mappings = self._build(mappings, '', ['^'])
         rexp_buf.append('(?=[./]|$)')
-        self._urlpath_rexp = re_compile("".join(rexp_buf), 0)
+        self._urlpath_rexp = re_compile("".join(rexp_buf))
 
     def _reorder_mappings(self, mappings):
         if not any( '{' in x[0] for x in mappings ):
@@ -469,7 +487,7 @@ class ActionLazyMapping(ActionMapping):
                 action_class = item
                 if '{' in full_upath_pat:
                     rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '(?=[/.]|$)')
-                    full_upath_rexp = re_compile(rexp_str, 0)
+                    full_upath_rexp = re_compile(rexp_str)
                 else:
                     full_upath_rexp = None
                 t = [full_upath_pat, full_upath_rexp, action_class, None]
@@ -526,7 +544,7 @@ class ActionLazyMapping(ActionMapping):
                         found = action_methods
                 else:
                     rexp_str = self._upath_pat2rexp(upath_pat, '^', '$')
-                    upath_rexp = re_compile(rexp_str, 0)
+                    upath_rexp = re_compile(rexp_str)
                     arr.append([upath_rexp, action_methods])
             tupl[3] = arr
             if found:
@@ -737,6 +755,30 @@ class Response(object):
         self._status_code = code
         self._status = self.STATUSES.get(code)
 
+    @property
+    def content_type(self):
+        return self.headers.get('Content-Type')
+
+    @content_type.setter
+    def content_type(self, value):
+        self.headers['Content-Type'] = value
+
+    @content_type.deleter
+    def content_type(self):
+        del self.headers['Content-Type']
+
+    @property
+    def content_length(self):
+        return self.headers.get('Content-Length')
+
+    @content_length.setter
+    def content_length(self, value):
+        self.headers['Content-Length'] = str(value)
+
+    @content_length.deleter
+    def content_length(self):
+        del self.headers['Content-Length']
+
     def generate_header_pairs(self):
         for k, v in self.headers.items():
             if isinstance(v, list):
@@ -764,18 +806,38 @@ class Response(object):
 class Response2(object):
 
     def __init__(self):
-        self.header_list = [
+        self._status = "200 OK"
+        self._status_code = 200
+        self._header_list = [
             ('Content-Type',   ''),
             ('Content-Length', ''),
         ]
 
     @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, string):
+        self._status = string
+        self.status_code = int(string.split(' ', 1)[0])
+
+    @property
+    def status_code(self):
+        return self._status_code
+
+    @status.setter
+    def status_code(self, code):
+        self._status_code = code
+        self._status = self.STATUSES.get(code)
+
+    @property
     def content_type(self):
-        return self.header_list[0][1]
+        return self._header_list[0][1]
 
     @content_type.setter
     def content_type(self, value):
-        self.header_list[0] = ('Content-Type', value)
+        self._header_list[0] = ('Content-Type', value)
 
     @property
     def content_length(self):
@@ -783,14 +845,14 @@ class Response2(object):
 
     @content_length.setter
     def content_length(self, value):
-        self.header_list[1] = ('Content-Length', str(value))
+        self._header_list[1] = ('Content-Length', str(value))
 
     def get_header(self, name):
         if name == 'Content-Type':
             return self.content_type
         if name == 'Content-Length':
             return self.content_length
-        for k, v in self.header_list:
+        for k, v in self._header_list:
             if k == name:
                 return v
         return None
@@ -802,17 +864,26 @@ class Response2(object):
         if name == 'Content-Length':
             self.content_length = value
             return self
-        for i, (k, _) in enumerate(self.header_list):
+        for i, (k, _) in enumerate(self._header_list):
             if k == name:
                 break
         else:
-            self.header_list.append((name, value))
+            self._header_list.append((name, value))
             return self
-        self.header_list[i] = (name, value)
+        self._header_list[i] = (name, value)
         return self
 
     def add_header(self, name, value):
-        self.header_list.append((name, value))
+        self._header_list.append((name, value))
+
+    def generate_header_pairs(self):
+        arr = self._header_list
+        if arr[1][1] is None:
+            arr.pop(1)
+        if arr[0][1] is None:
+            arr.pop(0)
+        self._header_list = None
+        return arr
 
     def add_cookie(self, name, value, domain=None, path=None, max_age=None, expires=None,
                    httponly=None, secure=None):
@@ -824,13 +895,14 @@ class Response2(object):
         if expires:  add("; Expires=%s" % expires)
         if httponly: add("; HttpOnly")
         if secure:   add("; Secure")
-        self.header_list.append(('Set-Cookie', ''.join(buf)))
+        self._header_list.append(('Set-Cookie', ''.join(buf)))
 
 
 class WSGIApplication(object):
 
     REQUEST  = Request
     RESPONSE = Response
+    #RESPONSE = Response2
 
     def __init__(self, mappings, _=None, lazy=False):
         if _ is not None:

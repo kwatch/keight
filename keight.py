@@ -115,7 +115,10 @@ class BaseAction(object):
         ex = None
         try:
             self.before_action()
-            content = action_func(self, **action_args)
+            if isinstance(action_args, dict):
+                content = action_func(self, **action_args)
+            else:
+                content = action_func(self, *action_args)
             return self.handle_content(content)
         except Exception as ex_:
             ex = ex_

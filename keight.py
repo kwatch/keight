@@ -283,22 +283,25 @@ class BaseAction(object):
     def after_action(self, ex):
         pass
 
-    def handle_action(self, action_func, action_args):
-        self._action_func = action_func
+    def run_action(self, action_func, action_args):
+        self.action_func = action_func
         #
         ex = None
         try:
             self.before_action()
-            if isinstance(action_args, dict):
-                content = action_func(self, **action_args)
-            else:
-                content = action_func(self, *action_args)
+            content = self.handle_action(action_func, action_args)
             return self.handle_content(content)
         except Exception as ex_:
             ex = ex_
             raise
         finally:
             self.after_action(ex)
+
+    def handle_action(self, action_func, action_args):
+        if isinstance(action_args, dict):
+            return action_func(self, **action_args)
+        else:
+            return action_func(self, *action_args)
 
     def handle_content(self, content):
         return content
@@ -1195,7 +1198,7 @@ class WSGIApplication(object):
             return self.error_4xx(405, env)
         action_obj = action_class(req, resp)
         try:
-            body = action_obj.handle_action(func, pargs)
+            body = action_obj.run_action(func, pargs)
             return resp.status, resp.get_header_list(), body
         except HttpException as ex:
             return self.handle_http_exception(ex, req, resp)

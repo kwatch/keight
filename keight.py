@@ -702,6 +702,108 @@ class ActionHashedMapping(ActionMapping):
         return None
 
 
+class ActionDFMMapping(ActionMapping):
+
+    def __init__(self, mappings):
+        self._build(mappings)
+
+    def _build(self, mappings):
+        self._fixed_entries    = {}
+        self._variable_entries = {}
+        def callback(full_urlpath, action_class, action_methods, _self=self):
+            if '{' in full_urlpath:
+                t = (action_class, action_methods)
+                _self._register(full_urlpath, t, _self._variable_entries)
+            else:
+                t = (action_class, action_methods, ())
+                _self._fixed_entries[full_urlpath] = t
+        self._traverse(mappings, "", callback)
+
+    def _traverse(self, mappings, base_urlpath, callback):
+        for urlpath, target in mappings:
+            if isinstance(target, list):
+                self._traverse(target, base_urlpath + urlpath, callback)
+            elif isinstance(target, type) and issubclass(target, BaseAction):
+                action_class = target
+                am = getattr(action_class, '__mapping__')
+                if am is None:
+                    raise NoActionMethodMappingError("%s: No functions decorated by '@on()'.")
+                for upath, action_methods in am:
+                    full_urlpath = base_urlpath + urlpath + upath
+                    callback(full_urlpath, action_class, action_methods)
+            else:
+                raise NotActionClassError("%r: Action class expected." % (target,))
+
+    def _register(self, full_path, t, dictionary):
+        keys = self._KEYS_PER_TYPE
+        rexp = self._URLPATH_PARAM_REXP
+        d = dictionary
+        for s in full_path[1:].split('/'):
+            if '{' not in s:
+                key = s
+            else:
+                m = rexp.match(s)
+                if not m:
+                    raise InvalidUrlpathParameterPatternError(
+                        "%r: Invalid urlpath parameter patter." % (s,))
+                name, type_name = m.groups()
+                if type_name:
+                    if not type_name.isalpha():
+                        raise UnexpectedUrlpathParameterTypeError(
+                            "%r: Expected urlpath parameter type name." % (s,))
+                    key = keys.get(type_name)
+                    if key is None:
+                        raise UnknownUrlpathParameterTypeError(
+                            "%r: Unknown paramter type name." % (s,))
+                else:
+                    int_p = name == 'id' or name.endswith('_id')
+                    key = int_p and keys['int'] or keys['str']
+            d = d.setdefault(key, {})
+        #
+        d[None] = t
+
+    _KEYS_PER_TYPE      = {'int': 1, 'str': 2, 'path': 3}
+    _URLPATH_PARAM_REXP = re.compile(r'^\{(\w*)(?::(.*)?)?\}$')
+
+    def lookup(self, req_urlpath):
+        t = self._fixed_entries.get(req_urlpath)
+        if t:
+            return t   # (action_class, action_methos)
+        #
+        key_inttype  = 1
+        key_strtype  = 2
+        key_pathtype = 3
+        args = []; add = args.append
+        d = self._variable_entries
+        items = req_urlpath[1:].split('/')  # ex: '/x/y/1' => ('x','y','1')
+        for s in items:
+            if s in d:
+                d = d[s]
+            elif key_inttype in d and s.isdigit():
+                d = d[key_inttype]
+                add(int(s))
+            elif key_strtype in d:
+                d = d[key_strtype]
+                add(s)
+            elif key_pathtype in d:
+                for i, x in enumerate(items):
+                    if x is s:
+                        break
+                add("/".join(items[i+1:]))
+                break
+            else:
+                return None    # not found
+            if d is None:
+                return None    # not found
+        t = d.get(None)
+        if not t:
+            return None
+        action_class, action_methods = t
+        return (action_class,      # ex: HelloAction
+                action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
+                args)              # ex: [123]
+
+
 class Request(object):
 
     def __init__(self, env):

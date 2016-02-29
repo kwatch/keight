@@ -1192,13 +1192,21 @@ class WSGIApplication(object):
         tupl = self.lookup(req.path)
         if tupl is None:
             return self.error_4xx(404, env)
-        action_class, action_methods, pargs = tupl
-        func = action_methods.get(req.method)
-        if func is None:
-            return self.error_4xx(405, env)
+        action_class, action_methods, action_args = tupl
+        #
+        req_meth = req.method
+        action_func = action_methods.get(req_meth)
+        if not action_func:
+            if req_meth == 'HEAD':
+                req_meth = action_methods.get('HEAD') or action_methods.get('ANY')
+            else:
+                req_meth = action_methods.get('ANY')
+            if not action_func:
+                return self.error_4xx(405, env)
+        #
         action_obj = action_class(req, resp)
         try:
-            body = action_obj.run_action(func, pargs)
+            body = action_obj.run_action(action_func, action_args)
             return resp.status, resp.get_header_list(), body
         except HttpException as ex:
             return self.handle_http_exception(ex, req, resp)

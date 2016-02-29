@@ -57,6 +57,93 @@ elif PY3:
     S = U
 
 
+HTTP_STATUS_DICT = {
+    100: "100 Continue",
+    101: "101 Switching Protocols",
+    102: "102 Processing",                # (WebDAV; RFC 2518)
+    #
+    200: "200 OK",
+    201: "201 Created",
+    202: "202 Accepted",
+    203: "203 Non-Authoritative Information",  # (since HTTP/1.1)
+    204: "204 No Content",
+    205: "205 Reset Content",
+    206: "206 Partial Content",           # (RFC 7233),
+    207: "207 Multi-Status",              # (WebDAV; RFC 4918)
+    208: "208 Already Reported",          # (WebDAV; RFC 5842)
+    226: "226 IM Used",                   # (RFC 3229)
+    #
+    300: "300 Multiple Choices",
+    301: "301 Moved Permanently",
+    302: "302 Found",
+    303: "303 See Other",                 # (since HTTP/1.1)
+    304: "304 Not Modified",              # (RFC 7232)
+    305: "305 Use Proxy",                 # (since HTTP/1.1)
+    306: "306 Switch Proxy",
+    307: "307 Temporary Redirect",        # (since HTTP/1.1)
+    308: "308 Permanent Redirect",        # (RFC 7538)
+   #308: "308 Resume Incomplete",         # (Google)
+    #
+    400: "400 Bad Request",
+    401: "401 Unauthorized",              # (RFC 7235)
+    402: "402 Payment Required",
+    403: "403 Forbidden",
+    404: "404 Not Found",
+    405: "405 Method Not Allowed",
+    406: "406 Not Acceptable",
+    407: "407 Proxy Authentication Required", # (RFC 7235)
+    408: "408 Request Timeout",
+    409: "409 Conflict",
+    410: "410 Gone",
+    411: "411 Length Required",
+    412: "412 Precondition Failed",       # (RFC 7232)
+    413: "413 Payload Too Large",         # (RFC 7231)
+    414: "414 Request-URI Too Long",
+    415: "415 Unsupported Media Type",
+    416: "416 Requested Range Not Satisfiable",  # (RFC 7233)
+    417: "417 Expectation Failed",
+    418: "418 I'm a teapot",              # (RFC 2324)
+    419: "419 Authentication Timeout",    # (not in RFC 2616)
+    420: "420 Method Failure",            # (Spring Framework)
+    420: "420 Enhance Your Calm",         # (Twitter)
+    421: "421 Misdirected Request",       # (RFC 7540)
+    422: "422 Unprocessable Entity",      # (WebDAV; RFC 4918)
+    423: "423 Locked",                    # (WebDAV; RFC 4918)
+    424: "424 Failed Dependency",         # (WebDAV; RFC 4918)
+    426: "426 Upgrade Required",
+    428: "428 Precondition Required",     # (RFC 6585)
+    429: "429 Too Many Requests",         # (RFC 6585)
+    431: "431 Request Header Fields Too Large", # (RFC 6585)
+    440: "440 Login Timeout",             # (Microsoft)
+    444: "444 No Response",               # (Nginx)
+    449: "449 Retry With",                # (Microsoft)
+    450: "450 Blocked by Windows Parental Controls", # (Microsoft)
+    451: "451 Unavailable For Legal Reasons", # (Internet draft)
+    451: "451 Redirect",                  # (Microsoft)
+    494: "494 Request Header Too Large",  # (Nginx)
+    495: "495 Cert Error",                # (Nginx)
+    496: "496 No Cert",                   # (Nginx)
+    497: "497 HTTP to HTTPS",             # (Nginx)
+    498: "498 Token expired/invalid",     # (Esri)
+    499: "499 Client Closed Request",     # (Nginx)
+   #499: "499 Token required",            # (Esri)
+    #
+    500: "500 Internal Server Error",
+    501: "501 Not Implemented",
+    502: "502 Bad Gateway",
+    503: "503 Service Unavailable",
+    504: "504 Gateway Timeout",
+    505: "505 HTTP Version Not Supported",
+    506: "506 Variant Also Negotiates",   # (RFC 2295)
+    507: "507 Insufficient Storage",      # (WebDAV; RFC 4918)
+    508: "508 Loop Detected",             # (WebDAV; RFC 5842)
+    509: "509 Bandwidth Limit Exceeded",  # (Apache bw/limited extension)
+    510: "510 Not Extended",              # (RFC 2774)
+    511: "511 Network Authentication Required", # (RFC 6585)
+    520: "520 Unknown Error",
+}
+
+
 def dict2json(jdict):
     return json.dumps(jdict, ensure_ascii=False, indent=None,
                       separators=_dict2json_seps, encoding=ENCODING)
@@ -881,213 +968,42 @@ class RequestHeaders(object):
 
 class Response(object):
 
-    STATUSES = {
-        100: "100 Continue",
-        101: "101 Switching Protocols",
-        102: "102 Processing",                # (WebDAV; RFC 2518)
-        #
-        200: "200 OK",
-        201: "201 Created",
-        202: "202 Accepted",
-        203: "203 Non-Authoritative Information",  # (since HTTP/1.1)
-        204: "204 No Content",
-        205: "205 Reset Content",
-        206: "206 Partial Content",           # (RFC 7233),
-        207: "207 Multi-Status",              # (WebDAV; RFC 4918)
-        208: "208 Already Reported",          # (WebDAV; RFC 5842)
-        226: "226 IM Used",                   # (RFC 3229)
-        #
-        300: "300 Multiple Choices",
-        301: "301 Moved Permanently",
-        302: "302 Found",
-        303: "303 See Other",                 # (since HTTP/1.1)
-        304: "304 Not Modified",              # (RFC 7232)
-        305: "305 Use Proxy",                 # (since HTTP/1.1)
-        306: "306 Switch Proxy",
-        307: "307 Temporary Redirect",        # (since HTTP/1.1)
-        308: "308 Permanent Redirect",        # (RFC 7538)
-       #308: "308 Resume Incomplete",         # (Google)
-        #
-        400: "400 Bad Request",
-        401: "401 Unauthorized",              # (RFC 7235)
-        402: "402 Payment Required",
-        403: "403 Forbidden",
-        404: "404 Not Found",
-        405: "405 Method Not Allowed",
-        406: "406 Not Acceptable",
-        407: "407 Proxy Authentication Required", # (RFC 7235)
-        408: "408 Request Timeout",
-        409: "409 Conflict",
-        410: "410 Gone",
-        411: "411 Length Required",
-        412: "412 Precondition Failed",       # (RFC 7232)
-        413: "413 Payload Too Large",         # (RFC 7231)
-        414: "414 Request-URI Too Long",
-        415: "415 Unsupported Media Type",
-        416: "416 Requested Range Not Satisfiable",  # (RFC 7233)
-        417: "417 Expectation Failed",
-        418: "418 I'm a teapot",              # (RFC 2324)
-        419: "419 Authentication Timeout",    # (not in RFC 2616)
-        420: "420 Method Failure",            # (Spring Framework)
-        420: "420 Enhance Your Calm",         # (Twitter)
-        421: "421 Misdirected Request",       # (RFC 7540)
-        422: "422 Unprocessable Entity",      # (WebDAV; RFC 4918)
-        423: "423 Locked",                    # (WebDAV; RFC 4918)
-        424: "424 Failed Dependency",         # (WebDAV; RFC 4918)
-        426: "426 Upgrade Required",
-        428: "428 Precondition Required",     # (RFC 6585)
-        429: "429 Too Many Requests",         # (RFC 6585)
-        431: "431 Request Header Fields Too Large", # (RFC 6585)
-        440: "440 Login Timeout",             # (Microsoft)
-        444: "444 No Response",               # (Nginx)
-        449: "449 Retry With",                # (Microsoft)
-        450: "450 Blocked by Windows Parental Controls", # (Microsoft)
-        451: "451 Unavailable For Legal Reasons", # (Internet draft)
-        451: "451 Redirect",                  # (Microsoft)
-        494: "494 Request Header Too Large",  # (Nginx)
-        495: "495 Cert Error",                # (Nginx)
-        496: "496 No Cert",                   # (Nginx)
-        497: "497 HTTP to HTTPS",             # (Nginx)
-        498: "498 Token expired/invalid",     # (Esri)
-        499: "499 Client Closed Request",     # (Nginx)
-       #499: "499 Token required",            # (Esri)
-        #
-        500: "500 Internal Server Error",
-        501: "501 Not Implemented",
-        502: "502 Bad Gateway",
-        503: "503 Service Unavailable",
-        504: "504 Gateway Timeout",
-        505: "505 HTTP Version Not Supported",
-        506: "506 Variant Also Negotiates",   # (RFC 2295)
-        507: "507 Insufficient Storage",      # (WebDAV; RFC 4918)
-        508: "508 Loop Detected",             # (WebDAV; RFC 5842)
-        509: "509 Bandwidth Limit Exceeded",  # (Apache bw/limited extension)
-        510: "510 Not Extended",              # (RFC 2774)
-        511: "511 Network Authentication Required", # (RFC 6585)
-        520: "520 Unknown Error",
-    }
+    __slots__ = ('status_code', 'header_list', 'body')
 
     def __init__(self):
-        self._status = "200 OK"
-        self._status_code = 200
-        self.headers = {}
-
-    @property
-    def status(self):
-        return self._status
-
-    @status.setter
-    def status(self, string):
-        self._status = string
-        self.status_code = int(string.split(' ', 1)[0])
-
-    @property
-    def status_code(self):
-        return self._status_code
-
-    @status.setter
-    def status_code(self, code):
-        self._status_code = code
-        self._status = self.STATUSES.get(code)
-
-    @property
-    def content_type(self):
-        return self.headers.get('Content-Type')
-
-    @content_type.setter
-    def content_type(self, value):
-        self.headers['Content-Type'] = value
-
-    @content_type.deleter
-    def content_type(self):
-        del self.headers['Content-Type']
-
-    @property
-    def content_length(self):
-        return self.headers.get('Content-Length')
-
-    @content_length.setter
-    def content_length(self, value):
-        self.headers['Content-Length'] = str(value)
-
-    @content_length.deleter
-    def content_length(self):
-        del self.headers['Content-Length']
-
-    def generate_header_pairs(self):
-        for k, v in self.headers.items():
-            if isinstance(v, list):
-                vs = v
-                for v in vs:
-                    yield k, v
-            else:
-                yield k, v
-
-    def add_cookie(self, name, value, domain=None, path=None, max_age=None, expires=None,
-                   httponly=None, secure=None):
-        buf = []; add = buf.append
-        add("%s=%s" % (name, value))
-        if domain:   add("; Domain=%s"  % domain)
-        if path:     add("; Path=%s"    % path)
-        if max_age:  add("; Max-Age=%s" % max_age)
-        if expires:  add("; Expires=%s" % expires)
-        if httponly: add("; HttpOnly")
-        if secure:   add("; Secure")
-        cookie_str = ''.join(buf)
-        self.headers.setdefault('Set-Cookie', []).append(cookie_str)
-        return self
-
-
-class Response2(object):
-
-    def __init__(self):
-        self._status = "200 OK"
-        self._status_code = 200
-        self._header_list = [
-            ('Content-Type',   ''),
-            ('Content-Length', ''),
+        self.status_code = 200
+        self.header_list = [
+            ('Content-Type',   None),
+            ('Content-Length', None),
         ]
+        self.body = None
 
     @property
     def status(self):
-        return self._status
-
-    @status.setter
-    def status(self, string):
-        self._status = string
-        self.status_code = int(string.split(' ', 1)[0])
-
-    @property
-    def status_code(self):
-        return self._status_code
-
-    @status.setter
-    def status_code(self, code):
-        self._status_code = code
-        self._status = self.STATUSES.get(code)
+        return HTTP_STATUS_DICT[self.status_code]
 
     @property
     def content_type(self):
-        return self._header_list[0][1]
+        return self.header_list[0][1]
 
     @content_type.setter
     def content_type(self, value):
-        self._header_list[0] = ('Content-Type', value)
+        self.header_list[0] = ('Content-Type', value)
 
     @property
     def content_length(self):
-        return self.header_length[0][1]
+        return int(self.header_length[0][1])
 
     @content_length.setter
     def content_length(self, value):
-        self._header_list[1] = ('Content-Length', str(value))
+        self.header_list[1] = ('Content-Length', str(value))
 
     def get_header(self, name):
         if name == 'Content-Type':
             return self.content_type
         if name == 'Content-Length':
             return self.content_length
-        for k, v in self._header_list:
+        for k, v in self.header_list:
             if k == name:
                 return v
         return None
@@ -1099,25 +1015,25 @@ class Response2(object):
         if name == 'Content-Length':
             self.content_length = value
             return self
-        for i, (k, _) in enumerate(self._header_list):
+        for i, (k, _) in enumerate(self.header_list):
             if k == name:
                 break
         else:
-            self._header_list.append((name, value))
+            self.header_list.append((name, value))
             return self
-        self._header_list[i] = (name, value)
+        self.header_list[i] = (name, value)
         return self
 
     def add_header(self, name, value):
-        self._header_list.append((name, value))
+        self.header_list.append((name, value))
 
-    def generate_header_pairs(self):
-        arr = self._header_list
+    def get_header_list(self):
+        arr = self.header_list
         if arr[1][1] is None:
             arr.pop(1)
         if arr[0][1] is None:
             arr.pop(0)
-        self._header_list = None
+        self.header_list = None
         return arr
 
     def add_cookie(self, name, value, domain=None, path=None, max_age=None, expires=None,
@@ -1130,14 +1046,13 @@ class Response2(object):
         if expires:  add("; Expires=%s" % expires)
         if httponly: add("; HttpOnly")
         if secure:   add("; Secure")
-        self._header_list.append(('Set-Cookie', ''.join(buf)))
+        self.header_list.append(('Set-Cookie', ''.join(buf)))
 
 
 class WSGIApplication(object):
 
     REQUEST  = Request
     RESPONSE = Response
-    #RESPONSE = Response2
 
     def __init__(self, mappings, _=None, lazy=False, hashing=None):
         if _ is not None:
@@ -1191,7 +1106,7 @@ class WSGIApplication(object):
         action_obj = action_class(req, resp)
         try:
             body = action_obj.handle_action(func, pargs)
-            return resp.status, tuple(resp.generate_header_pairs()), body
+            return resp.status, resp.get_header_list(), body
         except HttpException as ex:
             return self.handle_http_exception(ex, req, resp)
         except KeyboardInterrupt:
@@ -1200,7 +1115,7 @@ class WSGIApplication(object):
             return self.handle_exception(ex, req, resp)
 
     def error_4xx(self, status_code, env):
-        status = Response.STATUSES[status_code]
+        status = HTTP_STATUS_DICT[status_code]
         html = u"""<h2>%s</h2>""" % status
         binary = html.encode(ENCODING)
         headers = [
@@ -1223,7 +1138,7 @@ class WSGIApplication(object):
         sys.stderr.write(traceback.format_exc())
         #
         status_code = 500
-        status = Response.STATUSES[status_code]
+        status = HTTP_STATUS_DICT[status_code]
         html = u"""<h2>%s</h2>""" % status
         binary = html.encode(ENCODING)
         headers = [

@@ -339,8 +339,10 @@ class Action(BaseAction):
         return content   # TODO
 
     def after_action(self, ex):
-        if not self.resp.content_type:
-            self.resp.content_type = self.guess_content_type() or self.default_content_type
+        #if not self.resp.content_type:    # slow
+        #    self.resp.content_type = self.guess_content_type() or self.default_content_type
+        if not self.resp.header_list[0][1]:
+            self.resp.header_list[0] = ('Content-Type', self.guess_content_type() or self.default_content_type)
 
     def guess_content_type(self):
         #ext = os.path.splitext(self.req.path)[0]   # slow

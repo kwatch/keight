@@ -143,6 +143,93 @@ HTTP_STATUS_DICT = {
     520: "520 Unknown Error",
 }
 
+MIME_TYPES = {
+    '.html'    : "text/html",
+    '.htm'     : "text/html",
+    '.shtml'   : "text/html",
+    '.css'     : "text/css",
+    '.csv'     : "text/comma-separated-values",
+    '.tsv'     : "text/tab-separated-values",
+    '.xml'     : "text/xml",
+    '.mml'     : "text/mathml",
+    '.txt'     : "text/plain",
+    '.wml'     : "text/vnd.wap.wml",
+    '.gif'     : "image/gif",
+    '.jpeg'    : "image/jpeg",
+    '.jpg'     : "image/jpeg",
+    '.png'     : "image/png",
+    '.tif'     : "image/tiff",
+    '.tiff'    : "image/tiff",
+    '.ico'     : "image/x-icon",
+    '.bmp'     : "image/x-ms-bmp",
+    '.svg'     : "image/svg+xml",
+    '.svgz'    : "image/svg+xml",
+    '.webp'    : "image/webp",
+    '.mid'     : "audio/midi",
+    '.midi'    : "audio/midi",
+    '.kar'     : "audio/midi",
+    '.mp3'     : "audio/mpeg",
+    '.ogg'     : "audio/ogg",
+    '.m4a'     : "audio/x-m4a",
+    '.ra'      : "audio/x-realaudio",
+    '.3gpp'    : "video/3gpp",
+    '.3gp'     : "video/3gpp",
+    '.3g2'     : "video/3gpp2",
+    '.ts'      : "video/mp2t",
+    '.mp4'     : "video/mp4",
+    '.mpeg'    : "video/mpeg",
+    '.mpg'     : "video/mpeg",
+    '.mov'     : "video/quicktime",
+    '.webm'    : "video/webm",
+    '.flv'     : "video/x-flv",
+    '.m4v'     : "video/x-m4v",
+    '.mng'     : "video/x-mng",
+    '.asx'     : "video/x-ms-asf",
+    '.asf'     : "video/x-ms-asf",
+    '.wmv'     : "video/x-ms-wmv",
+    '.avi'     : "video/x-msvideo",
+    '.json'    : "application/json",
+    '.js'      : "application/javascript",
+    '.atom'    : "application/atom+xml",
+    '.rss'     : "application/rss+xml",
+    '.doc'     : "application/msword",
+    '.pdf'     : "application/pdf",
+    '.ps'      : "application/postscript",
+    '.eps'     : "application/postscript",
+    '.ai'      : "application/postscript",
+    '.rtf'     : "application/rtf",
+    '.xls'     : "application/vnd.ms-excel",
+    '.eot'     : "application/vnd.ms-fontobject",
+    '.ppt'     : "application/vnd.ms-powerpoint",
+    '.key'     : "application/vnd.apple.keynote",
+    '.pages'   : "application/vnd.apple.pages",
+    '.numbers' : "application/vnd.apple.numbers",
+    '.zip'     : "application/zip",
+    '.lha'     : "application/x-lzh",
+    '.lzh'     : "application/x-lzh",
+    '.tar'     : "application/x-tar",
+    '.tgz'     : "application/x-tar",
+    '.gz'      : "application/x-gzip",
+    '.bz2'     : "application/x-bzip2",
+    '.xz'      : "application/x-xz",
+    '.7z'      : "application/x-7z-compressed",
+    '.rar'     : "application/x-rar-compressed",
+    '.rpm'     : "application/x-redhat-package-manager",
+    '.deb'     : "application/vnd.debian.binary-package",
+    '.swf'     : "application/x-shockwave-flash",
+    '.der'     : "application/x-x509-ca-cert",
+    '.pem'     : "application/x-x509-ca-cert",
+    '.crt'     : "application/x-x509-ca-cert",
+    '.xpi'     : "application/x-xpinstall",
+    '.xhtml'   : "application/xhtml+xml",
+    '.xspf'    : "application/xspf+xml",
+    '.yaml'    : "application/x-yaml",
+    '.yml'     : "application/x-yaml",
+    '.docx'    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    '.xlsx'    : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    '.pptx'    : "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
+
 
 def dict2json(jdict):
     return json.dumps(jdict, ensure_ascii=False, indent=None,
@@ -219,44 +306,47 @@ class BaseAction(object):
 
 class Action(BaseAction):
 
+    default_content_type = "text/html;charset=utf-8"
+    json_content_type    = "application/json"
+
     def dict2json(self, jdict):
         return dict2json(jdict)
 
     def handle_content(self, content):
         if content is None:
             return [b""]
-        ctype = None
+        #
         if isinstance(content, dict):
-            content = self.dict2json(jdict)
-            ctype   = "application/json"
+            content = self.dict2json(content)
+            binary = B(content, 'utf-8')
+            self.resp.content_type   = self.json_content_type
+            self.resp.content_length = len(binary)
+            return [binary]
+        #
         if isinstance(content, unicode):
-            content = content.encode(ENCODING)
+            binary = B(content, ENCODING)
+            self.resp.content_length = len(binary)
+            return [binary]
+        #
         if isinstance(content, bytes):
-            ctype = ctype or self.detect_content_type(content)
-            resp = self.resp
-            #resp.headers.setdefault('Content-Type', ctype)
-            #resp.headers['Content-Length'] = str(len(content))
-            if not resp.content_type:
-                resp.content_type = ctype
-            resp.content_length = len(content)
-            return [content]
+            binary = content
+            self.resp.content_length = len(binary)
+            return [binary]
         #
         return content   # TODO
 
-    def detect_content_type(self, content):
-        if isinstance(content, bytes):
-            if content.startswith(b'<'):
-                return "text/html;charset=utf-8"
-            if content.startswith(b'{'):
-                return "application/json"
-            return "application/octet-stream"
-        if isinstance(content, unicode):
-            if content.startswith(u'<'):
-                return "text/html;charset=utf-8"
-            if content.startswith(u'{'):
-                return "application/json"
-            return "text/plain"
-        raise TypeError("string exptected but got %s" % type(content))
+    def after_action(self, ex):
+        if not self.resp.content_type:
+            self.resp.content_type = self.guess_content_type() or self.default_content_type
+
+    def guess_content_type(self):
+        #ext = os.path.splitext(self.req.path)[0]   # slow
+        #return MIME_TYPES.get(ext)
+        req_path = self.req.path
+        pos = req_path.rfind('.')
+        if pos < 0:
+            return None
+        return MIME_TYPES.get(req_path[pos:])
 
 
 class ActionMethodMapping(object):

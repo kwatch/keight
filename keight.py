@@ -580,7 +580,7 @@ class ActionHashedMapping(ActionMapping):
         self._build(mappings, '')
         d, n = self._hashing(self._variable_entries)
         self._hashed_variable_entries = d
-        self._hashed_length = n
+        self._prefix_length = n
         del self._variable_entries
 
     def _build(self, mappings, base_upath_pat):
@@ -606,15 +606,78 @@ class ActionHashedMapping(ActionMapping):
                 t = (action_class, action_methods)
                 self._fixed_entries[full_upath_pat] = t
 
+    def _calculate_hasing_index(self, upath_pats):
+        pairs = [ (upath_pat.index('{'), upath_pat) for upath_pat in upath_pats ]
+        indeces = sorted(set( idx for idx, _ in pairs ))
+        sys.stderr.write("\033[0;31m*** debug: indeces=%r\033[0m\n" % (indeces, ))
+        best_index = 0
+        x = None
+        for i in indeces:
+            d = {}
+            for idx, upath_pat in pairs:
+                if  idx >= i:
+                    s = upath_pat[:i]
+                else:
+                    s = None
+                d[s] = d.get(s, 0) + 1
+            n = max(d.values())
+            if x is None or n <= x:
+                _prev = (x, best_index)
+                x = n
+                best_index = i
+                _curr = (x, best_index)
+                sys.stderr.write("\033[0;31m*** debug: (x, best_index): %r => %r\033[0m\n" % (_prev, _curr))
+            elif n > x:
+                sys.stderr.write("\033[0;31m*** debug: n > x: %r > %r: break\033[0m\n" % (n, x))
+                break
+        return best_index
+
     def _hashing(self, variable_entries):
-        n = min( upath_pat.index('{') for upath_pat, _, _ in variable_entries )
+        upath_pats = ( t[0] for t in variable_entries )
+        n = self._calculate_hasing_index(upath_pats)
         d = {}
         for urlpath_pat, action_class, action_methods in variable_entries:
-            prefix = urlpath_pat[:n]
-            rexp_str = self._upath_pat2rexp(urlpath_pat[n:], '', '$')
+            if urlpath_pat.index('{') >= n:
+                prefix   = urlpath_pat[:n]
+                rexp_str = self._upath_pat2rexp(urlpath_pat[n:], '', '$')
+            else:
+                prefix   = None
+                rexp_str = self._upath_pat2rexp(urlpath_pat, '', '$')
             t = (re.compile(rexp_str), action_class, action_methods)
             d.setdefault(prefix, []).append(t)
         return d, n
+
+    def __repr__(self):
+        def _func_args(fn):
+            return fn.__code__.co_varnames[:fn.__code__.co_argcount]
+        def _inspect(action_methods, _args=_func_args):
+            g = ( "%s: %s(%s)" % (meth, func.__name__, ', '.join(_args(func)[1:]))
+                      for meth, func in action_methods.items() )
+            return ", ".join(g)
+        buf = []; add = buf.append
+        add(    "<%s \n" % self.__class__.__name__)
+        add(    "  _fixed_entries: {\n")
+        for urlpath_pat, (action_class, action_methods) in self._fixed_entries.items():
+            s1 = urlpath_pat
+            s2 = action_class.__name__
+            s3 = _inspect(action_methods)
+            add("    %r:\n" % urlpath_pat)
+            add("        (%s, {%s}),\n" % (s2, s3))
+        add(    "  },\n")
+        add(    "  _variable_entries: {\n")
+        for key, tuples in self._hashed_variable_entries.items():
+            add("    %r: [\n" % key)
+            for t in tuples:
+                urlpath_rexp, action_class, action_methods = t
+                s1 = "rexp(%r)" % urlpath_rexp.pattern
+                s2 = action_class.__name__
+                s3 = _inspect(action_methods)
+                add("        (%s, %s, {%s}),\n" % (s1, s2, s3))
+            add("    ],\n")
+        add(    "  },\n")
+        add(    "  _prefix_length: %s,\n" % self._prefix_length)
+        add(    ">")
+        return "".join(buf)
 
     def lookup(self, req_urlpath):
         tupl = self._fixed_entries.get(req_urlpath)
@@ -622,10 +685,14 @@ class ActionHashedMapping(ActionMapping):
             action_class, action_methods = tupl
             return action_class, action_methods, {}
         #
-        n = self._hashed_length
-        prefix    = req_urlpath[:n]
-        remaining = req_urlpath[n:]
+        n = self._prefix_length
+        prefix = req_urlpath[:n]
         tuples = self._hashed_variable_entries.get(prefix)
+        if tuples:
+            remaining = req_urlpath[n:]
+        else:
+            remaining = req_urlpath
+            tuples = self._hashed_variable_entries.get(None)
         if tuples:
             for upath_rexp, action_class, action_methods in tuples:
                 m = upath_rexp.match(remaining)

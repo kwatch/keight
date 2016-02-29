@@ -321,13 +321,16 @@ class Action(BaseAction):
         #
         if isinstance(content, dict):
             content = self.dict2json(content)
-            binary = B(content, 'utf-8')
+            if isinstance(content, unicode):
+                binary = content.encode('utf-8')
+            else:
+                binary = content
             self.resp.content_type   = self.json_content_type
             self.resp.content_length = len(binary)
             return [binary]
         #
         if isinstance(content, unicode):
-            binary = B(content, ENCODING)
+            binary = content.encode(ENCODING)
             self.resp.content_length = len(binary)
             return [binary]
         #

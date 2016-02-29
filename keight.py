@@ -317,29 +317,21 @@ class Action(BaseAction):
 
     def handle_content(self, content):
         if content is None:
-            return [b""]
-        #
-        if isinstance(content, dict):
-            content = self.dict2json(content)
-            if isinstance(content, unicode):
-                binary = content.encode('utf-8')
-            else:
-                binary = content
-            self.resp.content_type   = self.json_content_type
-            self.resp.content_length = len(binary)
-            return [binary]
-        #
-        if isinstance(content, unicode):
+            binary = b""
+        elif isinstance(content, dict):
+            binary = self.dict2json(content)
+            if isinstance(binary, unicode):
+                binary = binary.encode('utf-8')   # JSON should be utf-8
+            self.resp.content_type = self.json_content_type
+        elif isinstance(content, unicode):
             binary = content.encode(ENCODING)
-            self.resp.content_length = len(binary)
-            return [binary]
-        #
-        if isinstance(content, bytes):
+        elif isinstance(content, bytes):
             binary = content
-            self.resp.content_length = len(binary)
-            return [binary]
+        else:
+            return content   # TODO
         #
-        return content   # TODO
+        self.resp.content_length = len(binary)
+        return [binary]
 
     def after_action(self, ex):
         #if not self.resp.content_type:    # slow

@@ -27,12 +27,12 @@ BytesIO = None   # io.BytesIO or cStringIO.StringIO
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
-assert PY2 or PY3
+assert PY2 or PY3, "Unexpected python version (%s)" % (sys.version)
 
 if PY3:
-    unicode    = str
-    xrange     = range
-    basestring = str
+    unicode     = str
+    xrange      = range
+    basestring  = str
 
 
 ENCODING='utf-8'

@@ -322,7 +322,8 @@ class Action(BaseAction):
             binary = self.dict2json(content)
             if isinstance(binary, unicode):
                 binary = binary.encode('utf-8')   # JSON should be utf-8
-            self.resp.content_type = self.json_content_type
+            #self.resp.content_type = self.json_content_type
+            self.resp.header_list[0] = ('Content-Type', self.json_content_type)
         elif isinstance(content, unicode):
             binary = content.encode(ENCODING)
         elif isinstance(content, bytes):
@@ -330,7 +331,8 @@ class Action(BaseAction):
         else:
             return content   # TODO
         #
-        self.resp.content_length = len(binary)
+        #self.resp.content_length = len(binary)
+        self.resp.header_list[1] = ('Content-Length', str(len(binary)))
         return [binary]
 
     def after_action(self, ex):

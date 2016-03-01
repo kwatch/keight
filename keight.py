@@ -983,47 +983,7 @@ class ActionDFMMapping(ActionMapping):
                 args)              # ex: [123]
 
 
-class Request(object):
-
-    def __init__(self, env):
-        self.env = env
-        self.method = env['REQUEST_METHOD']
-        self.path   = env['PATH_INFO'] or '/'
-
-    @property
-    def content_type(self):
-        return self.env.get('CONTENT_TYPE')
-
-    @property
-    def content_length(self):
-        return self.env.get('CONTENT_LENGTH')
-
-    @property
-    def wsgi_input(self):
-        return self.env.get('wsgi.input')
-
-    @property
-    def wsgi_errors(self):
-        return self.env.get('wsgi.errors')
-
-    @property
-    def headers(self):
-        headers = getattr(self, '_headers', None)
-        if headers is None:
-            self._headers = headers = RequestHeaders(self.env)
-        return headers
-
-    def header(self, name):
-        k = key.lower()
-        if k == 'content-type':
-            return self.env.get('CONTENT_TYPE')
-        if k == 'content-length':
-            return self.env.get('CONTENT_LENGTH')
-        k = 'HTTP_' + k.upper().replace('-', '_')
-        return self.env.get(k)
-
-
-class RequestHeaders(object):
+class WSGIRequestHeaders(object):
 
     def __init__(self, env):
         self.env = env
@@ -1058,7 +1018,48 @@ class RequestHeaders(object):
                 yield k[5:].title().replace('_', '-'), env[k]
 
 
-class Response(object):
+class WSGIRequest(object):
+    REQUEST_HEADERS = WSGIRequestHeaders
+
+    def __init__(self, env):
+        self.env = env
+        self.method = env['REQUEST_METHOD']
+        self.path   = env['PATH_INFO'] or '/'
+
+    @property
+    def content_type(self):
+        return self.env.get('CONTENT_TYPE')
+
+    @property
+    def content_length(self):
+        return self.env.get('CONTENT_LENGTH')
+
+    @property
+    def wsgi_input(self):
+        return self.env.get('wsgi.input')
+
+    @property
+    def wsgi_errors(self):
+        return self.env.get('wsgi.errors')
+
+    @property
+    def headers(self):
+        headers = getattr(self, '_headers', None)
+        if headers is None:
+            self._headers = headers = self.REQUEST_HEADERS(self.env)
+        return headers
+
+    def header(self, name):
+        k = key.lower()
+        if k == 'content-type':
+            return self.env.get('CONTENT_TYPE')
+        if k == 'content-length':
+            return self.env.get('CONTENT_LENGTH')
+        k = 'HTTP_' + k.upper().replace('-', '_')
+        return self.env.get(k)
+
+
+class WSGIResponse(object):
 
     __slots__ = ('status_code', 'header_list', 'body')
 
@@ -1143,8 +1144,8 @@ class Response(object):
 
 class WSGIApplication(object):
 
-    REQUEST  = Request
-    RESPONSE = Response
+    REQUEST  = WSGIRequest
+    RESPONSE = WSGIResponse
 
     def __init__(self, mappings, _=None, lazy=False, hashing=None):
         if _ is not None:
@@ -1246,6 +1247,27 @@ class WSGIApplication(object):
             ('Content-Length', str(len(binary))),
         ]
         return status, headers, [binary]
+
+
+def create_module(module_name, **kwargs):
+    """ex. mod = create_module('keight.wsgi')"""
+    try:
+        mod = type(sys)(module_name)
+    except:    # on Jython 2.5.2
+        import imp
+        mod = imp.new_module(module_name)
+    mod.__file__ = __file__
+    mod.__dict__.update(kwargs)
+    sys.modules[module_name] = mod
+    return mod
+
+
+wsgi = create_module("keight.wsgi")
+wsgi.RequestHeaders = WSGIRequestHeaders
+wsgi.Request        = WSGIRequest
+wsgi.Response       = WSGIResponse
+wsgi.Application    = WSGIApplication
+del WSGIRequestHeaders, WSGIRequest, WSGIResponse, WSGIApplication
 
 
 def mock_env(req_meth, req_urlpath, _=None, query=None, form=None, json=None,

@@ -255,6 +255,14 @@ def _load_class(string):
     return getattr(mod, class_name)
 
 
+class KeightError(Exception):
+    pass
+
+
+class ActionMappingError(KeightError):
+    pass
+
+
 class HttpException(Exception):
 
     __slots__ = ('status', 'content', 'headers')
@@ -346,51 +354,31 @@ class Action(BaseAction):
         return MIME_TYPES.get(req_path[pos:])
 
 
-class ActionMethodMapping(object):
-
-    def __init__(self):
-        self._list = []
-
-    def add(self, urlpath_pat, request_method, action_func):
-        available_methods = ActionMapping.REQUEST_METHODS
-        if request_method not in available_methods:
-            raise ValueError("%s: Unknown request method." % (request_method,))
-        dictionary = self._find_or_create(urlpath_pat)
-        dictionary[request_method] = action_func
-        return self
-
-    def _find_or_create(self, urlpath_pat):
-        for upath, dct in self._list:
-            if upath == urlpath_pat:
-                return dct
-        dct = {}
-        self._list.append((urlpath_pat, dct))
-        return dct
-
-    def __iter__(self):
-        return self._list.__iter__()
-
-
-def _get_mapping_obj(depth=2):
+def _get_mapping_dict(urlpath_pattern, depth=2):
     localvars = sys._getframe(depth).f_locals
-    key = '__mapping__'
-    if key not in localvars:
-        localvars[key] = ActionMethodMapping()
-    return localvars[key]
+    tuples = localvars.setdefault('__mapping__', [])
+    for t in tuples:
+        if t[0] == urlpath_pattern:
+            break
+    else:
+        t = (urlpath_pattern, {})
+        tuples.append(t)
+    return t[1]
 
 
-def mapping(urlpath_pat, **kwargs):
-    mapping_obj = _get_mapping_obj(2)
-    for meth, func in kwargs:
-        mapping_obj.add(urlpaht_pat, meth, func)
-    return mapping_obj
+def mapping(urlpath_pattern, **methods):
+    d = _get_mapping_dict(urlpath_pattern)
+    for meth, func in methods.items():
+        ActionMapping._validate_request_method(meth)
+        d[meth] = func
 
 
-def on(request_method, urlpath_pattern, **tags):
-    mapping_obj = _get_mapping_obj(2)
+def on(request_method, urlpath_pattern, **options):
+    d = _get_mapping_dict(urlpath_pattern)
     def deco(func):
-        func.tags = tags
-        mapping_obj.add(urlpath_pattern, request_method, func)
+        func.options = options
+        ActionMapping._validate_request_method(request_method)
+        d[request_method] = func
         return func
     return deco
 
@@ -401,6 +389,11 @@ class ActionMapping(object):
                        'HEAD', 'OPTIONS', 'TRACE', 'LINK', 'UNLINK', ]
 
     URLPATH_PARAMETER_REXP = _re_compile(r'\{(\w*)(?::(.*?))?\}')
+
+    @classmethod
+    def _validate_request_method(cls, req_meth):
+        if req_meth not in cls.REQUEST_METHODS and req_meth != 'ANY':
+            raise ActionMappingError("%s: unknown request method." % (req_meth,))
 
     def lookup(req_urlpath):
         raise NotImplementedError("%s.lookup(): not implemented yet." % self.__class__.__name__)

@@ -539,19 +539,19 @@ class ActionEagerMapping(ActionMapping):
 class ActionEagerMapping2(ActionMapping):
 
     def __init__(self, mappings):
-        self._all_urlpaths = []
-        self._fixed_urlpaths = {}
-        self._variable_urlpath_tuples = self._build(mappings, '', False)
+        self._all_entries = []
+        self._fixed_entries = {}
+        self._variable_urlpath_tuples = self._build_entries(mappings, '', False)
 
-    def _build(self, mappings, base_upath_pat, has_params):
+    def _build_entries(self, mappings, base_upath_pat, has_params):
         tuples = []
         for upath_pat, item in mappings:
             urlpath_pat = base_upath_pat + upath_pat
             has_params2 = has_params or '{' in upath_pat
             if isinstance(item, list):
-                children = self._build(item, urlpath_pat, has_params2)
+                children = self._build_entries(item, urlpath_pat, has_params2)
             elif isinstance(item, type) and issubclass(item, Action):
-                children = self._register(item, urlpath_pat, has_params2)
+                children = self._register_action_class(item, urlpath_pat, has_params2)
             else:
                 raise TypeError("%r: Action class expected" % (item,))
             if '{' in upath_pat:
@@ -564,14 +564,14 @@ class ActionEagerMapping2(ActionMapping):
             tuples.append((upath_prefix, upath_rexp, children, None, None))
         return tuples
 
-    def _register(self, action_class, base_upath_pat, has_params):
+    def _register_action_class(self, action_class, base_upath_pat, has_params):
         action_method_mapping = getattr(action_class, '__mapping__')
         if action_method_mapping is None:
             raise ValueError("%s: There is no action method mapping." % action_class.__name__)
         tuples = []
         for upath_pat, action_methods in action_method_mapping:
             full_upath_pat = base_upath_pat + upath_pat
-            self._all_urlpaths.append((full_upath_pat, action_class, action_methods))
+            self._all_entries.append((full_upath_pat, action_class, action_methods))
             if '{' in upath_pat:
                 rexp_str = self._upath_pat2rexp(upath_pat, '', '$')
                 upath_rexp = _re_compile(rexp_str)
@@ -580,7 +580,7 @@ class ActionEagerMapping2(ActionMapping):
                 upath_rexp = None
                 upath_prefix = upath_pat
             else:
-                self._fixed_urlpaths[full_upath_pat] = (action_class, action_methods)
+                self._fixed_entries[full_upath_pat] = (action_class, action_methods)
                 continue
             tupl = (upath_prefix, upath_rexp, None, action_class, action_methods)
             tuples.append(tupl)
@@ -588,7 +588,7 @@ class ActionEagerMapping2(ActionMapping):
 
     def lookup(self, req_urlpath):
         pargs = {}
-        tupl = self._fixed_urlpaths.get(req_urlpath)
+        tupl = self._fixed_entries.get(req_urlpath)
         if tupl:
             action_class, action_methods = tupl
             return action_class, action_methods, pargs
@@ -621,7 +621,7 @@ class ActionEagerMapping2(ActionMapping):
         return None
 
     def __iter__(self):
-        return iter(self._all_urlpaths)
+        return iter(self._all_entries)
 
 
 class ActionLazyMapping(ActionMapping):

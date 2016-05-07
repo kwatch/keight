@@ -318,7 +318,7 @@ class Action(BaseAction):
             if isinstance(binary, unicode):
                 binary = binary.encode('utf-8')   # JSON should be utf-8
             #self.resp.content_type = self.JSON_CONTENT_TYPE
-            self.resp.header_list[0] = ('Content-Type', self.JSON_CONTENT_TYPE)
+            self.resp._header_list[0] = ('Content-Type', self.JSON_CONTENT_TYPE)
         elif isinstance(content, unicode):
             binary = content.encode(ENCODING)
         elif isinstance(content, bytes):
@@ -327,14 +327,14 @@ class Action(BaseAction):
             return content
         else:
             #self.resp.content_length = len(binary)
-            self.resp.header_list[1] = ('Content-Length', str(len(binary)))
+            self.resp._header_list[1] = ('Content-Length', str(len(binary)))
             return [binary]
 
     def after_action(self, ex):
-        #if not self.resp.content_type:    # slow
-        #    self.resp.content_type = self.guess_content_type() or self.DEFAULT_CONTENT_TYPE
-        if not self.resp.header_list[0][1]:
-            self.resp.header_list[0] = ('Content-Type', self.guess_content_type() or self.DEFAULT_CONTENT_TYPE)
+        if not self.resp.content_type:    # slow
+            self.resp.content_type = self.guess_content_type() or self.DEFAULT_CONTENT_TYPE
+        #if not self.resp._header_list[0][1]:
+        #    self.resp._header_list[0] = ('Content-Type', self.guess_content_type() or self.DEFAULT_CONTENT_TYPE)
 
     def guess_content_type(self):
         #ext = os.path.splitext(self.req.path)[0]   # slow
@@ -783,7 +783,6 @@ class ActionHashedMapping(ActionMapping):
     def _calculate_hasing_index(self, upath_pats):
         pairs = [ (upath_pat.index('{'), upath_pat) for upath_pat in upath_pats ]
         indeces = sorted(set( idx for idx, _ in pairs ))
-        sys.stderr.write("\033[0;31m*** debug: indeces=%r\033[0m\n" % (indeces, ))
         best_index = 0
         x = None
         for i in indeces:
@@ -1056,38 +1055,26 @@ class WSGIRequest(object):
 
 class WSGIResponse(object):
 
-    __slots__ = ('status', 'header_list', 'body')
+    __slots__ = ('status', 'content_type', 'content_length', '_header_list')
 
     def __init__(self):
-        self.status = 200
-        self.header_list = [
-            ('Content-Type',   None),
-            ('Content-Length', None),
-        ]
-        self.body = None
+        self.status         = 200
+        self.content_type   = None
+        self.content_length = None
+        self._header_list   = [None, None]  # ex: [('Content-Type','text/html'), ('Content-Lenght','99')]
 
-    @property
-    def content_type(self):
-        return self.header_list[0][1]
-
-    @content_type.setter
-    def content_type(self, value):
-        self.header_list[0] = ('Content-Type', value)
-
-    @property
-    def content_length(self):
-        return int(self.header_length[0][1])
-
-    @content_length.setter
-    def content_length(self, value):
-        self.header_list[1] = ('Content-Length', str(value))
+    def get_status(self):
+        s = HTTP_STATUS_DICT.get(self.status)
+        if not s:
+            raise ValueError("%s: unknown http status." % (self.status,))
+        return s
 
     def get_header(self, name):
         if name == 'Content-Type':
             return self.content_type
         if name == 'Content-Length':
             return self.content_length
-        for k, v in self.header_list:
+        for k, v in self._header_list:
             if k == name:
                 return v
         return None
@@ -1097,25 +1084,33 @@ class WSGIResponse(object):
             self.content_type = value
             return self
         if name == 'Content-Length':
-            self.content_length = value
+            self.content_length = str(value)
             return self
-        for i, (k, _) in enumerate(self.header_list):
+        for i, (k, _) in enumerate(self._header_list):
             if k == name:
-                self.header_list[i] = (name, value)
+                self._header_list[i] = (name, value)
                 return self
-        self.header_list.append((name, value))
+        self._header_list.append((name, value))
         return self
 
     def add_header(self, name, value):
-        self.header_list.append((name, value))
+        self._header_list.append((name, value))
 
     def get_header_list(self):
-        arr = self.header_list
-        if arr[1][1] is None:
+        arr = self._header_list
+        #
+        clen = self.content_length
+        if clen is not None:
+            arr[1] = ('Content-Length', str(clen))
+        else:
             arr.pop(1)
-        if arr[0][1] is None:
+        #
+        ctype = self.content_type
+        if ctype:
+            arr[0] = ('Content-Type', ctype)
+        else:
             arr.pop(0)
-        self.header_list = None
+        #
         return arr
 
     def add_cookie(self, name, value, domain=None, path=None, max_age=None, expires=None,
@@ -1128,7 +1123,7 @@ class WSGIResponse(object):
         if expires:  add("; Expires=%s" % expires)
         if httponly: add("; HttpOnly")
         if secure:   add("; Secure")
-        self.header_list.append(('Set-Cookie', ''.join(buf)))
+        self._header_list.append(('Set-Cookie', ''.join(buf)))
 
 
 class WSGIApplication(object):

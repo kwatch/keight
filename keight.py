@@ -496,7 +496,7 @@ class ActionEagerMapping(ActionMapping):
                 self._variable_entries.append(tupl)
                 rexp_strs.append(self._upath_pat2rexp(upath_pat, '', r'($)', False))
             else:
-                tupl = (action_class, action_methods)
+                tupl = (action_class, action_methods, {})
                 self._fixed_entries[full_upath_pat] = tupl
             self._all_entries.append((full_upath_pat, action_class, action_methods))
         if rexp_strs:
@@ -508,9 +508,7 @@ class ActionEagerMapping(ActionMapping):
     def lookup(self, req_urlpath):
         tupl = self._fixed_entries.get(req_urlpath)
         if tupl:
-            action_class, action_methods = tupl
-            pargs = {}
-            return action_class, action_methods, pargs
+            return tupl   # ex: (BooksAction, {'GET': do_index, 'POST', do_create}, {})
         #for tupl in self._variable_entries:
         #    action_class, action_methods, upath_rexp = tupl
         #    m = upath_rexp.match(req_urlpath)

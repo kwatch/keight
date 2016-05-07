@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
 
+###
+### keight.py -- fast, compact, and easy to understand framework for Python
+###
+### $Release: 0.0.0 $
+### $Copyright: copyright(c) 2013-2016 kuwata-lab.com all rights reserved $
+### $License: MIT License $
+###
+
 __all__ = (
     'PY2', 'PY3', 'U', 'B', 'S',
     'on', 'mapping',
@@ -10,20 +18,6 @@ __all__ = (
 )
 
 import sys, os, re, json, traceback
-try:
-    import re2
-    def re_compile(pattern):
-        return re2._compile(pattern)
-except ImportError:
-    def re_compile(pattern):
-        return re._compile(pattern, 0)
-
-def re_compile(pattern):
-    return re._compile(pattern, 0)
-
-
-setup_testing_defaults = None  # import from wsgi.util
-BytesIO = None   # io.BytesIO or cStringIO.StringIO
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -34,27 +28,25 @@ if PY3:
     xrange      = range
     basestring  = str
 
-
 ENCODING='utf-8'
 
 def U(v, encoding=None):
-    if isinstance(v, unicode):
-        return v
     if isinstance(v, bytes):
         return v.decode(encoding or ENCODING)
-    raise TypeError("%r: unicode expected.")
+    return v
 
 def B(v, encoding=None):
-    if isinstance(v, bytes):
-        return v
     if isinstance(v, unicode):
         return v.encode(encoding or ENCODING)
-    raise TypeError("%r: bytes expected.")
+    return v
 
 if PY2:
     S = B
-elif PY3:
+else:
     S = U
+
+setup_testing_defaults = None  # import from wsgi.util
+BytesIO = None   # io.BytesIO or cStringIO.StringIO
 
 
 HTTP_STATUS_DICT = {
@@ -236,23 +228,22 @@ def dict2json(jdict):
                       separators=_dict2json_seps, encoding=ENCODING)
 _dict2json_seps = (',', ':')
 
-#try:
-#    re_compile = re._compile    # not cache
-#except AttributeError:
-#    re_compile = re.compile     # with cache
 
-def re_escape(text):
-    return re.sub(r'([-+\\.*?{}()&^$|\[\]])', r'\\\1', text)
+def _re_compile(pattern, flags=0):
+    return re._compile(pattern, flags)
+
+def _re_escape(text):
+    return re.sub(r'([-.^$*+?{}\\\[\]|()&])', r'\\\1', text)
 
 
-def load_module(string):
+def _load_module(string):
     mod = __import__(string)
     for x in string.split('.')[1:]:
         mod = getattr(mod, x)
     return mod
 
 
-def load_class(string):
+def _load_class(string):
     idx = string.rfind('.')
     if idx < 0:
         module_path = None
@@ -260,15 +251,18 @@ def load_class(string):
     else:
         module_path = string[:idx]
         class_name  = string[idx+1:]
-    mod = load_module(module_path)
+    mod = _load_module(module_path)
     return getattr(mod, class_name)
 
 
 class HttpException(Exception):
 
-    def __init__(self, status_code, headers=None):
-        self.status_code = status_code
+    __slots__ = ('status', 'content', 'headers')
+
+    def __init__(self, status, headers=None, content=None):
+        self.status  = status
         self.headers = headers
+        self.content = content
 
 
 class BaseAction(object):
@@ -289,7 +283,7 @@ class BaseAction(object):
         ex = None
         try:
             self.before_action()
-            content = self.handle_action(action_func, action_args)
+            content = self.invoke_action(action_func, action_args)
             return self.handle_content(content)
         except Exception as ex_:
             ex = ex_
@@ -297,7 +291,7 @@ class BaseAction(object):
         finally:
             self.after_action(ex)
 
-    def handle_action(self, action_func, action_args):
+    def invoke_action(self, action_func, action_args):
         if isinstance(action_args, dict):
             return action_func(self, **action_args)
         else:
@@ -309,37 +303,38 @@ class BaseAction(object):
 
 class Action(BaseAction):
 
-    default_content_type = "text/html;charset=utf-8"
-    json_content_type    = "application/json"
+    DEFAULT_CONTENT_TYPE = "text/html;charset=utf-8"
+    JSON_CONTENT_TYPE    = "application/json"
 
     def dict2json(self, jdict):
         return dict2json(jdict)
 
     def handle_content(self, content):
+        binary = None
         if content is None:
             binary = b""
         elif isinstance(content, dict):
             binary = self.dict2json(content)
             if isinstance(binary, unicode):
                 binary = binary.encode('utf-8')   # JSON should be utf-8
-            #self.resp.content_type = self.json_content_type
-            self.resp.header_list[0] = ('Content-Type', self.json_content_type)
+            #self.resp.content_type = self.JSON_CONTENT_TYPE
+            self.resp.header_list[0] = ('Content-Type', self.JSON_CONTENT_TYPE)
         elif isinstance(content, unicode):
             binary = content.encode(ENCODING)
         elif isinstance(content, bytes):
             binary = content
+        if binary is None:
+            return content
         else:
-            return content   # TODO
-        #
-        #self.resp.content_length = len(binary)
-        self.resp.header_list[1] = ('Content-Length', str(len(binary)))
-        return [binary]
+            #self.resp.content_length = len(binary)
+            self.resp.header_list[1] = ('Content-Length', str(len(binary)))
+            return [binary]
 
     def after_action(self, ex):
         #if not self.resp.content_type:    # slow
-        #    self.resp.content_type = self.guess_content_type() or self.default_content_type
+        #    self.resp.content_type = self.guess_content_type() or self.DEFAULT_CONTENT_TYPE
         if not self.resp.header_list[0][1]:
-            self.resp.header_list[0] = ('Content-Type', self.guess_content_type() or self.default_content_type)
+            self.resp.header_list[0] = ('Content-Type', self.guess_content_type() or self.DEFAULT_CONTENT_TYPE)
 
     def guess_content_type(self):
         #ext = os.path.splitext(self.req.path)[0]   # slow
@@ -405,7 +400,7 @@ class ActionMapping(object):
     REQUEST_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH',
                        'HEAD', 'OPTIONS', 'TRACE', 'LINK', 'UNLINK', ]
 
-    URLPATH_PARAMETER_REXP = re.compile(r'\{(\w*)(?::(.*?))?\}')  # not re_compile()!
+    URLPATH_PARAMETER_REXP = _re_compile(r'\{(\w*)(?::(.*?))?\}')
 
     def lookup(req_urlpath):
         raise NotImplementedError("%s.lookup(): not implemented yet." % self.__class__.__name__)
@@ -419,14 +414,14 @@ class ActionMapping(object):
             rexp_str = m.group(2) or '[^/]+'
             pos = m.end(0)
             if capture and pname:
-                buf.extend((re_escape(text), '(?P<%s>' % pname, rexp_str, ')', ))
+                buf.extend((_re_escape(text), '(?P<%s>' % pname, rexp_str, ')', ))
             else:
-                buf.extend((re_escape(text), '(?:',             rexp_str, ')', ))
-        buf.extend((re_escape(pat[pos:]), end))
+                buf.extend((_re_escape(text), '(?:',             rexp_str, ')', ))
+        buf.extend((_re_escape(pat[pos:]), end))
         return "".join(buf)
 
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
-        action_class = load_class(class_string)
+        action_class = _load_class(class_string)
         if not action_class:
             raise ValueError("%s: No such module or class." % class_string)
         self._validate_action_class(action_class)
@@ -449,7 +444,7 @@ class ActionEagerMapping(ActionMapping):
         self._all_urlpaths      = []
         rexp_buf = self._build(mappings, "", ['^'])
         rexp_buf.append('$')
-        self._variable_rexp = re_compile(''.join(rexp_buf))
+        self._variable_rexp = _re_compile(''.join(rexp_buf))
 
     def _build(self, mappings, base_upath_pat, rexp_buf):
         rexp_buf.append('(?:')
@@ -494,7 +489,7 @@ class ActionEagerMapping(ActionMapping):
             full_upath_pat = base_upath_pat + upath_pat
             if '{' in full_upath_pat:
                 #rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '$')
-                #upath_rexp = re_compile(rexp_str)
+                #upath_rexp = _re_compile(rexp_str)
                 #
                 arr = self.URLPATH_PARAMETER_REXP.split(full_upath_pat)
                 if len(arr) == 2:
@@ -502,7 +497,7 @@ class ActionEagerMapping(ActionMapping):
                     upath_rexp = (pname, len(arr[0]), -len(arr[1]))  # instead of rexp
                 else:
                     rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '$')
-                    upath_rexp = re_compile(rexp_str)
+                    upath_rexp = _re_compile(rexp_str)
                 #
                 tupl = (action_class, action_methods, upath_rexp)
                 self._variable_urlpaths.append(tupl)
@@ -570,7 +565,7 @@ class ActionEagerMapping2(ActionMapping):
                 raise TypeError("%r: Action class expected" % (item,))
             if '{' in upath_pat:
                 rexp_str = self._upath_pat2rexp(upath_pat, '', '(?=[/.]|$)')
-                upath_rexp = re_compile(rexp_str)
+                upath_rexp = _re_compile(rexp_str)
                 upath_prefix = upath_pat.split('{', 1)[0]
             else:
                 upath_rexp = None
@@ -588,7 +583,7 @@ class ActionEagerMapping2(ActionMapping):
             self._all_urlpaths.append((full_upath_pat, action_class, action_methods))
             if '{' in upath_pat:
                 rexp_str = self._upath_pat2rexp(upath_pat, '', '$')
-                upath_rexp = re_compile(rexp_str)
+                upath_rexp = _re_compile(rexp_str)
                 upath_prefix = upath_pat.split('{', 1)[0]
             elif has_params:
                 upath_rexp = None
@@ -646,7 +641,7 @@ class ActionLazyMapping(ActionMapping):
         self._variable_urlpaths = []
         rexp_buf = self._nested_mappings = self._build(mappings, '', ['^'])
         rexp_buf.append('(?=[./]|$)')
-        self._urlpath_rexp = re_compile("".join(rexp_buf))
+        self._urlpath_rexp = _re_compile("".join(rexp_buf))
 
     def _reorder_mappings(self, mappings):
         if not any( '{' in x[0] for x in mappings ):
@@ -669,7 +664,7 @@ class ActionLazyMapping(ActionMapping):
                 action_class = item
                 if '{' in full_upath_pat:
                     rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '(?=[/.]|$)')
-                    full_upath_rexp = re_compile(rexp_str)
+                    full_upath_rexp = _re_compile(rexp_str)
                 else:
                     full_upath_rexp = None
                 t = [full_upath_pat, full_upath_rexp, action_class, None]
@@ -726,7 +721,7 @@ class ActionLazyMapping(ActionMapping):
                         found = action_methods
                 else:
                     rexp_str = self._upath_pat2rexp(upath_pat, '^', '$')
-                    upath_rexp = re_compile(rexp_str)
+                    upath_rexp = _re_compile(rexp_str)
                     arr.append([upath_rexp, action_methods])
             tupl[3] = arr
             if found:
@@ -881,7 +876,7 @@ class ActionHashedMapping(ActionMapping):
         return None
 
 
-class ActionDFMMapping(ActionMapping):
+class ActionFSMMapping(ActionMapping):
 
     def __init__(self, mappings):
         self._build(mappings)
@@ -1019,7 +1014,7 @@ class WSGIRequestHeaders(object):
 
 
 class WSGIRequest(object):
-    REQUEST_HEADERS = WSGIRequestHeaders
+    _REQUEST_HEADERS = WSGIRequestHeaders
 
     def __init__(self, env):
         self.env = env
@@ -1046,7 +1041,7 @@ class WSGIRequest(object):
     def headers(self):
         headers = getattr(self, '_headers', None)
         if headers is None:
-            self._headers = headers = self.REQUEST_HEADERS(self.env)
+            self._headers = headers = self._REQUEST_HEADERS(self.env)
         return headers
 
     def header(self, name):
@@ -1061,19 +1056,15 @@ class WSGIRequest(object):
 
 class WSGIResponse(object):
 
-    __slots__ = ('status_code', 'header_list', 'body')
+    __slots__ = ('status', 'header_list', 'body')
 
     def __init__(self):
-        self.status_code = 200
+        self.status = 200
         self.header_list = [
             ('Content-Type',   None),
             ('Content-Length', None),
         ]
         self.body = None
-
-    @property
-    def status(self):
-        return HTTP_STATUS_DICT[self.status_code]
 
     @property
     def content_type(self):
@@ -1110,11 +1101,9 @@ class WSGIResponse(object):
             return self
         for i, (k, _) in enumerate(self.header_list):
             if k == name:
-                break
-        else:
-            self.header_list.append((name, value))
-            return self
-        self.header_list[i] = (name, value)
+                self.header_list[i] = (name, value)
+                return self
+        self.header_list.append((name, value))
         return self
 
     def add_header(self, name, value):
@@ -1179,19 +1168,35 @@ class WSGIApplication(object):
 
     def __call__(self, env, start_response):
         status, headers, body = self.handle_request(env)
-        start_response(status, headers)
-        try:
-            return body
-        finally:
-            if hasattr(body, 'close'):
-                body.close()
+        start_response(HTTP_STATUS_DICT[status], headers)
+        return body
+
+    def _redirect_if_necessary(self, req_path, req_meth):
+        if req_meth not in ('GET', 'HEAD'):
+            return None
+        if req_path == '/':
+            return None
+        location = (req_path[:-1] if req_path[-1] == '/' else
+                    req_path + '/')
+        if not self.lookup(location):
+            return None
+        body = B("Redirect to " + location)
+        headers = [
+            ('Content-Type'  , 'text/plain'),
+            ('Content-Length', str(len(body))),
+            ('Location'      , S(location)),
+        ]
+        return 301, headers, body
 
     def handle_request(self, env):
         req  = self.REQUEST(env)
         resp = self.RESPONSE()
         tupl = self.lookup(req.path)
-        if tupl is None:
-            return self.error_4xx(404, env)
+        if tuple is None:
+            t = _redirect_if_necessary(self, req.path, req.meth)
+            if t is None:
+                raise HttpException(404)
+            return t   # (status, headers, body)
         action_class, action_methods, action_args = tupl
         #
         req_meth = req.method
@@ -1226,30 +1231,44 @@ class WSGIApplication(object):
         return status, headers, [binary]
 
     def handle_http_exception(self, ex, req, resp):
-        status_code = ex.status_code
-        content = B(status_code)
-        headers = req.headers
-        headers.setdefault('Content-Type',   "text/plain;charset=utf-8")
-        headers.setdefault('Content-Length', str(len(content)))
-        return status, tuple(resp.generate_header_pairs()), [content]
+        status  = ex.status       # int
+        content = ex.content
+        if content is None:
+            content = resp.body
+        if content is None:
+            binary = B(HTTP_STATUS_DICT[status])
+            ctype  = "text/plain;charset=utf-8"
+        elif isinstance(content, dict):
+            binary = B(dict2json(content))
+            ctype  = "application/json;charset=utf-8"
+        elif isinstance(content, binary):
+            binary = content
+            ctype  = "application/octet-stream"
+        elif isinstance(content, unicode):
+            binary = B(content)
+            ctype  = "text/plain;charset=" + ENCODING
+        else:
+            raise TypeError("%r: unexpected data type of content." % (content,))
+        resp.content_type   = ctype
+        resp.content_length = len(binary)
+        return status, resp.get_header_list(), content
 
     def handle_exception(self, ex, req, resp):
         #stderr = req.env['wsgi.errors']
         stderr = sys.stderr
-        sys.stderr.write(traceback.format_exc())
+        errtext = traceback.format_exc()
+        sys.stderr.write(S(errtext))
         #
-        status_code = 500
-        status = HTTP_STATUS_DICT[status_code]
-        html = u"""<h2>%s</h2>""" % status
-        binary = html.encode(ENCODING)
+        status  = 500
+        binary  = b"<h2>500 Internal Server Error</h2>"
         headers = [
             ('Content-Type',   "text/html;charset=utf-8"),
             ('Content-Length', str(len(binary))),
         ]
-        return status, headers, [binary]
+        return status, headers, binary
 
 
-def create_module(module_name, **kwargs):
+def _create_module(module_name, **kwargs):
     """ex. mod = create_module('keight.wsgi')"""
     try:
         mod = type(sys)(module_name)
@@ -1262,7 +1281,7 @@ def create_module(module_name, **kwargs):
     return mod
 
 
-wsgi = create_module("keight.wsgi")
+wsgi = _create_module("keight.wsgi")
 wsgi.RequestHeaders = WSGIRequestHeaders
 wsgi.Request        = WSGIRequest
 wsgi.Response       = WSGIResponse

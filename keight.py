@@ -1147,6 +1147,9 @@ class WSGIApplication(object):
     def lookup(self, req_urlpath):
         return self.mapping.lookup(req_urlpath)
 
+    def dispatch(self, req_meth, req_path, redirect=True):
+        return self.mapping.dispatch(req_meth, req_path, redirect)
+
     def each_mapping(self):
         return iter(self.mapping)
 
@@ -1167,47 +1170,14 @@ class WSGIApplication(object):
         start_response(HTTP_STATUS_DICT[status], headers)
         return body
 
-    def _redirect_if_necessary(self, req_path, req_meth):
-        if req_meth not in ('GET', 'HEAD'):
-            return None
-        if req_path == '/':
-            return None
-        location = (req_path[:-1] if req_path[-1] == '/' else
-                    req_path + '/')
-        if not self.lookup(location):
-            return None
-        body = B("Redirect to " + location)
-        headers = [
-            ('Content-Type'  , 'text/plain'),
-            ('Content-Length', str(len(body))),
-            ('Location'      , S(location)),
-        ]
-        return 301, headers, body
-
     def handle_request(self, env):
         req  = self.REQUEST(env)
         resp = self.RESPONSE()
-        tupl = self.lookup(req.path)
-        if tuple is None:
-            t = _redirect_if_necessary(self, req.path, req.meth)
-            if t is None:
-                raise HttpException(404)
-            return t   # (status, headers, body)
-        action_class, action_methods, action_args = tupl
-        #
-        req_meth = req.method
-        action_func = action_methods.get(req_meth)
-        if not action_func:
-            if req_meth == 'HEAD':
-                req_meth = action_methods.get('HEAD') or action_methods.get('ANY')
-            else:
-                req_meth = action_methods.get('ANY')
-            if not action_func:
-                return self.error_4xx(405, env)
-        #
-        action_obj = action_class(req, resp)
         try:
-            body = action_obj.run_action(action_func, action_args)
+            t = self.dispatch(req.method, req.path)
+            action_class, action_func, urlpath_params = t
+            action_obj = action_class(req, resp)
+            body = action_obj.run_action(action_func, urlpath_params)
             return resp.status, resp.get_header_list(), body
         except HttpException as ex:
             return self.handle_http_exception(ex, req, resp)

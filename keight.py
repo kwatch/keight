@@ -788,6 +788,159 @@ class ActionFSMMapping(ActionMapping):
             return req_path[1:pos].split('/'), req_path[pos:]
 
 
+class ActionFSMLazyMapping(ActionMapping):
+
+    def __init__(self, mappings):
+        self._build(mappings)
+
+    def _build(self, mappings):
+        self._fixed_entries    = {}
+        self._variable_entries = entries = {}
+        self._traverse(mappings, "", entries)
+
+    def _traverse(self, mappings, base_urlpath, entries):
+        for urlpath, target in mappings:
+            full_urlpath = base_urlpath + urlpath
+            if isinstance(target, list):
+                self._traverse(target, full_urlpath, entries)
+            else:
+                self._register_temporarily(entries, full_urlpath, target)
+
+    _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
+    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*)?)?\}$')
+
+    def _register_temporarily(self, entries, base_urlpath, action_class):
+        param_types = self._URLPATH_PARAM_TYPES
+        items, ext = self._split_path(base_urlpath)
+        d = entries
+        for s in items:
+            if '{' in s:
+                pname, ptype = self._parse_urlpath_param(s)
+                if ptype not in param_types:
+                    raise UnknownUrlpathParameterTypeError(
+                            "%r: Unknown paramter type name." % (s,))
+                key = param_types[ptype]  # 1, 2 or 3
+            else:
+                key = s
+            if key in d:
+                d = d[key]
+            else:
+                d[key] = {}
+                d = d[key]
+        #
+        key = 0     # temporary index
+        d[key] = (action_class, base_urlpath)
+
+    def _register_permanently(self, entries, action_class, base_urlpath):
+        if isinstance(action_class, basestring):
+            action_class = self._load_action_class(action_class)
+            self._validate_action_class(action_class)
+        param_types = self._URLPATH_PARAM_TYPES
+        for urlpath, action_methods in action_class.__mapping__:
+            #
+            full_urlpath = base_urlpath + urlpath
+            if '{' not in full_urlpath:
+                self._fixed_entries[full_urlpath] = (action_class, action_methods, ())
+                continue
+            #
+            items, extension = self._split_path(urlpath)
+            d = entries
+            for s in items:
+                if '{' in s:
+                    pname, ptype = self._parse_urlpath_param(s)
+                    if ptype not in param_types:
+                        raise UnknownUrlpathParameterTypeError(
+                                "%r: Unknown paramter type name." % (s,))
+                    key = param_types[ptype]  # 1, 2 or 3
+                else:
+                    key = s
+                if key in d:
+                    d = d[key]
+                else:
+                    d[key] = {}
+                    d = d[key]
+            d[None] = (action_class, action_methods, extension)
+
+    def _change_temporary_registration_to_permanently(self, d):
+        try:
+            action_class, base_urlpath = d.pop(0)
+        except IndexError:
+            pass
+        else:
+            self._register_permanently(d, action_class, base_urlpath)
+
+    def _parse_urlpath_param(self, string):
+        param_rexp  = self._URLPATH_PARAM_REXP
+        m = param_rexp.match(string)
+        if not m:
+            raise InvalidUrlpathParameterPatternError(
+                    "%r: Invalid urlpath parameter patter." % (string,))
+        pname, ptype = m.groups()
+        if not ptype:
+            ptype = "int" if pname == "id" or pname.endswith("_id") else "str"
+        return pname, ptype
+
+    def lookup(self, req_path):
+        t = self._fixed_entries.get(req_path)
+        if t:
+            return t   # (action_class, action_methos)
+        #
+        param_types = self._URLPATH_PARAM_TYPES
+        key_int  = param_types['int']   # == 1
+        key_str  = param_types['str']   # == 2
+        key_path = param_types['path']  # == 3
+        args = []; add = args.append
+        d = self._variable_entries
+        items, extension = self._split_path(req_path)  # ex: '/x/y/1.json' => [('x','y','1'), '.json']
+        for s in items:
+            if 0 in d:             # if temporary index exists
+                self._change_temporary_registration_to_permanently(d)
+                t = self._fixed_entries.get(req_path)
+                if t:
+                    return t
+            if s in d:
+                d = d[s]
+            elif key_int in d and s.isdigit():
+                d = d[key_int]
+                add(int(s))
+            elif key_str in d:
+                d = d[key_str]
+                add(s)
+            elif key_path in d:
+                for i, x in enumerate(items):
+                    if x is s:
+                        break
+                add("/".join(items[i+1:]))
+                break
+            else:
+                return None    # not found
+            if d is None:
+                return None    # not found
+        if 0 in d:
+            self._change_temporary_registration_to_permanently(d)
+            t = self._fixed_entries.get(req_path)
+            if t:
+                return t
+        t = d.get(None)
+        if not t:
+            return None        # not found
+        action_class, action_methods, expected_ext = t
+        if expected_ext != extension and exptected_ext != '.*':
+            return None        # not found
+        return (action_class,      # ex: HelloAction
+                action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
+                args)              # ex: [123]
+
+    @staticmethod
+    def _split_path(req_path):
+        assert req_path.startswith('/')
+        pos = req_path.rfind('.')
+        if pos < 0 or pos < req_path.rfind('/'):
+            return req_path[1:].split('/'), ""
+        else:
+            return req_path[1:pos].split('/'), req_path[pos:]
+
+
 class WSGIRequestHeaders(object):
 
     def __init__(self, env):

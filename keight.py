@@ -714,17 +714,17 @@ class ActionFSMMapping(ActionMapping):
                 if not m:
                     raise InvalidUrlpathParameterPatternError(
                         "%r: Invalid urlpath parameter patter." % (s,))
-                name, type_name = m.groups()
-                if type_name:
-                    if not type_name.isalpha():
+                pname, ptype = m.groups()
+                if ptype:
+                    if not ptype.isalpha():
                         raise UnexpectedUrlpathParameterTypeError(
                             "%r: Expected urlpath parameter type name." % (s,))
-                    key = keys.get(type_name)
+                    key = keys.get(ptype)
                     if key is None:
                         raise UnknownUrlpathParameterTypeError(
                             "%r: Unknown paramter type name." % (s,))
                 else:
-                    int_p = name == 'id' or name.endswith('_id')
+                    int_p = pname == 'id' or pname.endswith('_id')
                     key = int_p and keys['int'] or keys['str']
             d = d.setdefault(key, {})
         #

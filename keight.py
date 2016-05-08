@@ -1136,15 +1136,15 @@ class WSGIApplication(object):
     REQUEST  = WSGIRequest
     RESPONSE = WSGIResponse
 
-    def __init__(self, mappings, _=None, lazy=False, hashing=None):
+    def __init__(self, mappings, _=None, lazy=False, fast=False):
         if _ is not None:
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
         if isinstance(mappings, ActionMapping):
             self.mapping = mappings
         elif lazy:
             self.mapping = ActionLazyMapping(mappings)
-        elif hashing:
-            self.mapping = ActionHashedMapping(mappings)
+        elif fast:
+            self.mapping = ActionFSMMapping(mappings)
         else:
             self.mapping = ActionEagerMapping(mappings)
 

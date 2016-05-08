@@ -739,22 +739,22 @@ class ActionFSMMapping(ActionMapping):
         if t:
             return t   # (action_class, action_methos)
         #
-        key_inttype  = 1
-        key_strtype  = 2
-        key_pathtype = 3
+        key_int  = 1
+        key_str  = 2
+        key_path = 3
         args = []; add = args.append
         d = self._variable_entries
         items, extension = self._split_path(req_urlpath)  # ex: '/x/y/1' => ('x','y','1')
         for s in items:
             if s in d:
                 d = d[s]
-            elif key_inttype in d and s.isdigit():
-                d = d[key_inttype]
+            elif key_int in d and s.isdigit():
+                d = d[key_int]
                 add(int(s))
-            elif key_strtype in d:
-                d = d[key_strtype]
+            elif key_str in d:
+                d = d[key_str]
                 add(s)
-            elif key_pathtype in d:
+            elif key_path in d:
                 for i, x in enumerate(items):
                     if x is s:
                         break

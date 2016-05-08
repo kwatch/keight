@@ -1035,7 +1035,7 @@ class WSGIRequest(object):
         return headers
 
     def header(self, name):
-        k = key.lower()
+        k = name.lower()
         if k == 'content-type':
             return self.env.get('CONTENT_TYPE')
         if k == 'content-length':
@@ -1053,12 +1053,6 @@ class WSGIResponse(object):
         self.content_type   = None
         self.content_length = None
         self._header_list   = [None, None]  # ex: [('Content-Type','text/html'), ('Content-Lenght','99')]
-
-    def get_status(self):
-        s = HTTP_STATUS_DICT.get(self.status)
-        if not s:
-            raise ValueError("%s: unknown http status." % (self.status,))
-        return s
 
     def get_header(self, name):
         if name == 'Content-Type':

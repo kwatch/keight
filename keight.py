@@ -263,6 +263,10 @@ class ActionMappingError(KeightError):
     pass
 
 
+class UnknownHttpStatusCodeError(KeightError):
+    pass
+
+
 class HttpException(Exception):
 
     __slots__ = ('status', 'content', 'headers')
@@ -1167,7 +1171,10 @@ class WSGIApplication(object):
 
     def __call__(self, env, start_response):
         status, headers, body = self.handle_request(env)
-        start_response(HTTP_STATUS_DICT[status], headers)
+        status_str = HTTP_STATUS_DICT.get(status)
+        if not status_str:
+            raise UnknownHttpStatusCodeError("%s: unknown http status code." % status)
+        start_response(status_str, headers)
         return body
 
     def handle_request(self, env):

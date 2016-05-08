@@ -706,23 +706,11 @@ class ActionFSMMapping(ActionMapping):
 
     def _register(self, dictionary, full_path, action_class, action_methods):
         param_types = self._URLPATH_PARAM_TYPES
-        param_rexp  = self._URLPATH_PARAM_REXP
         items, extension = self._split_path(full_path)
         d = dictionary
         for s in items:
             if '{' in s:
-                m = param_rexp.match(s)
-                if not m:
-                    raise InvalidUrlpathParameterPatternError(
-                        "%r: Invalid urlpath parameter patter." % (s,))
-                pname, ptype = m.groups()
-                if ptype:
-                    if not ptype.isalpha():
-                        raise UnexpectedUrlpathParameterTypeError(
-                            "%r: Expected urlpath parameter type name." % (s,))
-                else:
-                    int_p = pname == 'id' or pname.endswith('_id')
-                    ptype = int_p and 'int' or 'str'
+                pname, ptype = self._parse_urlpath_param(s)
                 if ptype not in param_types:
                     raise UnknownUrlpathParameterTypeError(
                         "%r: Unknown paramter type name." % (s,))
@@ -732,6 +720,22 @@ class ActionFSMMapping(ActionMapping):
             d = d.setdefault(key, {})
         #
         d[None] = (action_class, action_methods, extension)
+
+    def _parse_urlpath_param(self, string):
+        param_rexp  = self._URLPATH_PARAM_REXP
+        m = param_rexp.match(string)
+        if not m:
+            raise InvalidUrlpathParameterPatternError(
+                    "%r: Invalid urlpath parameter patter." % (string,))
+        pname, ptype = m.groups()
+        if ptype:
+            if not ptype.isalpha():
+                raise UnexpectedUrlpathParameterTypeError(
+                    "%r: Expected urlpath parameter type name." % (s,))
+        else:
+            int_p = pname == "id" or pname.endswith("_id")
+            ptype = 'int' if int_p else 'str'
+        return pname, ptype
 
     def lookup(self, req_urlpath):
         t = self._fixed_entries.get(req_urlpath)

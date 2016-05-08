@@ -1140,22 +1140,22 @@ class WSGIApplication(object):
         if _ is not None:
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
         if isinstance(mapping_list, ActionMapping):
-            self.mapping = mapping_list
+            self._mapping = mapping_list
         elif lazy:
-            self.mapping = ActionLazyMapping(mapping_list)
+            self._mapping = ActionLazyMapping(mapping_list)
         elif fast:
-            self.mapping = ActionFSMMapping(mapping_list)
+            self._mapping = ActionFSMMapping(mapping_list)
         else:
-            self.mapping = ActionEagerMapping(mapping_list)
+            self._mapping = ActionEagerMapping(mapping_list)
 
     def lookup(self, req_urlpath):
-        return self.mapping.lookup(req_urlpath)
+        return self._mapping.lookup(req_urlpath)
 
     def dispatch(self, req_meth, req_path, redirect=True):
-        return self.mapping.dispatch(req_meth, req_path, redirect)
+        return self._mapping.dispatch(req_meth, req_path, redirect)
 
     def each_mapping(self):
-        return iter(self.mapping)
+        return iter(self._mapping)
 
     def show_mapping(self):
         req_methods = ActionMapping.REQUEST_METHODS + ['ANY']

@@ -1136,17 +1136,17 @@ class WSGIApplication(object):
     REQUEST  = WSGIRequest
     RESPONSE = WSGIResponse
 
-    def __init__(self, mappings, _=None, lazy=False, fast=False):
+    def __init__(self, mapping_list, _=None, lazy=False, fast=False):
         if _ is not None:
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
-        if isinstance(mappings, ActionMapping):
-            self.mapping = mappings
+        if isinstance(mapping_list, ActionMapping):
+            self.mapping = mapping_list
         elif lazy:
-            self.mapping = ActionLazyMapping(mappings)
+            self.mapping = ActionLazyMapping(mapping_list)
         elif fast:
-            self.mapping = ActionFSMMapping(mappings)
+            self.mapping = ActionFSMMapping(mapping_list)
         else:
-            self.mapping = ActionEagerMapping(mappings)
+            self.mapping = ActionEagerMapping(mapping_list)
 
     def lookup(self, req_urlpath):
         return self.mapping.lookup(req_urlpath)

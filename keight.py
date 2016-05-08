@@ -737,17 +737,18 @@ class ActionFSMMapping(ActionMapping):
             ptype = 'int' if int_p else 'str'
         return pname, ptype
 
-    def lookup(self, req_urlpath):
-        t = self._fixed_entries.get(req_urlpath)
+    def lookup(self, req_path):
+        t = self._fixed_entries.get(req_path)
         if t:
             return t   # (action_class, action_methos)
         #
-        key_int  = 1
-        key_str  = 2
-        key_path = 3
+        param_types = self._URLPATH_PARAM_TYPES
+        key_int  = param_types['int']   # == 1
+        key_str  = param_types['str']   # == 2
+        key_path = param_types['path']  # == 3
         args = []; add = args.append
         d = self._variable_entries
-        items, extension = self._split_path(req_urlpath)  # ex: '/x/y/1' => ('x','y','1')
+        items, extension = self._split_path(req_path)  # ex: '/x/y/1.json' => (['x','y','1'], '.json')
         for s in items:
             if s in d:
                 d = d[s]
@@ -769,10 +770,10 @@ class ActionFSMMapping(ActionMapping):
                 return None    # not found
         t = d.get(None)
         if not t:
-            return None
+            return None        # not found
         action_class, action_methods, expected_ext = t
         if expected_ext != extension and expected_ext != '.*':
-            return None
+            return None        # not found
         return (action_class,      # ex: HelloAction
                 action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
                 args)              # ex: [123]

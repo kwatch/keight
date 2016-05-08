@@ -1094,12 +1094,11 @@ class WSGIApplication(object):
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
         if isinstance(mapping_list, ActionMapping):
             self._mapping = mapping_list
-        elif lazy:
-            self._mapping = ActionLazyMapping(mapping_list)
-        elif fast:
-            self._mapping = ActionFSMMapping(mapping_list)
-        else:
-            self._mapping = ActionEagerMapping(mapping_list)
+        index = 0
+        if lazy: index += 1
+        if fast: index += 2
+        klass = (ActionEagerMapping, ActionLazyMapping, ActionFSMMapping, ActionFSMLazyMapping)[index]
+        self._mapping = klass(mapping_list)
 
     def lookup(self, req_urlpath):
         return self._mapping.lookup(req_urlpath)

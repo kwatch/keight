@@ -704,8 +704,9 @@ class ActionFSMMapping(ActionMapping):
     def _register(self, full_path, t, dictionary):
         keys = self._KEYS_PER_TYPE
         rexp = self._URLPATH_PARAM_REXP
+        items, extension = self._split_path(full_path)
         d = dictionary
-        for s in full_path[1:].split('/'):
+        for s in items:
             if '{' not in s:
                 key = s
             else:
@@ -727,7 +728,8 @@ class ActionFSMMapping(ActionMapping):
                     key = int_p and keys['int'] or keys['str']
             d = d.setdefault(key, {})
         #
-        d[None] = t
+        actiion_class, action_methods = t
+        d[None] = (actiion_class, action_methods, extension)
 
     _KEYS_PER_TYPE      = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP = re.compile(r'^\{(\w*)(?::(.*)?)?\}$')
@@ -742,7 +744,7 @@ class ActionFSMMapping(ActionMapping):
         key_pathtype = 3
         args = []; add = args.append
         d = self._variable_entries
-        items = req_urlpath[1:].split('/')  # ex: '/x/y/1' => ('x','y','1')
+        items, extension = self._split_path(req_urlpath)  # ex: '/x/y/1' => ('x','y','1')
         for s in items:
             if s in d:
                 d = d[s]
@@ -765,10 +767,21 @@ class ActionFSMMapping(ActionMapping):
         t = d.get(None)
         if not t:
             return None
-        action_class, action_methods = t
+        action_class, action_methods, expected_ext = t
+        if expected_ext != extension and expected_ext != '.*':
+            return None
         return (action_class,      # ex: HelloAction
                 action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
                 args)              # ex: [123]
+
+    @staticmethod
+    def _split_path(req_path):
+        assert req_path.startswith('/')
+        pos = req_path.rfind('.')
+        if pos < 0 or pos < req_path.rfind('/'):
+            return req_path[1:].split('/'), ""
+        else:
+            return req_path[1:pos].split('/'), req_path[pos:]
 
 
 class WSGIRequestHeaders(object):

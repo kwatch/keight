@@ -710,9 +710,7 @@ class ActionFSMMapping(ActionMapping):
         items, extension = self._split_path(full_path)
         d = dictionary
         for s in items:
-            if '{' not in s:
-                key = s
-            else:
+            if '{' in s:
                 m = param_rexp.match(s)
                 if not m:
                     raise InvalidUrlpathParameterPatternError(
@@ -722,13 +720,15 @@ class ActionFSMMapping(ActionMapping):
                     if not ptype.isalpha():
                         raise UnexpectedUrlpathParameterTypeError(
                             "%r: Expected urlpath parameter type name." % (s,))
-                    key = param_types.get(ptype)
-                    if key is None:
-                        raise UnknownUrlpathParameterTypeError(
-                            "%r: Unknown paramter type name." % (s,))
                 else:
                     int_p = pname == 'id' or pname.endswith('_id')
-                    key = int_p and param_types['int'] or param_types['str']
+                    ptype = int_p and 'int' or 'str'
+                if ptype not in param_types:
+                    raise UnknownUrlpathParameterTypeError(
+                        "%r: Unknown paramter type name." % (s,))
+                key = param_types[ptype]
+            else:
+                key = s
             d = d.setdefault(key, {})
         #
         d[None] = (action_class, action_methods, extension)

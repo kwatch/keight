@@ -679,8 +679,8 @@ class ActionFSMMapping(ActionMapping):
         self._variable_entries = {}
         def callback(full_urlpath, action_class, action_methods, _self=self):
             if '{' in full_urlpath:
-                t = (action_class, action_methods)
-                _self._register(full_urlpath, t, _self._variable_entries)
+                _self._register(_self._variable_entries, full_urlpath,
+                                action_class, action_methods)
             else:
                 t = (action_class, action_methods, ())
                 _self._fixed_entries[full_urlpath] = t
@@ -704,7 +704,7 @@ class ActionFSMMapping(ActionMapping):
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*)?)?\}$')
 
-    def _register(self, full_path, t, dictionary):
+    def _register(self, dictionary, full_path, action_class, action_methods):
         param_types = self._URLPATH_PARAM_TYPES
         param_rexp  = self._URLPATH_PARAM_REXP
         items, extension = self._split_path(full_path)
@@ -731,8 +731,7 @@ class ActionFSMMapping(ActionMapping):
                     key = int_p and param_types['int'] or param_types['str']
             d = d.setdefault(key, {})
         #
-        actiion_class, action_methods = t
-        d[None] = (actiion_class, action_methods, extension)
+        d[None] = (action_class, action_methods, extension)
 
     def lookup(self, req_urlpath):
         t = self._fixed_entries.get(req_urlpath)

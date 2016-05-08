@@ -398,6 +398,22 @@ class ActionMapping(object):
     def lookup(req_urlpath):
         raise NotImplementedError("%s.lookup(): not implemented yet." % self.__class__.__name__)
 
+    def dispatch(self, req_meth, req_path, redirect=True):
+        t = self.lookup(req_path)
+        if not t:
+            if redirect and (req_meth == 'GET' or req_meth == 'HEAD') and req_path != '/':
+                location = req_path[:-1] if req_path.endswith('/') else req_path+'/'
+                t = self.lookup(location)
+                if t:
+                    raise HttpException(301, {'Location': location})
+            raise HttpException(404)
+        action_class, action_methods, urlpath_params = t
+        get = action_methods.get
+        action_func = get(req_meth) or (get('GET') if req_meth == 'HEAD' else None) or get('ANY')
+        if action_func is None:
+            raise HttpException(405)
+        return action_class, action_func, urlpath_params
+
     def _upath_pat2rexp(self, pat, begin='', end='', capture=True):
         buf = [begin]
         pos = 0

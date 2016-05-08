@@ -701,16 +701,19 @@ class ActionFSMMapping(ActionMapping):
             else:
                 raise NotActionClassError("%r: Action class expected." % (target,))
 
+    _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
+    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*)?)?\}$')
+
     def _register(self, full_path, t, dictionary):
-        keys = self._KEYS_PER_TYPE
-        rexp = self._URLPATH_PARAM_REXP
+        param_types = self._URLPATH_PARAM_TYPES
+        param_rexp  = self._URLPATH_PARAM_REXP
         items, extension = self._split_path(full_path)
         d = dictionary
         for s in items:
             if '{' not in s:
                 key = s
             else:
-                m = rexp.match(s)
+                m = param_rexp.match(s)
                 if not m:
                     raise InvalidUrlpathParameterPatternError(
                         "%r: Invalid urlpath parameter patter." % (s,))
@@ -719,20 +722,17 @@ class ActionFSMMapping(ActionMapping):
                     if not ptype.isalpha():
                         raise UnexpectedUrlpathParameterTypeError(
                             "%r: Expected urlpath parameter type name." % (s,))
-                    key = keys.get(ptype)
+                    key = param_types.get(ptype)
                     if key is None:
                         raise UnknownUrlpathParameterTypeError(
                             "%r: Unknown paramter type name." % (s,))
                 else:
                     int_p = pname == 'id' or pname.endswith('_id')
-                    key = int_p and keys['int'] or keys['str']
+                    key = int_p and param_types['int'] or param_types['str']
             d = d.setdefault(key, {})
         #
         actiion_class, action_methods = t
         d[None] = (actiion_class, action_methods, extension)
-
-    _KEYS_PER_TYPE      = {'int': 1, 'str': 2, 'path': 3}
-    _URLPATH_PARAM_REXP = re.compile(r'^\{(\w*)(?::(.*)?)?\}$')
 
     def lookup(self, req_urlpath):
         t = self._fixed_entries.get(req_urlpath)

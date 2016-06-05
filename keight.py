@@ -815,10 +815,10 @@ class ActionFSMMapping(ActionMapping):
 
     def _build(self, mappings):
         self._fixed_entries    = {}
-        self._variable_entries = entries = {}
-        self._traverse(mappings, "", entries)
+        self._variable_entries = {}
+        self._traverse(mappings, "")
 
-    def _traverse(self, mappings, base_urlpath, root_entries):
+    def _traverse(self, mappings, base_urlpath):
         lazy = self._lazy
         for urlpath, target in mappings:
             #; [!uno07] loads action classes if layz=False.
@@ -828,11 +828,11 @@ class ActionFSMMapping(ActionMapping):
             #
             full_urlpath = base_urlpath + urlpath
             if isinstance(target, list):
-                self._traverse(target, full_urlpath, root_entries)
+                self._traverse(target, full_urlpath)
             elif isinstance(target, type) and issubclass(target, BaseAction):
-                self._register_permanently(full_urlpath, target, root_entries)
+                self._register_permanently(full_urlpath, target)
             elif isinstance(target, basestring):
-                self._register_temporarily(full_urlpath, target, root_entries)
+                self._register_temporarily(full_urlpath, target)
             else:
                 raise NotActionClassError("%r: Action class expected." % (target,))
 
@@ -858,17 +858,17 @@ class ActionFSMMapping(ActionMapping):
                 d = d[key]
         return d
 
-    def _register_temporarily(self, base_urlpath, action_class, root_entries, target_entries=None):
+    def _register_temporarily(self, base_urlpath, action_class, target_entries=None):
         if target_entries is None:
             items, ext = self._split_path(base_urlpath)
-            target_entries = self._find_leaf_entries(root_entries, items)
+            target_entries = self._find_leaf_entries(self._variable_entries, items)
         key = 0     # temporary index
         target_entries[key] = (action_class, base_urlpath)
 
-    def _register_permanently(self, base_urlpath, action_class, root_entries, target_entries=None):
+    def _register_permanently(self, base_urlpath, action_class, target_entries=None):
         if target_entries is None:
             items, ext = self._split_path(base_urlpath)
-            target_entries = self._find_leaf_entries(root_entries, items)
+            target_entries = self._find_leaf_entries(self._variable_entries, items)
         if isinstance(action_class, basestring):
             class_str = action_class
             action_class = self._load_action_class(class_str)
@@ -884,13 +884,13 @@ class ActionFSMMapping(ActionMapping):
             leaf_entries = self._find_leaf_entries(target_entries, items)
             leaf_entries[None] = (action_class, action_methods, extension)
 
-    def _change_temporary_registration_to_permanently(self, d):
+    def _change_temporary_registration_to_permanently(self, entries):
         try:
-            action_class, base_urlpath = d.pop(0)
+            action_class, base_urlpath = entries.pop(0)
         except IndexError:
             pass
         else:
-            self._register_permanently(base_urlpath, action_class, None, d)
+            self._register_permanently(base_urlpath, action_class, entries)
 
     def _parse_urlpath_param(self, string):
         param_rexp  = self._URLPATH_PARAM_REXP

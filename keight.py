@@ -950,7 +950,7 @@ class ActionFSMLazyMapping(ActionMapping):
             if isinstance(target, list):
                 self._traverse(target, full_urlpath, entries)
             else:
-                self._register_temporarily(entries, full_urlpath, target)
+                self._register_temporarily(full_urlpath, target, entries)
 
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
@@ -974,18 +974,18 @@ class ActionFSMLazyMapping(ActionMapping):
                 d = d[key]
         return d
 
-    def _register_temporarily(self, entries, base_urlpath, action_class):
-        items, ext = self._split_path(base_urlpath)
-        d = self._find_leaf_entries(entries, items)
+    def _register_temporarily(self, base_urlpath, action_class, root_entries, leaf_entries=None):
+        if leaf_entries is None:
+            items, ext = self._split_path(base_urlpath)
+            leaf_entries = self._find_leaf_entries(root_entries, items)
         key = 0     # temporary index
-        d[key] = (action_class, base_urlpath)
+        leaf_entries[key] = (action_class, base_urlpath)
 
     def _register_permanently(self, entries, action_class, base_urlpath):
         if isinstance(action_class, basestring):
             class_str = action_class
             action_class = self._load_action_class(class_str)
             self._validate_action_class(action_class, class_str)
-        param_types = self._URLPATH_PARAM_TYPES
         for urlpath, action_methods in action_class.__mapping__:
             #
             full_urlpath = base_urlpath + urlpath

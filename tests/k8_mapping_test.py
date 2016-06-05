@@ -161,6 +161,51 @@ class K8_Test(object):
             ok (fn).has_attr('options')
             ok (fn.options) == {"csrf": False, "tag": "new"}
 
+        @test("[!2ftjv] @on.GET(), @on.POST(), ... are same as @on('GET'), @on('POST'), ...")
+        def _(self):
+            class HelloAction(k8.Action):
+                @on.GET(r'/{id}')
+                def do_get(self, id):
+                    return "..."
+                @on.POST(r'/{id}')
+                def do_post(self, id):
+                    return "..."
+                @on.PUT(r'/{id}')
+                def do_put(self, id):
+                    return "..."
+                @on.DELETE(r'/{id}')
+                def do_delete(self, id):
+                    return "..."
+                @on.HEAD(r'/{id}')
+                def do_head(self, id):
+                    return "..."
+                @on.OPTIONS(r'/{id}')
+                def do_options(self, id):
+                    return "..."
+                @on.TRACE(r'/{id}')
+                def do_trace(self, id):
+                    return "..."
+                @on.LINK(r'/{id}')
+                def do_link(self, id):
+                    return "..."
+                @on.UNLINK(r'/{id}')
+                def do_unlink(self, id):
+                    return "..."
+            #
+            ok (HelloAction.__mapping__) == [
+                (r'/{id}', {
+                    'GET'    : HelloAction.__dict__['do_get'],
+                    'POST'   : HelloAction.__dict__['do_post'],
+                    'PUT'    : HelloAction.__dict__['do_put'],
+                    'DELETE' : HelloAction.__dict__['do_delete'],
+                    'HEAD'   : HelloAction.__dict__['do_head'],
+                    'OPTIONS': HelloAction.__dict__['do_options'],
+                    'TRACE'  : HelloAction.__dict__['do_trace'],
+                    'LINK'   : HelloAction.__dict__['do_link'],
+                    'UNLINK' : HelloAction.__dict__['do_unlink'],
+                }),
+            ]
+
 
     with subject('mapping()'):
 

@@ -417,7 +417,7 @@ def mapping(urlpath_pattern, **methods):
             mapping(r'/{id}', GET=do_show, PUT=do_update, DELETE=do_delete)
     """
     #; [!zfrv6] maps urlpath pattern with action methods.
-    d = _get_mapping_dict(urlpath_pattern)
+    d = _get_mapping_dict(urlpath_pattern, 2)
     for meth, func in methods.items():
         ActionMapping._validate_request_method(meth)
         d[meth] = func
@@ -440,8 +440,11 @@ def on(request_method, urlpath_pattern, **options):
             def do_update(self, id):
                 return "..."
     """
+    return _on(request_method, urlpath_pattern, **options)
+
+def _on(request_method, urlpath_pattern, **options):
     #; [!i47p3] maps request path and urlpath pattern with action method.
-    d = _get_mapping_dict(urlpath_pattern)
+    d = _get_mapping_dict(urlpath_pattern, 3)
     def deco(func):
         #; [!a6xv2] sets keyword args to function as options.
         func.options = options
@@ -449,6 +452,18 @@ def on(request_method, urlpath_pattern, **options):
         d[request_method] = func
         return func
     return deco
+
+#; [!2ftjv] @on.GET(), @on.POST(), ... are same as @on('GET'), @on('POST'), ...
+on.GET     = lambda urlpath_pattern, **options: _on('GET',     urlpath_pattern, **options)
+on.POST    = lambda urlpath_pattern, **options: _on('POST',    urlpath_pattern, **options)
+on.PUT     = lambda urlpath_pattern, **options: _on('PUT',     urlpath_pattern, **options)
+on.DELETE  = lambda urlpath_pattern, **options: _on('DELETE',  urlpath_pattern, **options)
+on.PATCH   = lambda urlpath_pattern, **options: _on('PATCH',   urlpath_pattern, **options)
+on.HEAD    = lambda urlpath_pattern, **options: _on('HEAD',    urlpath_pattern, **options)
+on.OPTIONS = lambda urlpath_pattern, **options: _on('OPTIONS', urlpath_pattern, **options)
+on.TRACE   = lambda urlpath_pattern, **options: _on('TRACE',   urlpath_pattern, **options)
+on.LINK    = lambda urlpath_pattern, **options: _on('LINK',    urlpath_pattern, **options)
+on.UNLINK  = lambda urlpath_pattern, **options: _on('UNLINK',  urlpath_pattern, **options)
 
 
 class ActionMapping(object):

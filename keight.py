@@ -826,13 +826,13 @@ class ActionTrieMapping(ActionMapping):
         #       "api": {
         #           "books": {
         #               1: {    # '1' means int value of urlpath parameter
-        #                   None:     (BooksAPI, {"GET": BooksAPI.do_show, ...}, ""),
+        #                   None:     (BooksAPI, {"GET": BooksAPI.do_show, ...}, ["id"], ""),
         #                   "edit": {
-        #                       None: (BooksAPI, {"GET": BooksAPI.do_edit, ...}, ".html"),
-        #                   }
-        #               }
-        #           }
-        #       }
+        #                       None: (BooksAPI, {"GET": BooksAPI.do_edit, ...}, ["id"], ".html"),
+        #                   },
+        #               },
+        #           },
+        #       },
         #   }
         self._variable_entries = {}
         #
@@ -869,12 +869,13 @@ class ActionTrieMapping(ActionMapping):
         return path_elems, extension
 
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
-    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
+    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w+)(?::(.*?))?\}$')
 
     def _find_entries(self, path_elems, root_entries=None):
         if root_entries is None:
             root_entries = self._variable_entries
         param_types = self._URLPATH_PARAM_TYPES
+        param_names = []
         d = root_entries
         for s in path_elems:
             if '{' in s:
@@ -883,6 +884,7 @@ class ActionTrieMapping(ActionMapping):
                     raise UnknownUrlpathParameterTypeError(
                             "%r: Unknown paramter type name." % (s,))
                 key = param_types[ptype]  # 1, 2 or 3
+                param_names.append(pname)
             else:
                 key = s
             if key in d:
@@ -891,7 +893,7 @@ class ActionTrieMapping(ActionMapping):
                 d[key] = {}
                 d = d[key]
         entries = d
-        return entries
+        return entries, param_names
 
     def _parse_urlpath_param(self, string):
         param_rexp  = self._URLPATH_PARAM_REXP
@@ -912,14 +914,18 @@ class ActionTrieMapping(ActionMapping):
     def _register_temporarily(self, base_urlpath, action_class, entries=None):
         if entries is None:
             path_elems, _ = self._split_path(base_urlpath)  # ex: '/a/b/c.x' -> (['a','b','c'], '.x')
-            entries = self._find_entries(path_elems)
+            entries, pnames = self._find_entries(path_elems)
+        else:
+            pnames = []
         key = 0     # key for temporary registration
-        entries[key] = (action_class, base_urlpath)
+        entries[key] = (action_class, base_urlpath, pnames)
 
-    def _register_permanently(self, base_urlpath, action_class, entries=None):
+    def _register_permanently(self, base_urlpath, action_class, entries=None, param_names=None):
         if entries is None:
             path_elems, _ = self._split_path(base_urlpath)  # ex: '/a/b/c.x' -> (['a','b','c'], '.x')
-            entries = self._find_entries(path_elems)
+            entries, pnames = self._find_entries(path_elems)
+        else:
+            pnames = [] if param_names is None else param_names
         if isinstance(action_class, basestring):
             class_str = action_class
             action_class = self._load_action_class(class_str)
@@ -930,17 +936,17 @@ class ActionTrieMapping(ActionMapping):
                 self._fixed_entries[full_urlpath] = (action_class, action_methods, ())
             else:
                 path_elems, extension = self._split_path(urlpath)
-                leaf_entries = self._find_entries(path_elems, entries)
-                leaf_entries[None] = (action_class, action_methods, extension)
+                leaf_entries, pnames2 = self._find_entries(path_elems, entries)
+                leaf_entries[None] = (action_class, action_methods, pnames + pnames2, extension)
 
     def _change_temporary_registration_to_permanently(self, entries):
         key = 0     # key for temporary registration
         try:
-            action_class, base_urlpath = entries.pop(key)
+            action_class, base_urlpath, pnames = entries.pop(key)
         except IndexError:
             pass
         else:
-            self._register_permanently(base_urlpath, action_class, entries)
+            self._register_permanently(base_urlpath, action_class, entries, pnames)
 
     def lookup(self, req_path):
         t = self._fixed_entries.get(req_path)
@@ -990,10 +996,12 @@ class ActionTrieMapping(ActionMapping):
         t = d.get(None)
         if not t:
             return None        # not found
-        action_class, action_methods, expected_ext = t
+        action_class, action_methods, param_names, expected_ext = t
         if expected_ext != extension and expected_ext != '.*':
             return None        # not found
+        #
         #; [!u95qz] returns action class, action methods and urlpath arguments.
+        #pargs = { pname: arg for pname, arg in zip(param_names, args) }
         return (action_class,      # ex: HelloAction
                 action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
                 args)              # ex: [123]

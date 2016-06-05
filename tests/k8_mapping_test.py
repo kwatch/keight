@@ -685,10 +685,10 @@ class ActionTrieMapping_Test(object):
             ok (am._variable_entries) == {
                 'api': {
                     'items': {
-                        0: ("tmp1.api.items.ItemsAction", "/api/items"),
+                        0: ("tmp1.api.items.ItemsAction", "/api/items", []),
                     },
                     'news': {
-                        0: ("tmp1.api.news.NewsAction", "/api/news"),
+                        0: ("tmp1.api.news.NewsAction", "/api/news", []),
                     },
                 },
             }
@@ -724,6 +724,7 @@ class ActionTrieMapping_Test(object):
                                    {"GET"   : ItemsAction.__dict__["do_show"],
                                     "PUT"   : ItemsAction.__dict__["do_update"],
                                     "DELETE": ItemsAction.__dict__["do_delete"]},
+                                   ["id"],
                                    ""),
                         },
                     },
@@ -733,6 +734,7 @@ class ActionTrieMapping_Test(object):
                                    {"GET"   : NewsAction.__dict__["do_show"],
                                     "PUT"   : NewsAction.__dict__["do_update"],
                                     "DELETE": NewsAction.__dict__["do_delete"]},
+                                   ["id"],
                                    ""),
                         },
                     },
@@ -752,10 +754,10 @@ class ActionTrieMapping_Test(object):
             ok (am._variable_entries) == {
                 "api": {
                     "items": {
-                        0: ("tmp1.api.items.ItemsAction", "/api/items"),
+                        0: ("tmp1.api.items.ItemsAction", "/api/items", []),
                     },
                     "news": {
-                        0: ("tmp1.api.news.NewsAction", "/api/news"),
+                        0: ("tmp1.api.news.NewsAction", "/api/news", []),
                     },
                 },
             }
@@ -774,10 +776,10 @@ class ActionTrieMapping_Test(object):
             ok (am._variable_entries) == {
                 'api': {
                     'items': {
-                        0: ("tmp1.api.items.ItemsAction", "/api/items"),
+                        0: ("tmp1.api.items.ItemsAction", "/api/items", []),
                     },
                     'news': {
-                        0: ("tmp1.api.news.NewsAction", "/api/news"),
+                        0: ("tmp1.api.news.NewsAction", "/api/news", []),
                     },
                 },
             }
@@ -806,12 +808,13 @@ class ActionTrieMapping_Test(object):
                                 {'GET':    items_d['do_show'],
                                  'PUT':    items_d['do_update'],
                                  'DELETE': items_d['do_delete']},
+                                ["id"],
                                 '',
                             ),
                         },
                     },
                     'news': {
-                        0: ("tmp1.api.news.NewsAction", "/api/news"),
+                        0: ("tmp1.api.news.NewsAction", "/api/news", []),
                     },
                 },
             }
@@ -846,6 +849,7 @@ class ActionTrieMapping_Test(object):
                                 {'GET':    items_d['do_show'],
                                  'PUT':    items_d['do_update'],
                                  'DELETE': items_d['do_delete']},
+                                ["id"],
                                 '',
                             ),
                         },
@@ -857,6 +861,7 @@ class ActionTrieMapping_Test(object):
                                 {'GET':    news_d['do_show'],
                                  'PUT':    news_d['do_update'],
                                  'DELETE': news_d['do_delete']},
+                                ["id"],
                                 '',
                             ),
                         },

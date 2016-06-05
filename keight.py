@@ -34,11 +34,11 @@ if PY3:
     basestring  = str
 
 if PY2:
-    from urllib       import quote   as _quote     # percent encode
-    from urllib       import unquote as _unquote   # percent decode
+    from urllib       import quote   as _quote  , quote_plus   as _quote_plus
+    from urllib       import unquote as _unquote, unquote_plus as _unquote_plus
 if PY3:
-    from urllib.parse import quote   as _quote     # percent encode
-    from urllib.parse import unquote as _unquote   # percent decode
+    from urllib.parse import quote   as _quote  , quote_plus   as _quote_plus
+    from urllib.parse import unquote as _unquote, unquote_plus as _unquote_plus
 
 ENCODING='utf-8'
 
@@ -294,7 +294,9 @@ class HttpException(Exception):
 
     __slots__ = ('status', 'content', 'headers')
 
-    def __init__(self, status, headers=None, content=None):
+    def __init__(self, status, content=None, headers=None):
+        if headers is None and isinstance(content, dict):
+            headers, content = content, None
         self.status  = status
         self.headers = headers
         self.content = content
@@ -328,8 +330,8 @@ def _dummy():
                 k, v = kv
             else:
                 k = kv[0]; v = ""
-            k = _unquote(k)
-            v = _unquote(v)
+            k = _unquote_plus(k)
+            v = _unquote_plus(v)
             #; [!t0w33] regards as array of string when param name ends with '[]'.
             if not k.endswith('[]'):
                 d[k] = v
@@ -351,7 +353,7 @@ def _dummy():
         if isinstance(query, basestring):
             return query
         if isinstance(query, (dict, list, tuple)):
-            return "&".join( "%s=%s" % (_unquote(k), _unquote(str(v))) for k, v in query )
+            return "&".join( "%s=%s" % (_unquote_plus(k), _unquote_plus(str(v))) for k, v in query )
         raise TypeError("dict or list expected but got %r" % (query,))
 
     MULTIPART_MAX_FILESIZE       =   50 * 1024 * 1024   #  50MB
@@ -407,9 +409,9 @@ def _dummy():
         m = _pname_rexp.search(cont_disp)
         if not (m):
             raise HttpException(400, "Content-Disposition header is invalid.")
-        param_name = _unquote(m.group(1) or m.group(2) or "")
+        param_name = _unquote_plus(m.group(1) or m.group(2) or "")
         m = _filename_rexp.search(cont_disp)
-        filename = _unquote(m.group(1) or m.group(2) or "") if m else None
+        filename = _unquote_plus(m.group(1) or m.group(2) or "") if m else None
         return param_name, filename, cont_type
 
     def parse_multipart(stdin, boundary, content_length, max_filesize=None, bufsize=None, _=None,
@@ -439,6 +441,13 @@ def _dummy():
                 if upfile:
                     files[pname] = upfile
         return params, files
+
+    def parse_json_string(json_str):
+        try:
+            x = json.loads(json_str)
+            return x
+        except ValueError:
+            raise HttpException(400, "Invalid JSON data.")
 
     def randstr_b64():
         global hashlib, base64
@@ -1316,28 +1325,6 @@ class WSGIRequest(object):
         self.path   = env['PATH_INFO'] or '/'
 
     @property
-    def content_type(self):
-        #; [!l88e2] returns CONTENT_TYPE value in environ object.
-        return self.env.get('CONTENT_TYPE')
-
-    @property
-    def content_length(self):
-        #; [!uwj7o] returns CONTENT_LENGTH value in environ object.
-        #; [!j39md] returns int value instead of string.
-        v = self.env.get('CONTENT_LENGTH')
-        if v is None:
-            return None
-        return int(v)
-
-    @property
-    def wsgi_input(self):
-        return self.env.get('wsgi.input')
-
-    @property
-    def wsgi_errors(self):
-        return self.env.get('wsgi.errors')
-
-    @property
     def headers(self):
         #; [!n45wo] returns header object which wraps environ object.
         headers = getattr(self, '_headers', None)
@@ -1354,6 +1341,38 @@ class WSGIRequest(object):
             return self.env.get('CONTENT_LENGTH')
         k = 'HTTP_' + k.upper().replace('-', '_')
         return self.env.get(k)
+
+    @property
+    def content_type(self):
+        #; [!l88e2] returns CONTENT_TYPE value in environ object.
+        return self.env.get('CONTENT_TYPE')
+
+    @property
+    def content_length(self):
+        #; [!uwj7o] returns CONTENT_LENGTH value in environ object.
+        #; [!j39md] returns int value instead of string.
+        v = self.env.get('CONTENT_LENGTH')
+        if v is None:
+            return None
+        try:
+            n = int(v)
+        except ValueError:
+            raise HttpException(400, "Content-Length should be an integer.")
+        if not (n >= 0):
+            raise HttpException(400, "Content-Length should be zero or positive integer.")
+        return n
+
+    @property
+    def query_string(self):
+        return self.env.get('QUERY_STRING') or ""
+
+    @property
+    def wsgi_input(self):
+        return self.env.get('wsgi.input')
+
+    @property
+    def wsgi_errors(self):
+        return self.env.get('wsgi.errors')
 
 
 class WSGIResponse(object):
@@ -1578,7 +1597,7 @@ _setup_testing_defaults = None  # import from wsgi.util
 _BytesIO = None   # io.BytesIO or cStringIO.StringIO
 
 def mock_env(req_meth, req_urlpath, _=None, query=None, form=None, json=None,
-             headers=None, cookies=None, env=None):
+             headers=None, cookies=None, input=None, env=None):
     global _BytesIO
     try:
         from io import BytesIO as _BytesIO
@@ -1595,11 +1614,20 @@ def mock_env(req_meth, req_urlpath, _=None, query=None, form=None, json=None,
     if query:
         env['QUERY_STRING'] = S(_build_query_string(query))
     if form:
-        env['wsgi.input'] = _BytesIO(B(_build_query_string(query)))
+        b = B(_build_query_string(form))
+        env['wsgi.input']     = _BytesIO(b)
+        env['CONTENT_TYPE']   = "application/x-www-form-urlencoded"
+        env['CONTENT_LENGTH'] = str(len(b))
     if json:
-        import json as json_
-        json_str = json_.dumps(json)
-        env['wsgi.input'] = _BytesIO(B(json_str))
+        if isinstance(json, basestring):
+            json_str = json
+        else:
+            import json as json_
+            json_str = json_.dumps(json)
+        b = B(json_str)
+        env['wsgi.input']     = _BytesIO(b)
+        env['CONTENT_TYPE']   = "application/json"
+        env['CONTENT_LENGTH'] = str(len(b))
     if headers:
         for k in headers:
             v = headers[k]
@@ -1611,6 +1639,10 @@ def mock_env(req_meth, req_urlpath, _=None, query=None, form=None, json=None,
                 env['HTTP_' + k.upper().replace('-', '_')] = S(v)
     if cookies:
         env['HTTP_COOKIE'] = S(_build_cookie_string(cookie))
+    if input:
+        b = B(input)
+        env['wsgi.input']     = _BytesIO(b)
+        env['CONTENT_LENGTH'] = str(len(b))
     #
     global _setup_testing_defaults
     if _setup_testing_defaults is None:
@@ -1619,17 +1651,17 @@ def mock_env(req_meth, req_urlpath, _=None, query=None, form=None, json=None,
     return env
 
 def _build_query_string(query):
-    if isinstance(query, (unicode, binary)):
+    if isinstance(query, (unicode, bytes)):
         return query
     if isinstance(query, dict):  # TODO: percent encode
-        return '&'.join("%s=%s" % (k, query[k]) for k in query)
+        return '&'.join("%s=%s" % (_quote_plus(k), _quote_plus(v)) for k, v in query.items())
     raise TypeError("%r: failed to build query string." % (query,))
 
 def _build_cookie_string(cookie):
-    if isinstance(cookie, (unicode, binary)):
+    if isinstance(cookie, (unicode, bytes)):
         return cookie
     if isinstance(cookie, dict):  # TODO: percent encode
-        return '; '.join("%s=%s" % (k, cookie[k]) for k in cookie)
+        return '; '.join("%s=%s" % (_quote(k), _quote(v)) for k, v in cookie.items())
     raise TypeError("%r: failed to build cookie string." % (cookie,))
 
 

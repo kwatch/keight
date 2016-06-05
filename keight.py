@@ -808,19 +808,38 @@ class ActionLazyMapping(ActionMapping):
 
 class ActionFSMMapping(ActionMapping):
 
-    def __init__(self, mappings, lazy=False):
+    def __init__(self, mapping_list, lazy=False):
         self._lazy = lazy
         #; [!1gp9m] accepts urlpath mapping list.
-        self._build(mappings)
+        self._build(mapping_list)
 
-    def _build(self, mappings):
-        self._fixed_entries    = {}
+    def _build(self, mapping_list):
+        # ex:
+        #   {
+        #       "/api/books"         : (BooksAction, {"GET": BooksAction.do_index, ...}, ()),
+        #       "/api/books/new.html": (BooksAction, {"GET": BooksAction.do_new, ...}, ()),
+        #   }
+        self._fixed_entries = {}
+        # ex:
+        #   {
+        #       "api": {
+        #           "books": {
+        #               1: {    # '1' means int value of urlpath parameter
+        #                   None:     (BooksAPI, {"GET": BooksAPI.do_show, ...}, ""),
+        #                   "edit": {
+        #                       None: (BooksAPI, {"GET": BooksAPI.do_edit, ...}, ".html"),
+        #                   }
+        #               }
+        #           }
+        #       }
+        #   }
         self._variable_entries = {}
-        self._traverse(mappings, "")
+        #
+        self._traverse(mapping_list, "")
 
-    def _traverse(self, mappings, base_urlpath):
+    def _traverse(self, mapping_list, base_urlpath):
         lazy = self._lazy
-        for urlpath, target in mappings:
+        for urlpath, target in mapping_list:
             #; [!uno07] loads action classes if layz=False.
             #; [!ifj4v] don't load classes if lazy=True.
             if not lazy and isinstance(target, basestring):
@@ -839,12 +858,12 @@ class ActionFSMMapping(ActionMapping):
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
 
-    def _find_entries(self, items, root_entries=None):
+    def _find_entries(self, path_elems, root_entries=None):
         if root_entries is None:
             root_entries = self._variable_entries
         param_types = self._URLPATH_PARAM_TYPES
         d = root_entries
-        for s in items:
+        for s in path_elems:
             if '{' in s:
                 pname, ptype = self._parse_urlpath_param(s)
                 if ptype not in param_types:
@@ -901,8 +920,13 @@ class ActionFSMMapping(ActionMapping):
                     "%r: Invalid urlpath parameter patter." % (string,))
         pname, ptype = m.groups()
         if not ptype:
-            ptype = "int" if pname == "id" or pname.endswith("_id") else "str"
+            ptype = self._guess_param_type_of(pname)
         return pname, ptype
+
+    def _guess_param_type_of(self, pname):
+        if pname == "id" or pname.endswith("_id"):
+            return "int"
+        return "str"
 
     def lookup(self, req_path):
         t = self._fixed_entries.get(req_path)
@@ -916,8 +940,8 @@ class ActionFSMMapping(ActionMapping):
         key_path = param_types['path']  # == 3
         args = []; add = args.append
         d = self._variable_entries
-        items, extension = self._split_path(req_path)  # ex: '/x/y/1.json' => [('x','y','1'), '.json']
-        for s in items:
+        path_elems, extension = self._split_path(req_path)  # ex: '/a/b.x' => (['a','b'], '.x')
+        for s in path_elems:
             #; [!05a7a] loads action classes dinamically if lazy=True.
             if lazy and 0 in d:         # if temporary key exists
                 self._change_temporary_registration_to_permanently(d)
@@ -934,10 +958,10 @@ class ActionFSMMapping(ActionMapping):
                 d = d[key_str]
                 add(s)
             elif key_path in d:
-                for i, x in enumerate(items):
+                for i, x in enumerate(path_elems):
                     if x is s:
                         break
-                add("/".join(items[i+1:]))
+                add("/".join(path_elems[i+1:]))
                 break
             else:
                 return None    # not found
@@ -965,9 +989,12 @@ class ActionFSMMapping(ActionMapping):
         assert req_path.startswith('/')
         pos = req_path.rfind('.')
         if pos < 0 or pos < req_path.rfind('/'):
-            return req_path[1:].split('/'), ""
+            path_elems = req_path[1:].split('/')
+            extension  = ""
         else:
-            return req_path[1:pos].split('/'), req_path[pos:]
+            path_elems = req_path[1:pos].split('/')
+            extension  = req_path[pos:]
+        return path_elems, extension
 
 
 class ActionFSMLazyMapping(ActionFSMMapping):

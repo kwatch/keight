@@ -839,9 +839,11 @@ class ActionFSMMapping(ActionMapping):
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
 
-    def _find_leaf_entries(self, entries, items):
+    def _find_leaf_entries(self, items, root_entries=None):
+        if root_entries is None:
+            root_entries = self._variable_entries
         param_types = self._URLPATH_PARAM_TYPES
-        d = entries
+        d = root_entries
         for s in items:
             if '{' in s:
                 pname, ptype = self._parse_urlpath_param(s)
@@ -856,19 +858,20 @@ class ActionFSMMapping(ActionMapping):
             else:
                 d[key] = {}
                 d = d[key]
-        return d
+        entries = d
+        return entries
 
     def _register_temporarily(self, base_urlpath, action_class, target_entries=None):
         if target_entries is None:
-            items, ext = self._split_path(base_urlpath)
-            target_entries = self._find_leaf_entries(self._variable_entries, items)
+            path_elems, _ = self._split_path(base_urlpath)   # ex: '/a/b/c.txt' -> (['a','b','c'], '.txt')
+            target_entries = self._find_leaf_entries(path_elems)
         key = 0     # temporary index
         target_entries[key] = (action_class, base_urlpath)
 
     def _register_permanently(self, base_urlpath, action_class, target_entries=None):
         if target_entries is None:
-            items, ext = self._split_path(base_urlpath)
-            target_entries = self._find_leaf_entries(self._variable_entries, items)
+            path_elems, _ = self._split_path(base_urlpath)   # ex: '/a/b/c.txt' -> (['a','b','c'], '.txt')
+            target_entries = self._find_leaf_entries(path_elems)
         if isinstance(action_class, basestring):
             class_str = action_class
             action_class = self._load_action_class(class_str)
@@ -880,8 +883,8 @@ class ActionFSMMapping(ActionMapping):
                 self._fixed_entries[full_urlpath] = (action_class, action_methods, ())
                 continue
             #
-            items, extension = self._split_path(urlpath)
-            leaf_entries = self._find_leaf_entries(target_entries, items)
+            path_elems, extension = self._split_path(urlpath)
+            leaf_entries = self._find_leaf_entries(path_elems, target_entries)
             leaf_entries[None] = (action_class, action_methods, extension)
 
     def _change_temporary_registration_to_permanently(self, entries):

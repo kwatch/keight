@@ -974,14 +974,17 @@ class ActionFSMLazyMapping(ActionMapping):
                 d = d[key]
         return d
 
-    def _register_temporarily(self, base_urlpath, action_class, root_entries, leaf_entries=None):
-        if leaf_entries is None:
+    def _register_temporarily(self, base_urlpath, action_class, root_entries, target_entries=None):
+        if target_entries is None:
             items, ext = self._split_path(base_urlpath)
-            leaf_entries = self._find_leaf_entries(root_entries, items)
+            target_entries = self._find_leaf_entries(root_entries, items)
         key = 0     # temporary index
-        leaf_entries[key] = (action_class, base_urlpath)
+        target_entries[key] = (action_class, base_urlpath)
 
-    def _register_permanently(self, entries, action_class, base_urlpath):
+    def _register_permanently(self, base_urlpath, action_class, root_entries, target_entries=None):
+        if target_entries is None:
+            items, ext = self._split_path(base_urlpath)
+            target_entries = self._find_leaf_entries(root_entries, items)
         if isinstance(action_class, basestring):
             class_str = action_class
             action_class = self._load_action_class(class_str)
@@ -994,8 +997,8 @@ class ActionFSMLazyMapping(ActionMapping):
                 continue
             #
             items, extension = self._split_path(urlpath)
-            d = self._find_leaf_entries(entries, items)
-            d[None] = (action_class, action_methods, extension)
+            leaf_entries = self._find_leaf_entries(target_entries, items)
+            leaf_entries[None] = (action_class, action_methods, extension)
 
     def _change_temporary_registration_to_permanently(self, d):
         try:
@@ -1003,7 +1006,7 @@ class ActionFSMLazyMapping(ActionMapping):
         except IndexError:
             pass
         else:
-            self._register_permanently(d, action_class, base_urlpath)
+            self._register_permanently(base_urlpath, action_class, None, d)
 
     def _parse_urlpath_param(self, string):
         param_rexp  = self._URLPATH_PARAM_REXP

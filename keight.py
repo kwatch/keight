@@ -1374,6 +1374,127 @@ class WSGIRequest(object):
     def wsgi_errors(self):
         return self.env.get('wsgi.errors')
 
+    @property
+    def params_query(self):
+        #; [!6ezqw] parses QUERY_STRING and returns it as Hash/dict object.
+        #; [!o0ws7] unquotes both keys and values.
+        params = getattr(self, '_param_query', None)
+        if params is None:
+            self._param_query = params = self._parse_params_query()
+        return params
+
+    def _parse_params_query(self):
+        return util.parse_query_string(self.query_string)
+
+    def _get_content_type_and_length(self):
+        #; [!q88w9] raises 400 error when content length is missing.
+        #; [!gi4qq] raises 400 error when content length is invalid.
+        clen = self.content_length
+        if not (clen != None):
+            raise HttpException(400, "Content-Length header expected.")
+        #; [!5besh] raises 400 error when content type is missing.
+        ctype = self.content_type
+        if not (ctype):
+            raise HttpException(400, "Content-Type header is missing.")
+        #
+        return ctype, clen
+
+    MAX_FORM_SIZE      =  10*1024*1024
+    MAX_MULTIPART_SIZE = 100*1024*1024
+    MAX_JSON_SIZE      =  10*1024*1024
+
+    @property
+    def params_form(self):
+        params = getattr(self, '_params_form', None)
+        if params is None:
+            self._params_form = params = self._parse_params_form()
+        return params
+
+    def _parse_params_form(self):
+        ctype, clen = self._get_content_type_and_length()
+        #; raises 400 error when content type is not 'application/x-www-form-urlencoded'.
+        expected = "application/x-www-form-urlencoded"
+        if not (ctype == expected):
+            raise HttpException(400, "Unexpected Content-Type header (expected: %r, actual: %r)." % (expected, ctype))
+        #; [!puxlr] raises 400 error when content length is too large (> 10MB).
+        if not (clen <= self.MAX_FORM_SIZE):
+            raise HttpException(400, "Content-Length is too large.")
+        #; [!59ad2] parses form parameters and returns it as Hash/dict object when form requested.
+        form_str = self.env['wsgi.input'].read(clen)
+        d = util.parse_query_string(S(form_str))
+        return d
+
+    @property
+    def params_multipart(self):
+        pair = getattr(self, '_params_multipart', None)
+        if pair is None:
+            self._params_multipart = pair = self._parse_params_multipart()
+        return pair  # (params, files)
+
+    def _parse_params_multipart(self):
+        ctype, clen = self._get_content_type_and_length()
+        #; raises 400 error when content type is not 'multipart/form-data'.
+        m = re.match(r'^multipart/form-data(?:;\s*boundary=(.*))?$', ctype)
+        if not (m):
+            raise HttpException(400, "Unexpected Content-Type header (expected: %r, actual: %r)." % ("multipart/form-data", ctype))
+        #; raises 400 error when boundary is missing.
+        boundary = m.group(1)
+        if not boundary:
+            raise HttpException(400, "bounday attribute of multipart required.")
+        #; [!mtx6t] raises 400 error when content length of multipart is too long (> 100MB).
+
+        if not (clen <= self.MAX_MULTIPART_SIZE):
+            raise HttpException(400, "Content-Length of multipart is too large.")
+        #; [!y1jng] parses multipart when multipart form requested.
+        params, files = util.parse_multipart(self.env['wsgi.input'], boundary, clen, None, None)
+        return params, files
+
+    @property
+    def params_json(self):
+        params = getattr(self, '_params_json', None)
+        if params is None:
+            self._params_json = params = self._parse_params_json()
+        return params
+
+    def _parse_params_json(self):
+        ctype, clen = self._get_content_type_and_length()
+        #; raises 400 error when content type is not 'application/json'.
+        m = re.match(r'^application/json(?:;?.*)?$', ctype)
+        if not (m):
+            raise HttpException(400, "Unexpected Content-Type header (expected: %r, actual: %r)." % ("application/json", ctype))
+        #; raises 400 error when content length of JSON is too large (> 10MB).
+
+        if not (clen <= self.MAX_JSON_SIZE):
+            raise HttpException(400, "Content-Length of multipart is too large.")
+        #; [!ugik5] parses json data and returns it as hash object when json data is sent.
+        binary = self.env['wsgi.input'].read(clen)
+        try:
+            string = S(binary)
+        except UnicodeDecodeError:
+            raise HttpException(400, "Failed to decode JSON string.")
+        d = util.parse_json_string(string)
+        return d
+
+    @property
+    def params(self):
+        #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
+        #; [!cr0zj] parses JSON when content type is 'application/json'.
+        #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
+        #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
+        if self.method == 'GET' or self.method == 'HEAD':
+            return self.params_query
+        ctype = self.content_type
+        if ctype == "application/json" or ctype.startswith("application/json;"):
+            return self.params_json
+        if ctype == "application/x-www-form-urlencoded":
+            return self.params_form
+        if ctype.startswith("multipart\/form-data;"):
+            params, files = self.params_multipart
+            d = params.copy()
+            d.update(files)
+            return d
+        return {}
+
 
 class WSGIResponse(object):
 

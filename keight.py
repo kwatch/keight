@@ -18,6 +18,11 @@ __all__ = (
 )
 
 import sys, os, re, json, traceback
+from datetime import datetime
+from random import random
+from time import time
+hashlib = None
+base64  = None
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -27,6 +32,13 @@ if PY3:
     unicode     = str
     xrange      = range
     basestring  = str
+
+if PY2:
+    from urllib       import quote   as _quote     # percent encode
+    from urllib       import unquote as _unquote   # percent decode
+if PY3:
+    from urllib.parse import quote   as _quote     # percent encode
+    from urllib.parse import unquote as _unquote   # percent decode
 
 ENCODING='utf-8'
 
@@ -233,6 +245,19 @@ def _re_escape(text):
     return re.sub(r'([-.^$*+?{}\\\[\]|()&])', r'\\\1', text)
 
 
+def _create_module(module_name, **kwargs):
+    """ex. mod = create_module('keight.wsgi')"""
+    try:
+        mod = type(sys)(module_name)
+    except:    # on Jython 2.5.2
+        import imp
+        mod = imp.new_module(module_name)
+    mod.__file__ = __file__
+    mod.__dict__.update(kwargs)
+    sys.modules[module_name] = mod
+    return mod
+
+
 def _load_module(string):
     mod = __import__(string)
     for x in string.split('.')[1:]:
@@ -250,6 +275,7 @@ def _load_class(string):
         class_name  = string[idx+1:]
     mod = _load_module(module_path)
     return getattr(mod, class_name, None)
+
 
 
 class KeightError(Exception):
@@ -272,6 +298,222 @@ class HttpException(Exception):
         self.status  = status
         self.headers = headers
         self.content = content
+
+
+##
+## util
+##
+
+def _dummy():
+
+    def escape_html(str):
+        #; [!90jx8] escapes '& < > " \'' into '&amp; &lt; &gt; &quot; &#39;'.
+        return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;") \
+                  .replace('"', "&quot;").replace("'", "&#39;");
+
+    #; [!649wt] 'h()' is alias of 'escape_html()'
+    h = escape_html
+
+    def _parse_qs(query_str, separator):
+        d = {}
+        #; [!engr6] returns empty dict object when query string is empty.
+        if not query_str:
+            return d
+        #; [!fzt3w] parses query string and returns dict object.
+        equal    = '='
+        brackets = '[]'
+        for s in separator.split(query_str):
+            kv = s.split('=', 1)
+            if len(kv) == 2:
+                k, v = kv
+            else:
+                k = kv[0]; v = ""
+            k = _unquote(k)
+            v = _unquote(v)
+            #; [!t0w33] regards as array of string when param name ends with '[]'.
+            if not k.endswith('[]'):
+                d[k] = v
+            elif k in d:
+                d[k].append(v)
+            else:
+                d[k] = [v]
+        return d
+
+    def parse_query_string(query_str, _separator=re.compile(r'[&;]'), _parse_qs=_parse_qs):
+        return _parse_qs(query_str, _separator)
+
+    def parse_cookie_string(cookie_str, _separator=re.compile(r';\s*'), _parse_qs=_parse_qs):
+        return _parse_qs(cookie_str, _separator)
+
+    def build_query_string(query):
+        if query is None:
+            return None
+        if isinstance(query, basestring):
+            return query
+        if isinstance(query, (dict, list, tuple)):
+            return "&".join( "%s=%s" % (_unquote(k), _unquote(str(v))) for k, v in query )
+        raise TypeError("dict or list expected but got %r" % (query,))
+
+    MULTIPART_MAX_FILESIZE       =   50 * 1024 * 1024   #  50MB
+    MULTIPART_BUFFER_SIZE        =   10 * 1024 * 1024   #  10MB
+
+    def _parse_multipart(stdin, boundary, content_length, max_filesize, bufsize):
+        boundary = B(boundary)
+        first_line = b"--"     + boundary + b"\r\n"
+        last_line  = b"\r\n--" + boundary + b"--\r\n"
+        separator  = b"\r\n--" + boundary + b"\r\n"
+        s = stdin.read(len(first_line))
+        if not (s == first_line):
+            raise HttpException(400, "invalid first line. exected=%r, actual=%r" % (first_line, s))
+        length = content_length - len(first_line) - len(last_line)
+        if not (length > 0):
+            raise HttpException(400, "invalid content length.")
+        last = None
+        while length > 0:
+            n = min(bufsize, length)
+            bin = stdin.read(n)
+            if not bin:
+                break
+            length -= len(bin)
+            if last is not None:
+                bin = last + bin
+            parts = bin.split(separator)
+            if not (len(parts) != 1 or len(bin) <= max_filesize):
+                raise HttpException(400, "too large file or data.")
+            last = parts.pop()
+            for part in parts:
+                yield part
+        if last is not None:
+            yield last
+        s = stdin.read(len(last_line))
+        if not (s == last_line):
+            raise HttpException(400, "invalid last line.")
+
+    def _parse_multipart_header(header, _sep=re.compile(r':\s*'),
+                                _pname_rexp=re.compile(r'form-data; *name=(?:"([^"\r\n]*)"|([^;\r\n]+))'),
+                                _filename_rexp=re.compile(r'; *filename=(?:"([^"\r\n]+)"|([^;\r\n]+))')):
+        header = S(header)   # to native string
+        cont_disp = cont_type = None
+        for line in header.split("\r\n"):
+            try:
+                name, val = _sep.split(line, 1)
+            except ValueError:
+                raise HttpException(400, "invalid request header format.")
+            if   name == 'Content-Disposition': cont_disp = val
+            elif name == 'Content-Type'       : cont_type = val
+            else                              : None
+        if not (cont_disp):
+            raise HttpException(400, "Content-Disposition header is required.")
+        m = _pname_rexp.search(cont_disp)
+        if not (m):
+            raise HttpException(400, "Content-Disposition header is invalid.")
+        param_name = _unquote(m.group(1) or m.group(2) or "")
+        m = _filename_rexp.search(cont_disp)
+        filename = _unquote(m.group(1) or m.group(2) or "") if m else None
+        return param_name, filename, cont_type
+
+    def parse_multipart(stdin, boundary, content_length, max_filesize=None, bufsize=None, _=None,
+                        _parse_multipart=_parse_multipart, _parse_multipart_header=_parse_multipart_header):
+        if max_filesize is None:  max_filesize = util.MULTIPART_MAX_FILESIZE
+        if bufsize      is None:  bufsize      = util.MULTIPART_BUFFER_SIZE
+        #; [!mqrei] parses multipart form data.
+        params = {}   # {"name": "value"}
+        files  = {}   # {"name": UploadedFile}
+        for part in _parse_multipart(stdin, boundary, content_length, max_filesize, bufsize):
+            header, body = part.split(b"\r\n\r\n")
+            pname, filename, cont_type = _parse_multipart_header(header)
+            if filename:
+                upfile = UploadedFile(filename, cont_type)
+                with upfile as f:
+                    f.write(body)
+                pvalue = filename
+            else:
+                upfile = None
+                pvalue = body
+            if pname.endswith("[]"):
+                params.setdefault(pname, []).append(S(pvalue))
+                if upfile:
+                    files.setdefault(pname, []).append(upfile)
+            else:
+                params[pname] = S(pvalue)
+                if upfile:
+                    files[pname] = upfile
+        return params, files
+
+    def randstr_b64():
+        global hashlib, base64
+        if hashlib is None: import hashlib
+        if base64  is None: import base64
+        #; [!yq0gv] returns random string, encoded with urlsafe base64.
+        ## Don't use SecureRandom; entropy of /dev/random or /dev/urandom
+        ## should be left for more secure-sensitive purpose.
+        s = "%s%s%s%s" % (random(), random(), random(), time())
+        b = hashlib.sha1(B(s)).digest()
+        return S(base64.urlsafe_b64encode(b).rstrip(b"="))
+
+    def guess_content_type(filename, default="application/octet-stream"):
+        #; [!xw0js] returns content type guessed from filename.
+        #; [!dku5c] returns 'application/octet-stream' when failed to guess content type.
+        _, extension = os.path.splitext(filename)
+        return MIME_TYPES.get(extension, default)
+
+    def http_utc_time(utc_time):
+        #; [!3z5lf] raises error when argument is not UTC.
+        # todo
+        #; [!5k50b] converts Time object into HTTP date format string.
+        return utc_time.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    MONTHS   = (None, "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    if http_utc_time(datetime(2000, 1, 1, 0, 0, 0)) != "Sat, 01 Jan 2000 00:00:00 GMT":
+        def http_utc_time(utc_time, _=None, _weekdays=WEEKDAYS, _months=MONTHS):
+            return utc_time.strftime("%s, %%d %s %%Y %%H:%%M:%%S GMT" % \
+                                       (_weekdays[utc_time.weekday()], _months[utc_time.month]))
+
+    ## TODO: TemporaryFile and ShellCommand
+
+    return locals()
+
+util = _create_module("util")
+util.__dict__.update(_dummy())
+del _dummy
+
+
+class UploadedFile(object):
+
+    def __init__(self, filename, content_type):
+        #; [!ityxj] takes filename and content type.
+        self.filename = filename
+        self.content_type = content_type
+        #; [!5c8w6] sets temporary filepath with random string.
+        self.tmp_filepath = self.new_filepath()
+        self._opened = None
+
+    def __enter__(self):
+        #; [!8ezhr] yields with opened temporary file.
+        self._opened = open(self.tmp_filepath, 'wb')
+        return self._opened
+
+    def __exit__(self, *args):
+        self._opened.close()
+        self._opened = None
+
+    def clean(self):
+        #; [!ft454] removes temporary file if exists.
+        if os.path.exists(self.tmp_filepath):
+            try:
+                os.unlink(self.tmp_filepath)
+            except:
+                pass
+
+    @staticmethod
+    def new_filepath():
+        #; [!zdkts] use $K8_UPLOAD_DIR environment variable as temporary directory.
+        get = os.getenv
+        dir = get("K8_UPLOAD_DIR") or get("TMPDIR") or get("TEMPDIR") or "/tmp"
+        return os.path.join(dir, "up." + util.randstr_b64())
 
 
 class BaseAction(object):
@@ -1322,19 +1564,6 @@ class WSGIApplication(object):
             ('Content-Length', str(len(binary))),
         ]
         return status, headers, [binary]
-
-
-def _create_module(module_name, **kwargs):
-    """ex. mod = create_module('keight.wsgi')"""
-    try:
-        mod = type(sys)(module_name)
-    except:    # on Jython 2.5.2
-        import imp
-        mod = imp.new_module(module_name)
-    mod.__file__ = __file__
-    mod.__dict__.update(kwargs)
-    sys.modules[module_name] = mod
-    return mod
 
 
 wsgi = _create_module("keight.wsgi")

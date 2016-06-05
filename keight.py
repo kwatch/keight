@@ -856,6 +856,18 @@ class ActionTrieMapping(ActionMapping):
             else:
                 raise NotActionClassError("%r: Action class expected." % (target,))
 
+    @staticmethod
+    def _split_path(req_path):
+        assert req_path.startswith('/')
+        pos = req_path.rfind('.')
+        if pos < 0 or pos < req_path.rfind('/'):
+            path_elems = req_path[1:].split('/')
+            extension  = ""
+        else:
+            path_elems = req_path[1:pos].split('/')
+            extension  = req_path[pos:]
+        return path_elems, extension
+
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
 
@@ -880,6 +892,22 @@ class ActionTrieMapping(ActionMapping):
                 d = d[key]
         entries = d
         return entries
+
+    def _parse_urlpath_param(self, string):
+        param_rexp  = self._URLPATH_PARAM_REXP
+        m = param_rexp.match(string)
+        if not m:
+            raise InvalidUrlpathParameterPatternError(
+                    "%r: Invalid urlpath parameter patter." % (string,))
+        pname, ptype = m.groups()
+        if not ptype:
+            ptype = self._guess_param_type_of(pname)
+        return pname, ptype
+
+    def _guess_param_type_of(self, pname):
+        if pname == "id" or pname.endswith("_id"):
+            return "int"
+        return "str"
 
     def _register_temporarily(self, base_urlpath, action_class, entries=None):
         if entries is None:
@@ -906,28 +934,13 @@ class ActionTrieMapping(ActionMapping):
                 leaf_entries[None] = (action_class, action_methods, extension)
 
     def _change_temporary_registration_to_permanently(self, entries):
+        key = 0     # key for temporary registration
         try:
-            action_class, base_urlpath = entries.pop(0)
+            action_class, base_urlpath = entries.pop(key)
         except IndexError:
             pass
         else:
             self._register_permanently(base_urlpath, action_class, entries)
-
-    def _parse_urlpath_param(self, string):
-        param_rexp  = self._URLPATH_PARAM_REXP
-        m = param_rexp.match(string)
-        if not m:
-            raise InvalidUrlpathParameterPatternError(
-                    "%r: Invalid urlpath parameter patter." % (string,))
-        pname, ptype = m.groups()
-        if not ptype:
-            ptype = self._guess_param_type_of(pname)
-        return pname, ptype
-
-    def _guess_param_type_of(self, pname):
-        if pname == "id" or pname.endswith("_id"):
-            return "int"
-        return "str"
 
     def lookup(self, req_path):
         t = self._fixed_entries.get(req_path)
@@ -984,18 +997,6 @@ class ActionTrieMapping(ActionMapping):
         return (action_class,      # ex: HelloAction
                 action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
                 args)              # ex: [123]
-
-    @staticmethod
-    def _split_path(req_path):
-        assert req_path.startswith('/')
-        pos = req_path.rfind('.')
-        if pos < 0 or pos < req_path.rfind('/'):
-            path_elems = req_path[1:].split('/')
-            extension  = ""
-        else:
-            path_elems = req_path[1:pos].split('/')
-            extension  = req_path[pos:]
-        return path_elems, extension
 
 
 class ActionTrieLazyMapping(ActionTrieMapping):

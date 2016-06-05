@@ -566,7 +566,7 @@ class ActionMapping(object):
             raise TypeError("%s: No action methods." % class_string)
 
 
-class ActionEagerMapping(ActionMapping):
+class ActionRexpMapping(ActionMapping):
 
     def __init__(self, mappings):
         #; [!qm6q0] accepts urlpath mapping list.
@@ -686,7 +686,7 @@ class ActionEagerMapping(ActionMapping):
             yield urlpath_pat, action_class, action_methods
 
 
-class ActionLazyMapping(ActionMapping):
+class ActionRexpLazyMapping(ActionMapping):
 
     def __init__(self, mappings):
         #; [!ie7w7] accepts urlpath mapping list.
@@ -1190,7 +1190,7 @@ class WSGIApplication(object):
         index = 0
         if lazy: index += 1
         if fast: index += 2
-        klass = (ActionEagerMapping, ActionLazyMapping, ActionTrieMapping, ActionTrieLazyMapping)[index]
+        klass = (ActionRexpMapping, ActionRexpLazyMapping, ActionTrieMapping, ActionTrieLazyMapping)[index]
         self._mapping = klass(mapping_list)
 
     def lookup(self, req_urlpath):

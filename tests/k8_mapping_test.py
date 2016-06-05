@@ -456,7 +456,7 @@ class AuthorsAction(k8.Action):
 
 
 
-class ActionEagerMapping_Test(object):
+class ActionRexpMapping_Test(object):
 
     def provide_mapping_list(self):
         return [
@@ -467,19 +467,19 @@ class ActionEagerMapping_Test(object):
         ]
 
     def provide_am(self, mapping_list):
-        return k8.ActionEagerMapping(mapping_list)
+        return k8.ActionRexpMapping(mapping_list)
 
 
     with subject('#__init__()'):
 
         @test("[!qm6q0] accepts urlpath mapping list.")
         def _(self, mapping_list):
-            fn = lambda: k8.ActionEagerMapping(mapping_list)
+            fn = lambda: k8.ActionRexpMapping(mapping_list)
             ok (fn).not_raise(Exception)
 
         @test("[!cgftn] builds regexp representing routing.")
         def _(self, mapping_list):
-            am = k8.ActionEagerMapping(mapping_list)
+            am = k8.ActionRexpMapping(mapping_list)
             ok (am).has_attr('_variable_rexp')
             ok (am._variable_rexp).is_a(type(re.compile('x')))
             expected = r'^(?:/api(?:/books/(?:[^/]+)($)|/authors/(?:[^/]+)($)))$'
@@ -487,7 +487,7 @@ class ActionEagerMapping_Test(object):
 
         @test("[!ta2hs] builds fixed entries.")
         def _(self, mapping_list):
-            am = k8.ActionEagerMapping(mapping_list)
+            am = k8.ActionRexpMapping(mapping_list)
             ok (am._fixed_entries).is_a(dict)
             ok (am._fixed_entries) == {
                 '/api/authors': (
@@ -570,7 +570,7 @@ class ActionEagerMapping_Test(object):
 
 
 
-class ActionLazyMapping_Test(object):
+class ActionRexpLazyMapping_Test(object):
 
     def provide_mapping_list(self, name):
         return [
@@ -582,25 +582,25 @@ class ActionLazyMapping_Test(object):
 
     def provide_am(self, mapping_list, name):
         assert os.path.isdir(name)
-        return k8.ActionLazyMapping(mapping_list)
+        return k8.ActionRexpLazyMapping(mapping_list)
 
 
     with subject('#__init__()'):
 
         @test("[!ie7w7] accepts urlpath mapping list.")
         def _(self, mapping_list):
-            ok (lambda: k8.ActionLazyMapping(mapping_list)).not_raise(Exception)
+            ok (lambda: k8.ActionRexpLazyMapping(mapping_list)).not_raise(Exception)
 
         @test("[!hdb1y] builds regexp representing routing.")
         def _(self, mapping_list):
-            am = k8.ActionLazyMapping(mapping_list)
+            am = k8.ActionRexpLazyMapping(mapping_list)
             ok (am._urlpath_rexp) != None
             ok (am._urlpath_rexp).is_a(type(re.compile('x')))
             ok (am._urlpath_rexp.pattern) == r'^(?:/api(?:/items((?=[/.]|$))|/news((?=[/.]|$))))(?=[./]|$)'
 
         @test("[!np9zn] no fixed entries at first.")
         def _(self, mapping_list):
-            am = k8.ActionLazyMapping(mapping_list)
+            am = k8.ActionRexpLazyMapping(mapping_list)
             ok (am._fixed_urlpaths) == {}
 
 

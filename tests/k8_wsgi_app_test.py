@@ -93,10 +93,10 @@ class Application_Test(object):
         @test("[!us151] accepts mapping list and creates ActionMapping object.")
         def _(self, mapping_list):
             app = k8.wsgi.Application(mapping_list)
-            ok (app._mapping).is_a(k8.ActionMapping)
+            ok (app._mapping).is_a(k8.ActionRexpMapping)
             #
             app = k8.wsgi.Application(mapping_list, lazy=True)
-            ok (app._mapping).is_a(k8.ActionLazyMapping)
+            ok (app._mapping).is_a(k8.ActionRexpLazyMapping)
             #
             app = k8.wsgi.Application(mapping_list, fast=True)
             ok (app._mapping).is_a(k8.ActionTrieMapping)

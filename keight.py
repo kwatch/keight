@@ -882,7 +882,7 @@ class ActionFSMMapping(ActionMapping):
     def lookup(self, req_path):
         t = self._fixed_entries.get(req_path)
         if t:
-            return t   # (action_class, action_methos)
+            return t   # (action_class, action_methos, ())
         #
         param_types = self._URLPATH_PARAM_TYPES
         key_int  = param_types['int']   # == 1
@@ -955,9 +955,8 @@ class ActionFSMLazyMapping(ActionMapping):
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
 
-    def _register_temporarily(self, entries, base_urlpath, action_class):
+    def _find_leaf_entries(self, entries, items):
         param_types = self._URLPATH_PARAM_TYPES
-        items, ext = self._split_path(base_urlpath)
         d = entries
         for s in items:
             if '{' in s:
@@ -973,7 +972,11 @@ class ActionFSMLazyMapping(ActionMapping):
             else:
                 d[key] = {}
                 d = d[key]
-        #
+        return d
+
+    def _register_temporarily(self, entries, base_urlpath, action_class):
+        items, ext = self._split_path(base_urlpath)
+        d = self._find_leaf_entries(entries, items)
         key = 0     # temporary index
         d[key] = (action_class, base_urlpath)
 
@@ -991,21 +994,7 @@ class ActionFSMLazyMapping(ActionMapping):
                 continue
             #
             items, extension = self._split_path(urlpath)
-            d = entries
-            for s in items:
-                if '{' in s:
-                    pname, ptype = self._parse_urlpath_param(s)
-                    if ptype not in param_types:
-                        raise UnknownUrlpathParameterTypeError(
-                                "%r: Unknown paramter type name." % (s,))
-                    key = param_types[ptype]  # 1, 2 or 3
-                else:
-                    key = s
-                if key in d:
-                    d = d[key]
-                else:
-                    d[key] = {}
-                    d = d[key]
+            d = self._find_leaf_entries(entries, items)
             d[None] = (action_class, action_methods, extension)
 
     def _change_temporary_registration_to_permanently(self, d):

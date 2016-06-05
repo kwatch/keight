@@ -808,133 +808,7 @@ class ActionLazyMapping(ActionMapping):
 
 class ActionFSMMapping(ActionMapping):
 
-    def __init__(self, mappings):
-        #; [!61fuw] accepts urlpath mapping list.
-        self._build(mappings)
-
-    def _build(self, mappings):
-        self._fixed_entries    = {}
-        self._variable_entries = {}
-        def callback(full_urlpath, action_class, action_methods, _self=self):
-            if '{' in full_urlpath:
-                _self._register(_self._variable_entries, full_urlpath,
-                                action_class, action_methods)
-            else:
-                t = (action_class, action_methods, ())
-                _self._fixed_entries[full_urlpath] = t
-        self._traverse(mappings, "", callback)
-
-    def _traverse(self, mappings, base_urlpath, callback):
-        for urlpath, target in mappings:
-            #; [!uno07] loads action classes.
-            if isinstance(target, basestring):
-                target = self._load_action_class(target)
-            #
-            if isinstance(target, list):
-                self._traverse(target, base_urlpath + urlpath, callback)
-            elif isinstance(target, type) and issubclass(target, BaseAction):
-                action_class = target
-                am = getattr(action_class, '__mapping__')
-                if am is None:
-                    raise NoActionMethodMappingError("%s: No functions decorated by '@on()'.")
-                for upath, action_methods in am:
-                    full_urlpath = base_urlpath + urlpath + upath
-                    callback(full_urlpath, action_class, action_methods)
-            else:
-                raise NotActionClassError("%r: Action class expected." % (target,))
-
-    _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
-    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
-
-    def _register(self, dictionary, full_path, action_class, action_methods):
-        param_types = self._URLPATH_PARAM_TYPES
-        items, extension = self._split_path(full_path)
-        d = dictionary
-        for s in items:
-            if '{' in s:
-                pname, ptype = self._parse_urlpath_param(s)
-                if ptype not in param_types:
-                    raise UnknownUrlpathParameterTypeError(
-                        "%r: Unknown paramter type name." % (s,))
-                key = param_types[ptype]
-            else:
-                key = s
-            d = d.setdefault(key, {})
-        #
-        d[None] = (action_class, action_methods, extension)
-
-    def _parse_urlpath_param(self, string):
-        param_rexp  = self._URLPATH_PARAM_REXP
-        m = param_rexp.match(string)
-        if not m:
-            raise InvalidUrlpathParameterPatternError(
-                    "%r: Invalid urlpath parameter patter." % (string,))
-        pname, ptype = m.groups()
-        if ptype:
-            if not ptype.isalpha():
-                raise UnexpectedUrlpathParameterTypeError(
-                    "%r: Expected urlpath parameter type name." % (s,))
-        else:
-            int_p = pname == "id" or pname.endswith("_id")
-            ptype = 'int' if int_p else 'str'
-        return pname, ptype
-
-    def lookup(self, req_path):
-        t = self._fixed_entries.get(req_path)
-        if t:
-            return t   # (action_class, action_methos, ())
-        #
-        param_types = self._URLPATH_PARAM_TYPES
-        key_int  = param_types['int']   # == 1
-        key_str  = param_types['str']   # == 2
-        key_path = param_types['path']  # == 3
-        args = []; add = args.append
-        d = self._variable_entries
-        items, extension = self._split_path(req_path)  # ex: '/x/y/1.json' => (['x','y','1'], '.json')
-        for s in items:
-            if s in d:
-                d = d[s]
-            elif key_int in d and s.isdigit():
-                d = d[key_int]
-                add(int(s))
-            elif key_str in d:
-                d = d[key_str]
-                add(s)
-            elif key_path in d:
-                for i, x in enumerate(items):
-                    if x is s:
-                        break
-                add("/".join(items[i+1:]))
-                break
-            else:
-                return None    # not found
-            if d is None:
-                return None    # not found
-        #; [!74anb] returns None when not found.
-        t = d.get(None)
-        if not t:
-            return None        # not found
-        action_class, action_methods, expected_ext = t
-        if expected_ext != extension and expected_ext != '.*':
-            return None        # not found
-        #; [!fejio] returns action class, action methods and urlpath arguments.
-        return (action_class,      # ex: HelloAction
-                action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
-                args)              # ex: [123]
-
-    @staticmethod
-    def _split_path(req_path):
-        assert req_path.startswith('/')
-        pos = req_path.rfind('.')
-        if pos < 0 or pos < req_path.rfind('/'):
-            return req_path[1:].split('/'), ""
-        else:
-            return req_path[1:pos].split('/'), req_path[pos:]
-
-
-class ActionFSMLazyMapping(ActionMapping):
-
-    def __init__(self, mappings, lazy=True):
+    def __init__(self, mappings, lazy=False):
         self._lazy = lazy
         #; [!1gp9m] accepts urlpath mapping list.
         self._build(mappings)
@@ -1093,6 +967,12 @@ class ActionFSMLazyMapping(ActionMapping):
             return req_path[1:].split('/'), ""
         else:
             return req_path[1:pos].split('/'), req_path[pos:]
+
+
+class ActionFSMLazyMapping(ActionFSMMapping):
+
+    def __init__(self, mapping_list):
+        ActionFSMMapping.__init__(self, mapping_list, lazy=True)
 
 
 class WSGIRequestHeaders(object):

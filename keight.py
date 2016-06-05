@@ -839,7 +839,7 @@ class ActionFSMMapping(ActionMapping):
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
 
-    def _find_leaf_entries(self, items, root_entries=None):
+    def _find_entries(self, items, root_entries=None):
         if root_entries is None:
             root_entries = self._variable_entries
         param_types = self._URLPATH_PARAM_TYPES
@@ -861,31 +861,29 @@ class ActionFSMMapping(ActionMapping):
         entries = d
         return entries
 
-    def _register_temporarily(self, base_urlpath, action_class, target_entries=None):
-        if target_entries is None:
-            path_elems, _ = self._split_path(base_urlpath)   # ex: '/a/b/c.txt' -> (['a','b','c'], '.txt')
-            target_entries = self._find_leaf_entries(path_elems)
-        key = 0     # temporary index
-        target_entries[key] = (action_class, base_urlpath)
+    def _register_temporarily(self, base_urlpath, action_class, entries=None):
+        if entries is None:
+            path_elems, _ = self._split_path(base_urlpath)  # ex: '/a/b/c.x' -> (['a','b','c'], '.x')
+            entries = self._find_entries(path_elems)
+        key = 0     # key for temporary registration
+        entries[key] = (action_class, base_urlpath)
 
-    def _register_permanently(self, base_urlpath, action_class, target_entries=None):
-        if target_entries is None:
-            path_elems, _ = self._split_path(base_urlpath)   # ex: '/a/b/c.txt' -> (['a','b','c'], '.txt')
-            target_entries = self._find_leaf_entries(path_elems)
+    def _register_permanently(self, base_urlpath, action_class, entries=None):
+        if entries is None:
+            path_elems, _ = self._split_path(base_urlpath)  # ex: '/a/b/c.x' -> (['a','b','c'], '.x')
+            entries = self._find_entries(path_elems)
         if isinstance(action_class, basestring):
             class_str = action_class
             action_class = self._load_action_class(class_str)
             self._validate_action_class(action_class, class_str)
         for urlpath, action_methods in action_class.__mapping__:
-            #
             full_urlpath = base_urlpath + urlpath
             if '{' not in full_urlpath:
                 self._fixed_entries[full_urlpath] = (action_class, action_methods, ())
-                continue
-            #
-            path_elems, extension = self._split_path(urlpath)
-            leaf_entries = self._find_leaf_entries(path_elems, target_entries)
-            leaf_entries[None] = (action_class, action_methods, extension)
+            else:
+                path_elems, extension = self._split_path(urlpath)
+                leaf_entries = self._find_entries(path_elems, entries)
+                leaf_entries[None] = (action_class, action_methods, extension)
 
     def _change_temporary_registration_to_permanently(self, entries):
         try:

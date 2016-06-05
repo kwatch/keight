@@ -806,7 +806,8 @@ class ActionLazyMapping(ActionMapping):
                 yield base_upath_pat + upath_pat, action_class, action_methods
 
 
-class ActionFSMMapping(ActionMapping):
+class ActionTrieMapping(ActionMapping):
+    """Action mappging class using State Machine."""
 
     def __init__(self, mapping_list, lazy=False):
         self._lazy = lazy
@@ -997,10 +998,10 @@ class ActionFSMMapping(ActionMapping):
         return path_elems, extension
 
 
-class ActionFSMLazyMapping(ActionFSMMapping):
+class ActionTrieLazyMapping(ActionTrieMapping):
 
     def __init__(self, mapping_list):
-        ActionFSMMapping.__init__(self, mapping_list, lazy=True)
+        ActionTrieMapping.__init__(self, mapping_list, lazy=True)
 
 
 class WSGIRequestHeaders(object):
@@ -1189,7 +1190,7 @@ class WSGIApplication(object):
         index = 0
         if lazy: index += 1
         if fast: index += 2
-        klass = (ActionEagerMapping, ActionLazyMapping, ActionFSMMapping, ActionFSMLazyMapping)[index]
+        klass = (ActionEagerMapping, ActionLazyMapping, ActionTrieMapping, ActionTrieLazyMapping)[index]
         self._mapping = klass(mapping_list)
 
     def lookup(self, req_urlpath):

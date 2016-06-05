@@ -658,7 +658,7 @@ class ActionLazyMapping_Test(object):
 
 
 
-class ActionFSMMapping_Test(object):
+class ActionTrieMapping_Test(object):
 
     def provide_mapping_list(self, name):
         return [
@@ -670,7 +670,7 @@ class ActionFSMMapping_Test(object):
 
     def provide_am(self, mapping_list, name, lazy=True):
         assert os.path.isdir(name)
-        return k8.ActionFSMMapping(mapping_list, lazy=lazy)
+        return k8.ActionTrieMapping(mapping_list, lazy=lazy)
 
     def after(self):
         clear_modules(provide_name(self))
@@ -680,7 +680,7 @@ class ActionFSMMapping_Test(object):
 
         @test("[!1gp9m] accepts urlpath mapping list.")
         def _(self, mapping_list):
-            am = k8.ActionFSMMapping(mapping_list, lazy=True)
+            am = k8.ActionTrieMapping(mapping_list, lazy=True)
             ok (am._fixed_entries) == {}
             ok (am._variable_entries) == {
                 'api': {
@@ -699,7 +699,7 @@ class ActionFSMMapping_Test(object):
             ok (sys.modules).not_contain("tmp1")
             ok (sys.modules).not_contain("tmp1.api")
             #
-            am = k8.ActionFSMMapping(mapping_list, lazy=False)
+            am = k8.ActionTrieMapping(mapping_list, lazy=False)
             ok (sys.modules).contains("tmp1")
             ok (sys.modules).contains("tmp1.api")
             from tmp1.api.items import ItemsAction
@@ -745,7 +745,7 @@ class ActionFSMMapping_Test(object):
             ok (sys.modules).not_contain("tmp1")
             ok (sys.modules).not_contain("tmp1.api")
             #
-            am = k8.ActionFSMMapping(mapping_list, lazy=True)
+            am = k8.ActionTrieMapping(mapping_list, lazy=True)
             ok (sys.modules).not_contain("tmp1")
             ok (sys.modules).not_contain("tmp1.api")
             ok (am._fixed_entries) == {}

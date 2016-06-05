@@ -99,10 +99,10 @@ class Application_Test(object):
             ok (app._mapping).is_a(k8.ActionLazyMapping)
             #
             app = k8.wsgi.Application(mapping_list, fast=True)
-            ok (app._mapping).is_a(k8.ActionFSMMapping)
+            ok (app._mapping).is_a(k8.ActionTrieMapping)
             #
             app = k8.wsgi.Application(mapping_list, lazy=True, fast=True)
-            ok (app._mapping).is_a(k8.ActionFSMLazyMapping)
+            ok (app._mapping).is_a(k8.ActionTrieLazyMapping)
 
 
     with subject('#lookup()'):

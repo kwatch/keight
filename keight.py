@@ -225,7 +225,7 @@ MIME_TYPES = {
 
 def dict2json(jdict):
     return json.dumps(jdict, ensure_ascii=False, indent=None,
-                      separators=_dict2json_seps, encoding=ENCODING)
+                      separators=_dict2json_seps)
 _dict2json_seps = (',', ':')
 
 
@@ -252,7 +252,7 @@ def _load_class(string):
         module_path = string[:idx]
         class_name  = string[idx+1:]
     mod = _load_module(module_path)
-    return getattr(mod, class_name)
+    return getattr(mod, class_name, None)
 
 
 class KeightError(Exception):
@@ -280,27 +280,38 @@ class HttpException(Exception):
 class BaseAction(object):
 
     def __init__(self, req, resp):
+        #; [!accud] takes request and response objects.
         self.req  = req
         self.resp = resp
 
     def before_action(self):
+        """will be called before request handling."""
         pass
 
     def after_action(self, ex):
+        """will be called with exception object after request handled."""
         pass
 
     def run_action(self, action_func, action_args):
+        """inokes action function with urlpath parameter values."""
+        #; [!5rm14] saves current action func into attribute.
         self.action_func = action_func
         #
         ex = None
         try:
+            #; [!23um7] invokes 'before_action()' at first.
             self.before_action()
+            #; [!0evnh] calles action function with arguments.
             content = self.invoke_action(action_func, action_args)
+            #; [!pzf14] invokes 'handle_content()' and returns result of it.
             return self.handle_content(content)
         except Exception as ex_:
             ex = ex_
             raise
         finally:
+            #; [!2cfff] invokes 'after_action()' at end, event if exception raised.
+            #; [!khqsv] invokes 'after_action()' even if exception raised.
+            #; [!onkcb] if exception raised, it will be passed to after_action().
             self.after_action(ex)
 
     def invoke_action(self, action_func, action_args):
@@ -310,6 +321,7 @@ class BaseAction(object):
             return action_func(self, *action_args)
 
     def handle_content(self, content):
+        """ex: converts dict object into JSON string."""
         return content
 
 
@@ -323,32 +335,59 @@ class Action(BaseAction):
 
     def handle_content(self, content):
         binary = None
+        #; [!5hs2k] when argument is None...
         if content is None:
+            #; [!sq6ov] returns empty binary string when content is None.
             binary = b""
+            #; [!piocs] don't set content-type.
+            #; [!s380l] sets content-length as 0.
+            self.resp.content_length = len(binary)
+            return [binary]
+        #; [!in858] when argument is a dict object...
         elif isinstance(content, dict):
+            #; [!kk6oy] converts it into JSON binary string.
             binary = self.dict2json(content)
             if isinstance(binary, unicode):
                 binary = binary.encode('utf-8')   # JSON should be utf-8
-            #self.resp.content_type = self.JSON_CONTENT_TYPE
-            self.resp._header_list[0] = ('Content-Type', self.JSON_CONTENT_TYPE)
-        elif isinstance(content, unicode):
-            binary = content.encode(ENCODING)
-        elif isinstance(content, bytes):
-            binary = content
-        if binary is None:
-            return content
-        else:
-            #self.resp.content_length = len(binary)
-            self.resp._header_list[1] = ('Content-Length', str(len(binary)))
+            #; [!v5bvs] sets content-type as 'application/json'.
+            #; [!15dgy] sets content-length.
+            self.resp.content_type = self.JSON_CONTENT_TYPE
+            self.resp.content_length = len(binary)
             return [binary]
+        #; [!58h7f] when argument is a unicode object...
+        elif isinstance(content, unicode):
+            #; [!k655a] converts unicode string into binary string.
+            binary = content.encode(ENCODING)
+            #; [!al4tt] don't touch content-type.
+            #; [!ari1a] sets content-length.
+            self.resp.content_length = len(binary)
+            return [binary]
+        #; [!0mejh] when argument is a binary string...
+        elif isinstance(content, bytes):
+            #; [!9mma6] don't convert binary string.
+            binary = content
+            #; [!cj7uu] don't touch content-type.
+            #; [!mathw] sets content-length.
+            self.resp.content_length = len(binary)
+            return [binary]
+        #; [!lwlxb] else...
+        else:
+            #; [!zxsbp] returns content as-is, regarding it as iterable object.
+            #; [!hsj7v] don't touch content-type.
+            #; [!6qall] don't touch content-length.
+            iterable = content
+            return iterable
 
     def after_action(self, ex):
-        if not self.resp.content_type:    # slow
+        #; [!rc0qi] set content-type automatically when it is blank.
+        #; [!r3l7v] guesses content-type from request path if possible.
+        if not self.resp.content_type:
             self.resp.content_type = self.guess_content_type() or self.DEFAULT_CONTENT_TYPE
-        #if not self.resp._header_list[0][1]:
-        #    self.resp._header_list[0] = ('Content-Type', self.guess_content_type() or self.DEFAULT_CONTENT_TYPE)
 
     def guess_content_type(self):
+        #; [!ar80y] returns content-type related to suffix of request path.
+        #; [!eeimv] returns None when request path has no suffix.
+        #; [!qaz00] returns None when suffix of request path is unknown.
         #ext = os.path.splitext(self.req.path)[0]   # slow
         #return MIME_TYPES.get(ext)
         req_path = self.req.path
@@ -371,6 +410,16 @@ def _get_mapping_dict(urlpath_pattern, depth=2):
 
 
 def mapping(urlpath_pattern, **methods):
+    """maps urlpath pattern with action methods.
+    ex:
+        class HelloAction(keight.Action):
+            def do_show(self, id):    return "..."
+            def do_update(self, id):  return "..."
+            def do_delete(self, id):  return "..."
+            #
+            mapping(r'/{id}', GET=do_show, PUT=do_update, DELETE=do_delete)
+    """
+    #; [!zfrv6] maps urlpath pattern with action methods.
     d = _get_mapping_dict(urlpath_pattern)
     for meth, func in methods.items():
         ActionMapping._validate_request_method(meth)
@@ -378,8 +427,26 @@ def mapping(urlpath_pattern, **methods):
 
 
 def on(request_method, urlpath_pattern, **options):
+    """maps request path and urlpath pattern with action method.
+    ex:
+        class HelloAction(keight.Action):
+
+            @on('GET', r'')
+            def do_index(self):
+                return "..."
+
+            @on('GET', r'/{id}')
+            def do_show(self, id):
+                return "..."
+
+            @on('PUT', r'/{id}')
+            def do_update(self, id):
+                return "..."
+    """
+    #; [!i47p3] maps request path and urlpath pattern with action method.
     d = _get_mapping_dict(urlpath_pattern)
     def deco(func):
+        #; [!a6xv2] sets keyword args to function as options.
         func.options = options
         ActionMapping._validate_request_method(request_method)
         d[request_method] = func
@@ -396,13 +463,45 @@ class ActionMapping(object):
 
     @classmethod
     def _validate_request_method(cls, req_meth):
+        #; [!548rp] raises ActionMappingError when request method is unknown.
+        #; [!trjzz] not raises when request method is known.
+        #; [!jsu98] not raises when request method is 'ANY'.
         if req_meth not in cls.REQUEST_METHODS and req_meth != 'ANY':
             raise ActionMappingError("%s: unknown request method." % (req_meth,))
 
-    def lookup(req_urlpath):
+    def lookup(self, req_urlpath):
+        """(abstract) returns action class, action methods (dict) and urlpath arguments."""
+        #; [!wwvec] raises NotImplementedError.
         raise NotImplementedError("%s.lookup(): not implemented yet." % self.__class__.__name__)
 
     def dispatch(self, req_meth, req_path, redirect=True):
+        """returns action class, action function, and urlpath arguments.
+
+        ex:
+            mapping_list = [
+                ('/hello', HelloAction)
+            ]
+            am = ActionMapping(mapping_list)
+
+            ## returns action class, action function and urlpath arguments.
+            print(am.dispatch('GET', '/hello'))
+                #=> (HelloAction, HelloAction.do_index, ())
+            print(am.dispatch('GET', '/hello/World'))
+                #=> (HelloAction, HelloAction.do_show, ('World',))
+
+            ## raises 404 Not Found when request path not found.
+            am.dispatch('GET', '/foobar')  #=> HttpException(404)
+
+            ## raises 405 Method Not Allowed when request path exists but corresponding method is not found.
+            am.dispatch('DELETE', '/hello')  #=> HttpException(405)
+
+            ## raises 301 Found between '/foo/' <=> '/foo' (only on GET or HEAD method).
+            am.dispatch('GET', '/hello/123/')  #=> HttpException(301, {'Location': '/hello/123'})
+        """
+        #; [!oureu] raises 404 Not Found when request path not found.
+        #; [!g9k0i] raises 301 Found when '/foo' not found but '/foo/' exists.
+        #; [!c9dsj] raises 301 Found when '/foo/' not found but '/foo' exists.
+        #; [!u6sqo] redirects between '/foo' <=> '/foo/' only on GET or HEAD method.
         t = self.lookup(req_path)
         if not t:
             if redirect and (req_meth == 'GET' or req_meth == 'HEAD') and req_path != '/':
@@ -412,13 +511,22 @@ class ActionMapping(object):
                     raise HttpException(301, {'Location': location})
             raise HttpException(404)
         action_class, action_methods, urlpath_params = t
+        #; [!thk18] falls back to GET method when HEAD method is not provided.
+        #; [!rdfcv] falls back to ANY method when corresponding method is not provided.
         get = action_methods.get
         action_func = get(req_meth) or (get('GET') if req_meth == 'HEAD' else None) or get('ANY')
+        #; [!j3hfh] raises 405 Method Not Allowed when no action method corresponding to request method.
         if action_func is None:
             raise HttpException(405)
+        #; [!akpxj] returns action class, action func, and urlpath param values.
         return action_class, action_func, urlpath_params
 
     def _upath_pat2rexp(self, pat, begin='', end='', capture=True):
+        #; [!r1xu6] ex: _upath_pat2rexp(r'/x.gz', '^', '$') => r'^/x\\.gz$'
+        #; [!locca] ex: _upath_pat2rexp(r'/{code}', '^', '$', True) => r'^/(?P<code>[^/]+)$'
+        #; [!iibcp] ex: _upath_pat2rexp(r'/{code}', '^', '$', False) => r'^/(?:<code>[^/]+)$'
+        #; [!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code:\d+>[^/]+)$'
+        #; [!9i3gn] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:<code:\d+>[^/]+)$'
         buf = [begin]
         pos = 0
         for m in self.URLPATH_PARAMETER_REXP.finditer(pat):
@@ -434,30 +542,49 @@ class ActionMapping(object):
         return "".join(buf)
 
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
-        action_class = _load_class(class_string)
+        #; [!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).
+        try:
+            action_class = _load_class(class_string)
+        except ImportError:
+            action_class = None
+        #; [!7iso7] raises ValueError when failed to load specified class.
         if not action_class:
             raise ValueError("%s: No such module or class." % class_string)
-        self._validate_action_class(action_class)
+        #; [!4ci2t] raises TypeError when value is not a class.
+        #; [!9861d] raises TypeError when value is not a subclass of BaseAction class.
+        #; [!e3qw0] raises ValueError when no action mehtods.
+        self._validate_action_class(action_class, class_string)
+        #
         return action_class
 
-    def _validate_action_class(self, action_class):
+    def _validate_action_class(self, action_class, class_string):
+        #; [!!4ci2t] raises TypeError when value is not a class.
         if not isinstance(action_class, type):
-            raise TypeError("%r: Action class expected." % (action_class,))
-        if not issubclass(action_class, Action):
-            raise TypeError("%s: Action class expected." % action_class.__name__)
+            raise TypeError("%s: Action class expected but got %r." % (class_string, action_class,))
+        #; [!!9861d] raises TypeError when value is not a subclass of BaseAction class.
+        if not issubclass(action_class, BaseAction):
+            raise TypeError("%s: Action class expected." % class_string)
+        #; [!!e3qw0] raises ValueError when no action mehtods.
         if not hasattr(action_class, '__mapping__'):
-            raise ValueError("%s: No action methods." % action_class.__name__)
+            raise TypeError("%s: No action methods." % class_string)
 
 
 class ActionEagerMapping(ActionMapping):
 
     def __init__(self, mappings):
+        #; [!qm6q0] accepts urlpath mapping list.
+        #; [!cgftn] builds regexp representing routing.
+        #; [!ta2hs] builds fixed entries.
         self._fixed_entries    = {}
         self._variable_entries = []
         self._all_entries      = []
         rexp_buf = self._build_entries(mappings, "", ['^'])
         rexp_buf.append('$')
         self._variable_rexp = _re_compile(''.join(rexp_buf))
+        #
+        #self.lookup = self.lookup
+        #self._variable_rexp_match = self._variable_rexp.match
+        #self._fixed_entries_get = self._fixed_entries.get
 
     def _build_entries(self, mappings, base_upath_pat, rexp_buf):
         rexp_buf.append('(?:')            # ... (*A)
@@ -475,9 +602,10 @@ class ActionEagerMapping(ActionMapping):
             else:
                 if isinstance(item, basestring):
                     action_class = self._load_action_class(item)
+                    self._validate_action_class(action_class, item)
                 else:
                     action_class = item
-                self._validate_action_class(action_class)
+                    self._validate_action_class(action_class, repr(item))
                 self._register_action_class(action_class, full_upath_pat, rexp_buf)
             #
             if len(rexp_buf) == n:        # if no children,
@@ -527,6 +655,7 @@ class ActionEagerMapping(ActionMapping):
 
     def lookup(self, req_urlpath):
         tupl = self._fixed_entries.get(req_urlpath)
+        #tupl = self._fixed_entries_get(req_urlpath)
         if tupl:
             return tupl   # ex: (BooksAction, {'GET': do_index, 'POST', do_create}, {})
         #for tupl in self._variable_entries:
@@ -536,7 +665,9 @@ class ActionEagerMapping(ActionMapping):
         #        pargs = m.groupdict()
         #        return action_class, action_methods, pargs
         #return None
+        #; [!wduo6] returns None when not found.
         m = self._variable_rexp.match(req_urlpath)
+        #m = self._variable_rexp_match(req_urlpath)
         if m is None:
             return None
         idx = m.groups().index('')
@@ -548,17 +679,22 @@ class ActionEagerMapping(ActionMapping):
         else:
             m = upath_rexp.match(req_urlpath)
             pargs = m.groupdict()
+        #; [!0o1rm] returns action class, action methods and urlpath arguments.
         return action_class, action_methods, pargs
 
     def __iter__(self):
+        #; [!gvtd4] yields each urlpath pattern, action class, and action methods.
         for tupl in self._all_entries:
-            urlpath_pat, action_class, action_methods, _, _ = tupl
+            urlpath_pat, action_class, action_methods = tupl
             yield urlpath_pat, action_class, action_methods
 
 
 class ActionLazyMapping(ActionMapping):
 
     def __init__(self, mappings):
+        #; [!ie7w7] accepts urlpath mapping list.
+        #; [!hdb1y] builds regexp representing routing.
+        #; [!np9zn] no fixed entries at first.
         self._all_urlpaths    = []
         self._fixed_urlpaths  = {}
         self._variable_urlpaths = []
@@ -622,9 +758,11 @@ class ActionLazyMapping(ActionMapping):
         idx = m.groups().index('')
         tupl = self._variable_urlpaths[idx]
         base_upath_pat, base_upath_rexp, action_class, arr = tupl
+        #; [!8ktv8] loads action class from file when class is a string.
         if isinstance(action_class, basestring):
             action_class = self._load_action_class(action_class)
             tupl[2] = action_class
+        #
         if base_upath_rexp:
             m = base_upath_rexp.match(req_urlpath)
             pargs = m.groupdict()
@@ -650,6 +788,7 @@ class ActionLazyMapping(ActionMapping):
             if found:
                 action_methods = found
                 return action_class, action_methods, pargs or {}
+        #; [!sb5h9] returns action class, action methods and urlpath arguments.
         for upath_rexp, action_methods in arr:
             m = upath_rexp.match(remaining)
             if m:
@@ -658,10 +797,11 @@ class ActionLazyMapping(ActionMapping):
                 else:
                     pargs.update(m.groupdict())
                 return action_class, action_methods, pargs
-        #
+        #; [!vtgiz] returns None when not found.
         return None
 
     def __iter__(self):
+        #; [!u58yc] yields each urlpath pattern, action class, and action methods.
         for base_upath_pat, action_class in self._all_urlpaths:
             if isinstance(action_class, basestring):
                 action_class = self._load_action_class(action_class)
@@ -672,6 +812,7 @@ class ActionLazyMapping(ActionMapping):
 class ActionFSMMapping(ActionMapping):
 
     def __init__(self, mappings):
+        #; [!61fuw] accepts urlpath mapping list.
         self._build(mappings)
 
     def _build(self, mappings):
@@ -688,6 +829,10 @@ class ActionFSMMapping(ActionMapping):
 
     def _traverse(self, mappings, base_urlpath, callback):
         for urlpath, target in mappings:
+            #; [!uno07] loads action classes.
+            if isinstance(target, basestring):
+                target = self._load_action_class(target)
+            #
             if isinstance(target, list):
                 self._traverse(target, base_urlpath + urlpath, callback)
             elif isinstance(target, type) and issubclass(target, BaseAction):
@@ -702,7 +847,7 @@ class ActionFSMMapping(ActionMapping):
                 raise NotActionClassError("%r: Action class expected." % (target,))
 
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
-    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*)?)?\}$')
+    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
 
     def _register(self, dictionary, full_path, action_class, action_methods):
         param_types = self._URLPATH_PARAM_TYPES
@@ -768,12 +913,14 @@ class ActionFSMMapping(ActionMapping):
                 return None    # not found
             if d is None:
                 return None    # not found
+        #; [!74anb] returns None when not found.
         t = d.get(None)
         if not t:
             return None        # not found
         action_class, action_methods, expected_ext = t
         if expected_ext != extension and expected_ext != '.*':
             return None        # not found
+        #; [!fejio] returns action class, action methods and urlpath arguments.
         return (action_class,      # ex: HelloAction
                 action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
                 args)              # ex: [123]
@@ -791,6 +938,8 @@ class ActionFSMMapping(ActionMapping):
 class ActionFSMLazyMapping(ActionMapping):
 
     def __init__(self, mappings):
+        #; [!1gp9m] accepts urlpath mapping list.
+        #; [!ifj4v] don't load classes.
         self._build(mappings)
 
     def _build(self, mappings):
@@ -807,7 +956,7 @@ class ActionFSMLazyMapping(ActionMapping):
                 self._register_temporarily(entries, full_urlpath, target)
 
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
-    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*)?)?\}$')
+    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
 
     def _register_temporarily(self, entries, base_urlpath, action_class):
         param_types = self._URLPATH_PARAM_TYPES
@@ -833,8 +982,9 @@ class ActionFSMLazyMapping(ActionMapping):
 
     def _register_permanently(self, entries, action_class, base_urlpath):
         if isinstance(action_class, basestring):
-            action_class = self._load_action_class(action_class)
-            self._validate_action_class(action_class)
+            class_str = action_class
+            action_class = self._load_action_class(class_str)
+            self._validate_action_class(action_class, class_str)
         param_types = self._URLPATH_PARAM_TYPES
         for urlpath, action_methods in action_class.__mapping__:
             #
@@ -883,7 +1033,7 @@ class ActionFSMLazyMapping(ActionMapping):
     def lookup(self, req_path):
         t = self._fixed_entries.get(req_path)
         if t:
-            return t   # (action_class, action_methos)
+            return t   # (action_class, action_methos, ())
         #
         param_types = self._URLPATH_PARAM_TYPES
         key_int  = param_types['int']   # == 1
@@ -893,11 +1043,13 @@ class ActionFSMLazyMapping(ActionMapping):
         d = self._variable_entries
         items, extension = self._split_path(req_path)  # ex: '/x/y/1.json' => [('x','y','1'), '.json']
         for s in items:
-            if 0 in d:             # if temporary index exists
+            #; [!05a7a] loads action classes dinamically.
+            if 0 in d:             # if temporary key exists
                 self._change_temporary_registration_to_permanently(d)
                 t = self._fixed_entries.get(req_path)
                 if t:
                     return t
+            #
             if s in d:
                 d = d[s]
             elif key_int in d and s.isdigit():
@@ -921,12 +1073,14 @@ class ActionFSMLazyMapping(ActionMapping):
             t = self._fixed_entries.get(req_path)
             if t:
                 return t
+        #; [!ltatd] returns None when not found.
         t = d.get(None)
         if not t:
             return None        # not found
         action_class, action_methods, expected_ext = t
-        if expected_ext != extension and exptected_ext != '.*':
+        if expected_ext != extension and expected_ext != '.*':
             return None        # not found
+        #; [!u95qz] returns action class, action methods and urlpath arguments.
         return (action_class,      # ex: HelloAction
                 action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
                 args)              # ex: [123]
@@ -980,17 +1134,25 @@ class WSGIRequest(object):
     _REQUEST_HEADERS = WSGIRequestHeaders
 
     def __init__(self, env):
-        self.env = env
+        #; [!ualzp] accepts environ object.
+        #; [!841wq] sets method and path attributes.
+        self.env    = env
         self.method = env['REQUEST_METHOD']
         self.path   = env['PATH_INFO'] or '/'
 
     @property
     def content_type(self):
+        #; [!l88e2] returns CONTENT_TYPE value in environ object.
         return self.env.get('CONTENT_TYPE')
 
     @property
     def content_length(self):
-        return self.env.get('CONTENT_LENGTH')
+        #; [!uwj7o] returns CONTENT_LENGTH value in environ object.
+        #; [!j39md] returns int value instead of string.
+        v = self.env.get('CONTENT_LENGTH')
+        if v is None:
+            return None
+        return int(v)
 
     @property
     def wsgi_input(self):
@@ -1002,12 +1164,14 @@ class WSGIRequest(object):
 
     @property
     def headers(self):
+        #; [!n45wo] returns header object which wraps environ object.
         headers = getattr(self, '_headers', None)
         if headers is None:
             self._headers = headers = self._REQUEST_HEADERS(self.env)
         return headers
 
     def header(self, name):
+        #; [!3ymtd] returns header value in environ object.
         k = name.lower()
         if k == 'content-type':
             return self.env.get('CONTENT_TYPE')
@@ -1022,57 +1186,72 @@ class WSGIResponse(object):
     __slots__ = ('status', 'content_type', 'content_length', '_header_list')
 
     def __init__(self):
+        #; [!3d06t] default status code is 200.
         self.status         = 200
         self.content_type   = None
         self.content_length = None
         self._header_list   = [None, None]  # ex: [('Content-Type','text/html'), ('Content-Lenght','99')]
 
-    def get_header(self, name):
-        if name == 'Content-Type':
+    def header(self, name):
+        #; [!u5pqv] returns header value.
+        name = name.lower()
+        if name == 'content-type':
             return self.content_type
-        if name == 'Content-Length':
-            return self.content_length
-        for k, v in self._header_list:
-            if k == name:
+        if name == 'content-length':
+            v = self.content_length
+            return str(v) if v is not None else None
+        for kv in self._header_list[2:]:
+            k, v = kv
+            if k.lower() == name:
                 return v
         return None
 
     def set_header(self, name, value):
-        if name == 'Content-Type':
+        key = name.lower()
+        if key == 'content-type':
             self.content_type = value
             return self
-        if name == 'Content-Length':
-            self.content_length = str(value)
+        if key == 'content-length':
+            self.content_length = str(value) if value is not None else None
             return self
-        for i, (k, _) in enumerate(self._header_list):
-            if k == name:
+        for i, (k, _) in enumerate(self._header_list[2:]):
+            if k == key:
                 self._header_list[i] = (name, value)
                 return self
         self._header_list.append((name, value))
         return self
 
     def add_header(self, name, value):
+        #; [!xeqt9] adds response header.
         self._header_list.append((name, value))
 
     def get_header_list(self):
+        """Returns list of header name and value.
+        Don't call this directly because this method is destructive;
+        this method is intended to be called only by application object.
+        """
         arr = self._header_list
-        #
+        #; [!zvggv] header list contains Content-Length header if it is set.
         clen = self.content_length
-        if clen is not None:
+        if clen is not None:  # ex: [None, None] -> [None, ('Content-Length', "9")]
             arr[1] = ('Content-Length', str(clen))
-        else:
+        else:                 # ex: [None, None] -> [None]
             arr.pop(1)
-        #
+        #; [!oij5a] header list contains Content-Type header if it is set.
         ctype = self.content_type
-        if ctype:
+        if ctype:             # ex: [None, (...)] -> [('Content-Type', "text/html"), (...)]
             arr[0] = ('Content-Type', ctype)
-        else:
+        else:                 # ex: [None, (...)] -> [(...)]
             arr.pop(0)
-        #
+        #; [!pducc] returns list of pair header name and value.
         return arr
 
-    def add_cookie(self, name, value, domain=None, path=None, max_age=None, expires=None,
+    def add_cookie(self, name, value, _=None,
+                   domain=None, path=None, max_age=None, expires=None,
                    httponly=None, secure=None):
+        if _ is not None:
+            raise TypeError("add_cookie(): use keyword arguments for cookie attributes.")
+        #; [!eng8x] builds cookie string.
         buf = []; add = buf.append
         add("%s=%s" % (name, value))
         if domain:   add("; Domain=%s"  % domain)
@@ -1081,7 +1260,11 @@ class WSGIResponse(object):
         if expires:  add("; Expires=%s" % expires)
         if httponly: add("; HttpOnly")
         if secure:   add("; Secure")
-        self._header_list.append(('Set-Cookie', ''.join(buf)))
+        cookie_str = S(''.join(buf))
+        #; [!a17wa] adds Set-Cookie header.
+        self._header_list.append(('Set-Cookie', cookie_str))
+        #; [!fw2f5] returns cookie string.
+        return cookie_str
 
 
 class WSGIApplication(object):
@@ -1090,6 +1273,7 @@ class WSGIApplication(object):
     RESPONSE = WSGIResponse
 
     def __init__(self, mapping_list, _=None, lazy=False, fast=False):
+        #; [!us151] accepts mapping list and creates ActionMapping object.
         if _ is not None:
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
         if isinstance(mapping_list, ActionMapping):
@@ -1101,12 +1285,18 @@ class WSGIApplication(object):
         self._mapping = klass(mapping_list)
 
     def lookup(self, req_urlpath):
+        """Delegates to ActionMapping#lookup()."""
+        #; [!1rmcr] returns action class, action methods, and urlpath arguments.
         return self._mapping.lookup(req_urlpath)
 
     def dispatch(self, req_meth, req_path, redirect=True):
+        """Delegates to ActionMapping#dispatch()."""
+        #; [!wtp8c] returns action class, action func, and urlpath arguments.
         return self._mapping.dispatch(req_meth, req_path, redirect)
 
     def each_mapping(self):
+        """Returns iteration of urlpath pattern, action class and action methods."""
+        #; [!rfx5n] iterates urlpath pattern, action class and action methods.
         return iter(self._mapping)
 
     def show_mapping(self):
@@ -1122,14 +1312,18 @@ class WSGIApplication(object):
         return "".join(buf)
 
     def __call__(self, env, start_response):
+        #; [!8lx2o] invokes action corresponding to request path and method.
         status, headers, body = self.handle_request(env)
+        #; [!2z6xr] raises UnknownHttpStatusCodeError when status code is unknown.
         status_str = HTTP_STATUS_DICT.get(status)
         if not status_str:
             raise UnknownHttpStatusCodeError("%s: unknown http status code." % status)
+        #; [!huptr] calls start_response and returns response body.
         start_response(status_str, headers)
         return body
 
     def handle_request(self, env):
+        #; [!0cd7m] handles request.
         req  = self.REQUEST(env)
         resp = self.RESPONSE()
         try:
@@ -1138,17 +1332,20 @@ class WSGIApplication(object):
             action_obj = action_class(req, resp)
             body = action_obj.run_action(action_func, urlpath_params)
             return resp.status, resp.get_header_list(), body
+        #; [!f66z9] handles http exception.
         except HttpException as ex:
             return self.handle_http_exception(ex, req, resp)
+        #; [!ewqep] don't catch KeyboardInterrupt error.
         except KeyboardInterrupt:
             raise
+        #; [!tn8yy] returns 500 Internal Server Error when exception raised.
         except Exception as ex:
             return self.handle_exception(ex, req, resp)
 
     def error_4xx(self, status_code, env):
         status = HTTP_STATUS_DICT[status_code]
-        html = u"""<h2>%s</h2>""" % status
-        binary = html.encode(ENCODING)
+        html = """<h2>%s</h2>""" % status
+        binary = B(htm)
         headers = [
             ('Content-Type',   "text/html;charset=utf-8"),
             ('Content-Length', str(len(binary))),
@@ -1158,8 +1355,8 @@ class WSGIApplication(object):
     def handle_http_exception(self, ex, req, resp):
         status  = ex.status       # int
         content = ex.content
-        if content is None:
-            content = resp.body
+        #if content is None:
+        #    content = resp.body
         if content is None:
             binary = B(HTTP_STATUS_DICT[status])
             ctype  = "text/plain;charset=utf-8"
@@ -1176,13 +1373,14 @@ class WSGIApplication(object):
             raise TypeError("%r: unexpected data type of content." % (content,))
         resp.content_type   = ctype
         resp.content_length = len(binary)
-        return status, resp.get_header_list(), content
+        return status, resp.get_header_list(), [binary]
 
     def handle_exception(self, ex, req, resp):
-        #stderr = req.env['wsgi.errors']
-        stderr = sys.stderr
+        #; [!7qgls] writes traceback to stderr.
+        #stderr = sys.stderr
+        stderr = req.env['wsgi.errors']
         errtext = traceback.format_exc()
-        sys.stderr.write(S(errtext))
+        stderr.write(S(errtext))
         #
         status  = 500
         binary  = b"<h2>500 Internal Server Error</h2>"
@@ -1190,7 +1388,7 @@ class WSGIApplication(object):
             ('Content-Type',   "text/html;charset=utf-8"),
             ('Content-Length', str(len(binary))),
         ]
-        return status, headers, binary
+        return status, headers, [binary]
 
 
 def _create_module(module_name, **kwargs):
@@ -1277,5 +1475,10 @@ class StartResponse(object):
         self.headers = None
 
     def __call__(self, status, headers):
-        self.status = status
+        self.status  = status
         self.headers = headers
+
+wsgi.mock_env      = mock_env
+wsgi.StartResponse = StartResponse
+del mock_env
+del StartResponse

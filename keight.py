@@ -1181,7 +1181,7 @@ class WSGIApplication(object):
     REQUEST  = WSGIRequest
     RESPONSE = WSGIResponse
 
-    def __init__(self, mapping_list, _=None, lazy=False, fast=False):
+    def __init__(self, mapping_list, _=None, lazy=False, engine='rexp'):
         #; [!us151] accepts mapping list and creates ActionMapping object.
         if _ is not None:
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
@@ -1189,7 +1189,7 @@ class WSGIApplication(object):
             self._mapping = mapping_list
         index = 0
         if lazy: index += 1
-        if fast: index += 2
+        if engine == 'statemachine': index += 2
         klass = (ActionRexpMapping, ActionRexpLazyMapping, ActionTrieMapping, ActionTrieLazyMapping)[index]
         self._mapping = klass(mapping_list)
 

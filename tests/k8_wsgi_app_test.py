@@ -98,10 +98,10 @@ class Application_Test(object):
             app = k8.wsgi.Application(mapping_list, lazy=True)
             ok (app._mapping).is_a(k8.ActionRexpLazyMapping)
             #
-            app = k8.wsgi.Application(mapping_list, fast=True)
+            app = k8.wsgi.Application(mapping_list, engine='statemachine')
             ok (app._mapping).is_a(k8.ActionTrieMapping)
             #
-            app = k8.wsgi.Application(mapping_list, lazy=True, fast=True)
+            app = k8.wsgi.Application(mapping_list, lazy=True, engine='statemachine')
             ok (app._mapping).is_a(k8.ActionTrieLazyMapping)
 
 

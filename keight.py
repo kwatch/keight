@@ -45,9 +45,6 @@ if PY2:
 else:
     S = U
 
-setup_testing_defaults = None  # import from wsgi.util
-BytesIO = None   # io.BytesIO or cStringIO.StringIO
-
 
 HTTP_STATUS_DICT = {
     100: "100 Continue",
@@ -1412,13 +1409,16 @@ wsgi.Application    = WSGIApplication
 del WSGIRequestHeaders, WSGIRequest, WSGIResponse, WSGIApplication
 
 
+_setup_testing_defaults = None  # import from wsgi.util
+_BytesIO = None   # io.BytesIO or cStringIO.StringIO
+
 def mock_env(req_meth, req_urlpath, _=None, query=None, form=None, json=None,
              headers=None, cookies=None, env=None):
-    global BytesIO
+    global _BytesIO
     try:
-        from io import BytesIO
+        from io import BytesIO as _BytesIO
     except ImportError:
-        from cStringIO import StringIO as BytesIO
+        from cStringIO import StringIO as _BytesIO
     if _ is not None:
         raise TypeError("mock_env(): 'query' argument should be specfied as keyword argument.")
     if env is None:
@@ -1430,11 +1430,11 @@ def mock_env(req_meth, req_urlpath, _=None, query=None, form=None, json=None,
     if query:
         env['QUERY_STRING'] = S(_build_query_string(query))
     if form:
-        env['wsgi.input'] = BytesIO(B(_build_query_string(query)))
+        env['wsgi.input'] = _BytesIO(B(_build_query_string(query)))
     if json:
         import json as json_
         json_str = json_.dumps(json)
-        env['wsgi.input'] = BytesIO(B(json_str))
+        env['wsgi.input'] = _BytesIO(B(json_str))
     if headers:
         for k in headers:
             v = headers[k]
@@ -1447,10 +1447,10 @@ def mock_env(req_meth, req_urlpath, _=None, query=None, form=None, json=None,
     if cookies:
         env['HTTP_COOKIE'] = S(_build_cookie_string(cookie))
     #
-    global setup_testing_defaults
-    if setup_testing_defaults is None:
-        from wsgiref.util import setup_testing_defaults
-    setup_testing_defaults(env)
+    global _setup_testing_defaults
+    if _setup_testing_defaults is None:
+        from wsgiref.util import setup_testing_defaults as _setup_testing_defaults
+    _setup_testing_defaults(env)
     return env
 
 def _build_query_string(query):
@@ -1469,6 +1469,7 @@ def _build_cookie_string(cookie):
 
 
 class StartResponse(object):
+    __slots__ = ('status', 'headers')
 
     def __init__(self):
         self.status  = None

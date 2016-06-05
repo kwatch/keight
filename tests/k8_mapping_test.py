@@ -730,9 +730,9 @@ class ActionFSMLazyMapping_Test(object):
             ]),
         ]
 
-    def provide_am(self, mapping_list, name):
+    def provide_am(self, mapping_list, name, lazy=True):
         assert os.path.isdir(name)
-        return k8.ActionFSMLazyMapping(mapping_list)
+        return k8.ActionFSMLazyMapping(mapping_list, lazy=lazy)
 
     def after(self):
         clear_modules(provide_name(self))
@@ -742,7 +742,7 @@ class ActionFSMLazyMapping_Test(object):
 
         @test("[!1gp9m] accepts urlpath mapping list.")
         def _(self, mapping_list):
-            am = k8.ActionFSMLazyMapping(mapping_list)
+            am = k8.ActionFSMLazyMapping(mapping_list, lazy=True)
             ok (am._fixed_entries) == {}
             ok (am._variable_entries) == {
                 'api': {
@@ -755,20 +755,78 @@ class ActionFSMLazyMapping_Test(object):
                 },
             }
 
-        @test("[!ifj4v] don't load classes.")
+        @test("[!n9wrs] load classes if lazy=False.")
         def _(self, mapping_list):
             clear_modules("tmp1")
             ok (sys.modules).not_contain("tmp1")
             ok (sys.modules).not_contain("tmp1.api")
-            am = k8.ActionFSMLazyMapping(mapping_list)
+            #
+            am = k8.ActionFSMLazyMapping(mapping_list, lazy=False)
+            ok (sys.modules).contains("tmp1")
+            ok (sys.modules).contains("tmp1.api")
+            from tmp1.api.items import ItemsAction
+            from tmp1.api.news  import NewsAction
+            ok (am._fixed_entries) == {
+                "/api/items": (ItemsAction,
+                               {"GET" : ItemsAction.__dict__["do_index"],
+                                "POST": ItemsAction.__dict__["do_create"]},
+                               (),
+                               ),
+                "/api/news":  (NewsAction,
+                               {"GET" : NewsAction.__dict__["do_index"],
+                                "POST": NewsAction.__dict__["do_create"]},
+                               (),
+                               ),
+            }
+            ok (am._variable_entries) == {
+                "api": {
+                    "items": {
+                        1: {
+                            None: (ItemsAction,
+                                   {"GET"   : ItemsAction.__dict__["do_show"],
+                                    "PUT"   : ItemsAction.__dict__["do_update"],
+                                    "DELETE": ItemsAction.__dict__["do_delete"]},
+                                   ""),
+                        },
+                    },
+                    "news": {
+                        1: {
+                            None: (NewsAction,
+                                   {"GET"   : NewsAction.__dict__["do_show"],
+                                    "PUT"   : NewsAction.__dict__["do_update"],
+                                    "DELETE": NewsAction.__dict__["do_delete"]},
+                                   ""),
+                        },
+                    },
+                },
+            }
+
+        @test("[!ifj4v] don't load classes if lazy=True.")
+        def _(self, mapping_list):
+            clear_modules("tmp1")
             ok (sys.modules).not_contain("tmp1")
             ok (sys.modules).not_contain("tmp1.api")
+            #
+            am = k8.ActionFSMLazyMapping(mapping_list, lazy=True)
+            ok (sys.modules).not_contain("tmp1")
+            ok (sys.modules).not_contain("tmp1.api")
+            ok (am._fixed_entries) == {}
+            ok (am._variable_entries) == {
+                "api": {
+                    "items": {
+                        0: ("tmp1.api.items.ItemsAction", "/api/items"),
+                    },
+                    "news": {
+                        0: ("tmp1.api.news.NewsAction", "/api/news"),
+                    },
+                },
+            }
 
 
     with subject('#lookup()'):
 
-        @test("[!05a7a] loads action classes dinamically.")
-        def _(self, am, name="tmp1"):
+        @test("[!05a7a] loads action classes dinamically if lazy=True.")
+        def _(self, am, lazy=True, name="tmp1"):
             clear_modules("tmp1")
             ok (sys.modules).not_contain("tmp1")
             ok (sys.modules).not_contain("tmp1.api")

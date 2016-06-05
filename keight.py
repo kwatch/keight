@@ -934,9 +934,9 @@ class ActionFSMMapping(ActionMapping):
 
 class ActionFSMLazyMapping(ActionMapping):
 
-    def __init__(self, mappings):
+    def __init__(self, mappings, lazy=True):
+        self._lazy = lazy
         #; [!1gp9m] accepts urlpath mapping list.
-        #; [!ifj4v] don't load classes.
         self._build(mappings)
 
     def _build(self, mappings):
@@ -944,13 +944,23 @@ class ActionFSMLazyMapping(ActionMapping):
         self._variable_entries = entries = {}
         self._traverse(mappings, "", entries)
 
-    def _traverse(self, mappings, base_urlpath, entries):
+    def _traverse(self, mappings, base_urlpath, root_entries):
+        lazy = self._lazy
         for urlpath, target in mappings:
+            #; [!uno07] loads action classes if layz=False.
+            #; [!ifj4v] don't load classes if lazy=True.
+            if not lazy and isinstance(target, basestring):
+                target = self._load_action_class(target)
+            #
             full_urlpath = base_urlpath + urlpath
             if isinstance(target, list):
-                self._traverse(target, full_urlpath, entries)
+                self._traverse(target, full_urlpath, root_entries)
+            elif isinstance(target, type) and issubclass(target, BaseAction):
+                self._register_permanently(full_urlpath, target, root_entries)
+            elif isinstance(target, basestring):
+                self._register_temporarily(full_urlpath, target, root_entries)
             else:
-                self._register_temporarily(full_urlpath, target, entries)
+                raise NotActionClassError("%r: Action class expected." % (target,))
 
     _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
     _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w*)(?::(.*?))?\}$')
@@ -1024,6 +1034,7 @@ class ActionFSMLazyMapping(ActionMapping):
         if t:
             return t   # (action_class, action_methos, ())
         #
+        lazy = self._lazy
         param_types = self._URLPATH_PARAM_TYPES
         key_int  = param_types['int']   # == 1
         key_str  = param_types['str']   # == 2
@@ -1032,8 +1043,8 @@ class ActionFSMLazyMapping(ActionMapping):
         d = self._variable_entries
         items, extension = self._split_path(req_path)  # ex: '/x/y/1.json' => [('x','y','1'), '.json']
         for s in items:
-            #; [!05a7a] loads action classes dinamically.
-            if 0 in d:             # if temporary key exists
+            #; [!05a7a] loads action classes dinamically if lazy=True.
+            if lazy and 0 in d:         # if temporary key exists
                 self._change_temporary_registration_to_permanently(d)
                 t = self._fixed_entries.get(req_path)
                 if t:
@@ -1057,7 +1068,7 @@ class ActionFSMLazyMapping(ActionMapping):
                 return None    # not found
             if d is None:
                 return None    # not found
-        if 0 in d:
+        if lazy and 0 in d:
             self._change_temporary_registration_to_permanently(d)
             t = self._fixed_entries.get(req_path)
             if t:

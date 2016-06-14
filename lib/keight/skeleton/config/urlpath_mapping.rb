@@ -12,5 +12,6 @@ $urlpath_mapping = [
    #['/books'                      , "./app/admin/books:AdminBooksPage"],
    #['/orders'                     , "./app/admin/orders:AdminOrdersPage"],
   ]],
+  ['/sqlreport'                    , "./app/sql_report:SQLReport::EntryAction"],
   ['/static'                       , "./app/action:My::StaticPage"],
 ]

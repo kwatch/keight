@@ -210,10 +210,10 @@ module K8
     end
 
     def _parse(query_str, separator)
-      #; [!engr6] returns empty Hash object when query string is empty.
+      #; [!engr6] returns empty Hash/dict object when query string is empty.
       d = {}
       return d if query_str.empty?
-      #; [!fzt3w] parses query string and returns Hahs object.
+      #; [!fzt3w] parses query string and returns Hash/dict object.
       equal    = '='
       brackets = '[]'
       query_str.split(separator).each do |s|
@@ -607,7 +607,7 @@ module K8
   end
 
 
-  class BaseError < Exception
+  class BaseError < StandardError
   end
 
 
@@ -725,7 +725,7 @@ module K8
     def rack_hijack_io    ; @env['rack.hijack_io']    ; end  # ex: socket object
 
     def params_query
-      #; [!6ezqw] parses QUERY_STRING and returns it as Hash object.
+      #; [!6ezqw] parses QUERY_STRING and returns it as Hash/dict object.
       #; [!o0ws7] unquotes both keys and values.
       return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
@@ -775,9 +775,9 @@ module K8
       when 'application/x-www-form-urlencoded'
         kind == :form  or
           raise HttpException.new(400, 'unexpected form data (expected multipart).')
-        #; [!puxlr] raises error when content length is too long (> 10MB).
+        #; [!puxlr] raises 400 error when content length is too large (> 10MB).
         len <= MAX_POST_SIZE  or
-          raise HttpException.new(400, 'Content-Length is too long.')
+          raise HttpException.new(400, 'Content-Length is too large.')
         qstr = @env['rack.input'].read(len)
         d = Util.parse_query_string(qstr)
         return d
@@ -787,9 +787,9 @@ module K8
           raise HttpException.new(400, 'unexpected multipart data.')
         boundary = $1  or
           raise HttpException.new(400, 'bounday attribute of multipart required.')
-        #; [!mtx6t] raises error when content length of multipart is too long (> 100MB).
+        #; [!mtx6t] raises error when content length of multipart is too large (> 100MB).
         len <= MAX_MULTIPART_SIZE  or
-          raise HttpException.new(400, 'Content-Length of multipart is too long.')
+          raise HttpException.new(400, 'Content-Length of multipart is too large.')
         d1, d2 = Util.parse_multipart(@env['rack.input'], boundary, len, nil, nil)
         return d1, d2
       #; [!ugik5] parses json data and returns it as hash object when json data is sent.

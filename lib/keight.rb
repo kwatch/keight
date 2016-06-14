@@ -372,6 +372,187 @@ module K8
       end
     end
 
+
+    ##
+    ## Temporary file which is removed automatically at end of response.
+    ##
+    ## Example:
+    ##
+    ##     def do_download_csv()
+    ##       ## generate temporary filepath
+    ##       tmpfile = K8::Util::TemporaryFile.new
+    ##       p tmpfile.path      #=> ex: '/var/tmp/tmp-0372042668525.tmp'
+    ##       p File.exist?(tmpfile.path)   #=> false
+    ##       ## create temporary file and content
+    ##       sql = "select * from table1"
+    ##       system("psql dbname -A -F',' -c \"#{sql}\" | gzip > #{tmpfile.path}")
+    ##       p File.exist?(tmpfile.path)   #=> true
+    ##       ## set resonse headers
+    ##       @resp.headers['Content-Type']        = 'text/csv;charset=UTF-8'
+    ##       @resp.headers['Content-Length']      = File.size(tmpfile.path)
+    ##       @resp.headers['Content-Disposition'] = 'attachment;filename="file1.csv"'
+    ##       @resp.headers['Content-Encoding']    = "gzip"
+    ##       ## return temporary file
+    ##       return tmpfile  # will be removed automatically at end of response!!
+    ##     end
+    ##
+    class TemporaryFile
+
+      TMPDIR     = (ENV['TMPDIR'] || proc {require 'etc'; Etc.systmpdir}.call || '/tmp').chomp('/')
+      CHUNK_SIZE = 8 * 1024   # 8KB
+
+      def self.new_path(tmpdir=nil)
+        #; [!hvnzd] generates new temorary filepath under temporary directory.
+        #; [!ulb2e] uses default temporary directory path if tmpdir is not specified.
+        tmpdir ||= TMPDIR
+        randstr = rand().to_s[2..14]
+        return "#{tmpdir}/tmp-#{randstr}.tmp"
+      end
+
+      def initialize(path=nil, tmpdir: nil, chunk_size: nil)
+        #; [!ljilm] generates temporary filepath automatically when filepath is not specified.
+        @path       = path || self.class.new_path(tmpdir)
+        @tmpdir     = tmpdir if tmpdir
+        @chunk_size = chunk_size if chunk_size
+      end
+
+      attr_reader :path
+
+      def each
+        #; [!d9suq] opens temporary file with binary mode.
+        #; [!68xdj] reads chunk size data from temporary file per iteration.
+        size = @chunk_size || CHUNK_SIZE
+        File.open(@path, 'rb') do |f|
+          yield f.read(size)
+        end
+      ensure
+        #; [!i0dmd] removes temporary file automatically at end of loop.
+        #; [!347an] removes temporary file even if error raised in block.
+        File.unlink @path
+        self
+      end
+
+    end
+
+
+    ##
+    ## Invoke shell command and responses it's output to client.
+    ##
+    ## Example:
+    ##
+    ##     def do_download_csv()
+    ##       sql = "select * from table1"
+    ##       cmd = "psql -AF',' dbname | iconv -f UTF-8 -t CP932 -c | gzip"
+    ##       shell_command = K8::Util::ShellCommand.new(cmd, input: sql)
+    ##       begin
+    ##         return shell_command.start() do
+    ##           @resp.headers['Content-Type']        = "text/csv;charset=Shift_JIS"
+    ##           @resp.headers['Content-Disposition'] = 'attachment;filename="file1.tsv"'
+    ##           @resp.headers['Content-Encoding']    = "gzip"
+    ##         end
+    ##       rescue K8::Util::ShellCommandError => ex
+    ##         @resp.status = 500
+    ##         @resp.headers['Content-Type'] = "text/plain;charset=UTF-8"
+    ##         return ex.message
+    ##       end
+    ##       command.start
+    ##     end
+    ##
+    class ShellCommand
+
+      CHUNK_SIZE = 8 * 1024
+
+      def initialize(command, input: nil, chunk_size: nil, &teardown)
+        #; [!j95pi] takes shell command and input string.
+        @command    = command  # ex: "psql -AF',' dbname | gzip"
+        @input      = input    # ex: "select * from table1"
+        @chunk_size = chunk_size || CHUNK_SIZE
+        @teardown   = teardown
+        @pid        = nil      # process id
+        @tuple      = nil
+      end
+
+      attr_reader :command, :input, :pid
+
+      def start
+        #; [!66uck] not allowed to start more than once.
+        @pid.nil?  or    # TODO: close sout and serr
+          raise ShellCommandError.new("Already started (comand: #{@command.inspect})")
+        #; [!9seos] invokes shell command.
+        require 'open3' unless defined?(Open3)
+        sin, sout, serr, waiter = Open3.popen3(@command)
+        @pid = waiter.pid
+        size = @chunk_size
+        begin
+          #; [!d766y] writes input string if provided to initializer.
+          sin.write(input) if input
+          sin.close()
+          #; [!f651x] reads first chunk data.
+          #; [!cjstj] raises ShellCommandError when command prints something to stderr.
+          chunk = sout.read(size)
+          if chunk.nil?
+            error = serr.read()
+            log_error(error.to_s)
+            error = "Command failed: #{@command}" if ! error || error.empty?
+            raise ShellCommandError.new(error)
+          end
+          #; [!bt12n] saves stdout, stderr, command process, and first chunk data.
+          @tuple = [sout, serr, waiter, chunk]
+          #; [!kgnel] yields callback (if given) when command invoked successfully.
+          yield if block_given?
+        #; [!2989u] closes both stdout and stderr when error raised.
+        rescue => ex
+          sout.close()
+          serr.close()
+          raise
+        end
+        #; [!fp98i] returns self.
+        self
+      end
+
+      def each
+        #; [!ssgmm] '#start()' should be called before '#each()'.
+        @pid  or
+          raise ShellCommandError.new("Not started yet (command: #{@command.inspect}).")
+        #; [!vpmbw] yields each chunk data.
+        sout, serr, waiter, chunk = @tuple
+        @tuple = nil
+        yield chunk
+        size = @chunk_size
+        ex = nil
+        begin
+          while (chunk = sout.read(size))
+            yield chunk
+          end
+          #; [!70xdy] logs stderr output.
+          error = serr.read()
+          log_error(error) if error && ! error.empty?
+        rescue => ex
+          raise
+        ensure
+          #; [!2wll8] closes stdout and stderr, even if error raised.
+          sout.close()
+          serr.close()
+          #; [!0ebq5] calls callback specified to initializer with error object.
+          @teardown.yield(ex) if @teardown
+        end
+        #; [!ln8we] returns self.
+        self
+      end
+
+      def log_error(message)
+        $stderr.write("[ERROR] ShellCommand: #{@command.inspect} #-------\n")
+        $stderr.write(message); $stderr.write("\n") unless message.end_with?("\n")
+        $stderr.write("--------------------\n")
+      end
+
+    end
+
+
+    class ShellCommandError < StandardError
+    end
+
+
   end
 
 

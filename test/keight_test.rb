@@ -1006,15 +1006,6 @@ Oktest.scope do
         ok {action.instance_variable_get('@resp')}.same?(resp)
       end
 
-      spec "[!7sfyf] sets session object." do
-        d = {'a'=>1}
-        req    = K8::Request.new(new_env("GET", "/books", env: {'rack.session'=>d}))
-        resp   = K8::Response.new()
-        action = K8::BaseAction.new(req, resp)
-        ok {action.instance_variable_get('@sess')}.same?(d)
-        ok {action.sess}.same?(d)
-      end
-
     end
 
 
@@ -1153,6 +1144,20 @@ Oktest.scope do
         |action_obj|
         ok {action_obj.session}.same?(action_obj.sess)
         ok {action_obj.session} != nil
+      end
+
+    end
+
+
+    topic '#initialize()' do
+
+      spec "[!7sfyf] sets session object." do
+        d = {'a'=>1}
+        req    = K8::Request.new(new_env("GET", "/books", env: {'rack.session'=>d}))
+        resp   = K8::Response.new()
+        action = K8::Action.new(req, resp)
+        ok {action.instance_variable_get('@sess')}.same?(d)
+        ok {action.sess}.same?(d)
       end
 
     end

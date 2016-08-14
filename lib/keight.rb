@@ -944,8 +944,6 @@ module K8
       #; [!uotpb] accepts request and response objects.
       @req  = req
       @resp = resp
-      #; [!7sfyf] sets session object.
-      @sess = req.env['rack.session']
     end
 
     attr_reader :req, :resp, :sess
@@ -1030,6 +1028,12 @@ module K8
     alias request  req    # just for compatibility with other frameworks; use @req!
     alias response resp   # just for compatibility with other frameworks; use @resp!
     alias session  sess   # just for compatibility with other frameworks; use @sess!
+
+    def initialize(req, res)
+      super
+      #; [!7sfyf] sets session object.
+      @sess = req.env['rack.session']
+    end
 
     protected
 

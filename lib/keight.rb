@@ -1409,7 +1409,7 @@ module K8
           @fixed_endpoints[full_urlpath] = tuple
         end
         #
-        @all_endpoints << [full_urlpath, action_class, action_methods]
+        @all_endpoints << tuple
       end
       @urlpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
       return self

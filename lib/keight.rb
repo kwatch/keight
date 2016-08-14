@@ -1483,10 +1483,10 @@ module K8
       buf = []
       urlpath_mapping.each do |urlpath, target|
         curr_urlpath = "#{base_urlpath}#{urlpath}"
-        pattern = nil
+        rexp_str = nil
         #; [!w45ad] can compile nested array.
         if target.is_a?(Array)
-          pattern = _traverse(target, curr_urlpath, &block)
+          rexp_str = _traverse(target, curr_urlpath, &block)
         #; [!wd2eb] accepts subclass of Action class.
         else
           #; [!l2kz5] requires library when filepath and classname specified.
@@ -1494,7 +1494,6 @@ module K8
           #; [!irt5g] raises TypeError when unknown object specified.
           klass.is_a?(Class) && klass < BaseAction  or
             raise TypeError.new("Action class or nested array expected, but got #{klass.inspect}")
-            #raise TypeError.new("#{target}: expected action class but got #{klass}.")
           action_class = klass
           #
           buf2 = []
@@ -1508,17 +1507,15 @@ module K8
             end
             yield full_urlpath, action_class, action_methods
           end
-          n = buf2.length
-          pattern = n == 0 ? nil : n == 1 ? buf2[0] : "(?:#{buf2.join('|')})"
+          rexp_str = _build_rexp_str(buf2)
           #; [!6xwhq] builds action infos for each action methods.
           action_class._build_action_info(curr_urlpath) if action_class
         end
         #; [!bcgc9] skips classes which have only fixed urlpaths.
-        buf << "#{_compile_urlpath_pat(urlpath)[0]}#{pattern}" if pattern
+        buf << "#{_compile_urlpath_pat(urlpath)[0]}#{rexp_str}" if rexp_str
       end
       #
-      n = buf.length
-      return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"
+      return _build_rexp_str(buf)
     end
 
     def has_urlpath_param?(urlpath)
@@ -1526,12 +1523,10 @@ module K8
     end
 
     ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
-    def _build_rexp_str(urlpath_pat, buf)
-      return nil if buf.empty?
-      prefix = _compile_urlpath_pat(urlpath_pat).first
+    def _build_rexp_str(buf)
       #; [!169ad] removes unnecessary grouping.
-      return "#{prefix}#{buf.first}" if buf.length == 1
-      return "#{prefix}(?:#{buf.join('|')})"
+      n = buf.length
+      return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"
     ensure
       buf.clear()   # for GC
     end

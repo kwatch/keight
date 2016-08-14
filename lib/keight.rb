@@ -1579,14 +1579,18 @@ module K8
     ## range object to retrieve urlpath parameter value faster than Regexp matching
     ## ex:
     ##   urlpath_pat == '/books/{id}/edit'
-    ##   arr = urlpath_pat.split(/\{.*?\}/, -1)           #=> ['/books/', '/edit']
-    ##   range = (arr[0].length .. - (arr[01].length+1))  #=> 7..-6 (Range object)
-    ##   p "/books/123/edit"[range]                       #=> '123'
-    def _range_of_urlpath_param(urlpath_pattern)
-      rexp = URLPATH_PARAM_REXP_NOGROUP
-      arr = urlpath_pattern.split(rexp, -1)            # ex: ['/books/', '/edit']
-      return nil unless arr.length == 2
-      return (arr[0].length .. - (arr[1].length+1))    # ex: 7..-6  (Range object)
+    ##   range = _range_of_urlpath_param(urlpath_pat)
+    ##   p range                       #=> 7..-6 (Range object)
+    ##   p "/books/123/edit"[range]    #=> '123'
+    def _range_of_urlpath_param(urlpath)
+      i = 0
+      m = nil
+      urlpath.scan(URLPATH_PARAM_REXP) do
+        i += 1
+        m = Regexp.last_match
+      end
+      return nil unless i == 1
+      return m.begin(0) .. (m.end(0) - urlpath.length - 1)  # ex: 7..-6 (Range object)
     end
 
     ## ex: './api/admin/books:Admin::BookAPI'  ->  Admin::BookAPI

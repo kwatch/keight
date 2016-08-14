@@ -1535,11 +1535,6 @@ module K8
     #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?))?\}/
     #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
     URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
-    URLPATH_PARAM_REXP_NOGROUP = /\{(?:\w*)(?::(?:[^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
-    proc {|rx1, rx2|
-      rx1.source.gsub(/\(([^?])/, '(?:\1') == rx2.source  or
-        raise "*** assertion failed: #{rx1.source.inspect} != #{rx2.source.inspect}"
-    }.call(URLPATH_PARAM_REXP, URLPATH_PARAM_REXP_NOGROUP)
 
     ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
     def _compile_urlpath_pat(urlpath_pat, enable_capture=false)

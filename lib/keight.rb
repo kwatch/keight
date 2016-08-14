@@ -988,32 +988,39 @@ module K8
     ##   mapping '/',     :GET=>:do_index, :POST=>:do_create
     ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
     ##
-    def self.mapping(urlpath_pattern, methods={})
+    def self.mapping(urlpath_pattern, action_methods={})
+      action_methods.each do |req_meth, action_method|
+        HTTP_REQUEST_METHODS[req_meth.to_s]  or
+          raise ArgumentError.new("#{req_meth.inspect}: unknown request method.")
+        req_meth.is_a?(Symbol)  or
+          raise ArgumentError.new("#{req_meth.inspect}: should be a Symbol but got #{req_meth.class.name}")
+      end
       #; [!o148k] maps urlpath pattern and request methods.
-      self._action_method_mapping.map(urlpath_pattern, methods)
+      self._mappings << [urlpath_pattern, action_methods]
+      return self
     end
 
-    def self._action_method_mapping
-      return @action_method_mapping ||= ActionMethodMapping.new
+    def self._mappings
+      return @action_method_mapping ||= []
     end
 
     def self._build_action_info(full_urlpath_pattern)   # :nodoc:
       #; [!ordhc] build ActionInfo objects for each action methods.
       parent = full_urlpath_pattern
-      @action_infos = {}
-      _action_method_mapping().each do |urlpath_pat, methods|
-        methods.each do |req_meth, action_method_name|
+      d = {}
+      self._mappings.each do |urlpath_pat, action_methods|
+        action_methods.each do |req_meth, action_name|
           info = ActionInfo.create(req_meth, "#{parent}#{urlpath_pat}")
-          @action_infos[action_method_name] = info
+          d[action_name] = info
         end
       end
-      @action_infos
+      @action_infos = d
     end
 
-    def self.[](action_method_name)
+    def self.[](action_name)
       #; [!1tq8z] returns ActionInfo object corresponding to action method.
       #; [!6g2iw] returns nil when not mounted yet.
-      return (@action_infos || {})[action_method_name]
+      return (@action_infos || {})[action_name]
     end
 
   end
@@ -1369,48 +1376,6 @@ module K8
   }.call()
 
 
-  class ActionMethodMapping
-
-    def initialize
-      @mappings = []
-    end
-
-    ##
-    ## ex:
-    ##   map '/',         :GET=>:do_index, :POST=>:do_create
-    ##   map '/{id:\d+}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
-    ##
-    def map(urlpath_pattern, action_methods={})
-      action_methods = _normalize(action_methods)
-      #; [!s7cs9] maps urlpath and methods.
-      #; [!o6cxr] returns self.
-      @mappings << [urlpath_pattern, action_methods]
-      return self
-    end
-
-    def _normalize(action_methods)
-      d = {}
-      action_methods.each do |req_meth, action_method|
-        k = HTTP_REQUEST_METHODS[req_meth.to_s]  or
-          raise ArgumentError.new("#{req_meth.inspect}: unknown request method.")
-        v = action_method
-        d[k] = v.is_a?(Symbol) ? v : v.to_s.intern
-      end
-      return d   # ex: {:GET=>:do_index, :POST=>:do_create}
-    end
-    private :_normalize
-
-    def each
-      #; [!62y5q] yields each urlpath pattern and action methods.
-      @mappings.each do |urlpath_pattern, action_methods|
-        yield urlpath_pattern, action_methods
-      end
-      self
-    end
-
-  end
-
-
   class ActionMapping
 
     def initialize(urlpath_mapping, default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0,
@@ -1528,7 +1493,7 @@ module K8
     def _compile_class(action_class, base_urlpath_pat, urlpath_pat)
       buf = []
       curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
-      action_class._action_method_mapping.each do |child_urlpath_pat, methods|
+      action_class._mappings.each do |child_urlpath_pat, methods|
         #; [!ue766] raises error when action method is not defined in action class.
         _validate_action_method_existence(action_class, methods)
         #; ex: '/api/books/{id}' -> '\A/api/books/(\d+)\z', ['id'], [proc{|x| x.to_i}]

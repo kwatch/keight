@@ -1395,8 +1395,7 @@ module K8
       @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
       @variable_endpoints = []  # urlpath patterns which have any ulrpath param
       @all_endpoints      = []  # all urlpath patterns (fixed + variable)
-      buf = ['\A']
-      _traverse(urlpath_mapping, "", buf) do |full_urlpath, action_class, action_methods|
+      rexp_str = _traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
         #; [!z2iax] classifies urlpath contains any parameter as variable one.
         if has_urlpath_param?(full_urlpath)
           pattern, pnames, procs = _compile_urlpath_pat(full_urlpath, true)
@@ -1412,8 +1411,7 @@ module K8
         #
         @all_endpoints << [full_urlpath, action_class, action_methods]
       end
-      buf << '\z'
-      @urlpath_rexp = Regexp.compile(buf.join())
+      @urlpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
       return self
     end
 
@@ -1481,15 +1479,14 @@ module K8
 
     private
 
-    def _traverse(urlpath_mapping, base_urlpath="", buf=[], &block)
-      buf << '(?:'; n1 = buf.length; count = 0     # (a)
+    def _traverse(urlpath_mapping, base_urlpath="", &block)
+      buf = []
       urlpath_mapping.each do |urlpath, target|
-        buf << _compile_urlpath_pat(urlpath, false)[0]; n2 = buf.length  # (b)
-        #
         curr_urlpath = "#{base_urlpath}#{urlpath}"
+        pattern = nil
         #; [!w45ad] can compile nested array.
         if target.is_a?(Array)
-          _traverse(target, curr_urlpath, buf, &block)
+          pattern = _traverse(target, curr_urlpath, &block)
         #; [!wd2eb] accepts subclass of Action class.
         else
           #; [!l2kz5] requires library when filepath and classname specified.
@@ -1504,43 +1501,24 @@ module K8
           action_class._mappings.each do |upath, action_methods|
             #; [!ue766] raises error when action method is not defined in action class.
             _validate_action_method_existence(action_class, action_methods)
+            #
             full_urlpath = "#{curr_urlpath}#{upath}"
             if has_urlpath_param?(full_urlpath)
-              buf2 << "#{_compile_urlpath_pat(upath, false)[0]}(\\z)"  # ex: /{id} -> /\d+(\z)
+              buf2 << "#{_compile_urlpath_pat(upath)[0]}(\\z)"  # ex: /{id} -> /\d+(\z)
             end
             yield full_urlpath, action_class, action_methods
           end
-          if ! buf2.empty?
-            if buf2.length == 1
-              buf << buf2[0]
-            else
-              buf << '(?:' << buf2.join('|') << ')'
-            end
-          end
+          n = buf2.length
+          pattern = n == 0 ? nil : n == 1 ? buf2[0] : "(?:#{buf2.join('|')})"
           #; [!6xwhq] builds action infos for each action methods.
           action_class._build_action_info(curr_urlpath) if action_class
         end
-        #
-        #buf.length == n2 ? buf.pop() : buf << '|' # (b)
         #; [!bcgc9] skips classes which have only fixed urlpaths.
-        if buf.length == n2
-          buf.pop()
-        else
-          buf << '|'
-          count += 1
-        end
+        buf << "#{_compile_urlpath_pat(urlpath)[0]}#{pattern}" if pattern
       end
       #
-      buf.pop() if buf[-1] == '|'                 # (b') remove extra '|'
-      #buf.length == n1 ? buf.pop() : buf << ')'   # (a') remove or close '(?:'
-      if count == 0
-        buf.pop()
-      elsif count == 1
-        x = buf.delete_at(n1 - 1)
-        x == '(?:'  or raise "** x=#{x.inspect}"
-      else
-        buf << ')'
-      end
+      n = buf.length
+      return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"
     end
 
     def has_urlpath_param?(urlpath)

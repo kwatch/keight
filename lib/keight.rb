@@ -990,11 +990,11 @@ module K8
     ##
     def self.mapping(urlpath_pattern, methods={})
       #; [!o148k] maps urlpath pattern and request methods.
-      self._action_method_mapping << [urlpath_pattern, _normalize(methods)]
+      self._mappings << [urlpath_pattern, _normalize(methods)]
       return self
     end
 
-    def self._action_method_mapping
+    def self._mappings
       return @action_method_mapping ||= []
     end
 
@@ -1013,7 +1013,7 @@ module K8
       #; [!ordhc] build ActionInfo objects for each action methods.
       parent = full_urlpath_pattern
       @action_infos = {}
-      _action_method_mapping().each do |urlpath_pat, methods|
+      self._mappings.each do |urlpath_pat, methods|
         methods.each do |req_meth, action_method_name|
           info = ActionInfo.create(req_meth, "#{parent}#{urlpath_pat}")
           @action_infos[action_method_name] = info
@@ -1498,7 +1498,7 @@ module K8
     def _compile_class(action_class, base_urlpath_pat, urlpath_pat)
       buf = []
       curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
-      action_class._action_method_mapping.each do |child_urlpath_pat, methods|
+      action_class._mappings.each do |child_urlpath_pat, methods|
         #; [!ue766] raises error when action method is not defined in action class.
         _validate_action_method_existence(action_class, methods)
         #; ex: '/api/books/{id}' -> '\A/api/books/(\d+)\z', ['id'], [proc{|x| x.to_i}]

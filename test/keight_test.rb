@@ -1052,7 +1052,7 @@ Oktest.scope do
           mapping '/{code}', :GET=>:do_show, :PUT=>:do_update
         end
         args_list = []
-        cls._action_method_mapping.each do |*args|
+        cls._action_method_mapping.each do |args|
           args_list << args
         end
         ok {args_list} == [

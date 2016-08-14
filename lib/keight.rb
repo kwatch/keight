@@ -989,24 +989,19 @@ module K8
     ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
     ##
     def self.mapping(urlpath_pattern, action_methods={})
+      action_methods.each do |req_meth, action_method|
+        HTTP_REQUEST_METHODS[req_meth.to_s]  or
+          raise ArgumentError.new("#{req_meth.inspect}: unknown request method.")
+        req_meth.is_a?(Symbol)  or
+          raise ArgumentError.new("#{req_meth.inspect}: should be a Symbol but got #{req_meth.class.name}")
+      end
       #; [!o148k] maps urlpath pattern and request methods.
-      self._mappings << [urlpath_pattern, _normalize(action_methods)]
+      self._mappings << [urlpath_pattern, action_methods]
       return self
     end
 
     def self._mappings
       return @action_method_mapping ||= []
-    end
-
-    def self._normalize(action_methods)   # :nodoc:
-      d = {}
-      action_methods.each do |req_meth, action_method|
-        k = HTTP_REQUEST_METHODS[req_meth.to_s]  or
-          raise ArgumentError.new("#{req_meth.inspect}: unknown request method.")
-        v = action_method
-        d[k] = v.is_a?(Symbol) ? v : v.to_s.intern
-      end
-      return d   # ex: {:GET=>:do_index, :POST=>:do_create}
     end
 
     def self._build_action_info(full_urlpath_pattern)   # :nodoc:

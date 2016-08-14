@@ -1017,10 +1017,10 @@ module K8
       @action_infos = d
     end
 
-    def self.[](action_method_name)
+    def self.[](action_name)
       #; [!1tq8z] returns ActionInfo object corresponding to action method.
       #; [!6g2iw] returns nil when not mounted yet.
-      return (@action_infos || {})[action_method_name]
+      return (@action_infos || {})[action_name]
     end
 
   end

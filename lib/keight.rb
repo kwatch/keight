@@ -1395,8 +1395,23 @@ module K8
       @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
       @variable_endpoints = []  # urlpath patterns which have any ulrpath param
       @all_endpoints      = []  # all urlpath patterns (fixed + variable)
-      rexp_str = _compile_array(urlpath_mapping, '', '')
-      @urlpath_rexp       = Regexp.compile("\\A#{rexp_str}\\z")
+      rexp_str = _traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
+        #; [!z2iax] classifies urlpath contains any parameter as variable one.
+        if has_urlpath_param?(full_urlpath)
+          pattern, pnames, procs = _compile_urlpath_pat(full_urlpath, true)
+          rexp = Regexp.compile("\\A#{pattern}\\z")
+          range = @enable_urlpath_param_range ? _range_of_urlpath_param(full_urlpath) : nil
+          tuple = [full_urlpath, action_class, action_methods, rexp, pnames, procs, range]
+          @variable_endpoints << tuple
+        #; [!rvdes] classifies urlpath contains no parameters as fixed one.
+        else
+          tuple = [full_urlpath, action_class, action_methods]
+          @fixed_endpoints[full_urlpath] = tuple
+        end
+        #
+        @all_endpoints << tuple
+      end
+      @urlpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
       return self
     end
 
@@ -1464,70 +1479,54 @@ module K8
 
     private
 
-    def _compile_array(mapping, base_urlpath_pat, urlpath_pat)
+    def _traverse(urlpath_mapping, base_urlpath="", &block)
       buf = []
-      curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
-      mapping.each do |child_urlpath_pat, target|
-        child = child_urlpath_pat
+      urlpath_mapping.each do |urlpath, target|
+        curr_urlpath = "#{base_urlpath}#{urlpath}"
+        rexp_str = nil
         #; [!w45ad] can compile nested array.
         if target.is_a?(Array)
-          buf << _compile_array(target, curr_urlpath_pat, child)
+          rexp_str = _traverse(target, curr_urlpath, &block)
         #; [!wd2eb] accepts subclass of Action class.
-        elsif target.is_a?(Class) && target < Action
-          buf << _compile_class(target, curr_urlpath_pat, child)
-        #; [!l2kz5] requires library when filepath and classname specified.
-        elsif target.is_a?(String)
-          klass = _require_action_class(target)
-          buf << _compile_class(klass,  curr_urlpath_pat, child)
-        #; [!irt5g] raises TypeError when unknown object specified.
         else
-          raise TypeError.new("Action class or nested array expected, but got #{target.inspect}")
+          #; [!l2kz5] requires library when filepath and classname specified.
+          klass = target.is_a?(String) ? _require_action_class(target) : target
+          #; [!irt5g] raises TypeError when unknown object specified.
+          klass.is_a?(Class) && klass < BaseAction  or
+            raise TypeError.new("Action class or nested array expected, but got #{klass.inspect}")
+          action_class = klass
+          #
+          buf2 = []
+          action_class._mappings.each do |upath, action_methods|
+            #; [!ue766] raises error when action method is not defined in action class.
+            _validate_action_method_existence(action_class, action_methods)
+            #
+            full_urlpath = "#{curr_urlpath}#{upath}"
+            if has_urlpath_param?(full_urlpath)
+              buf2 << "#{_compile_urlpath_pat(upath)[0]}(\\z)"  # ex: /{id} -> /\d+(\z)
+            end
+            yield full_urlpath, action_class, action_methods
+          end
+          rexp_str = _build_rexp_str(buf2)
+          #; [!6xwhq] builds action infos for each action methods.
+          action_class._build_action_info(curr_urlpath) if action_class
         end
+        #; [!bcgc9] skips classes which have only fixed urlpaths.
+        buf << "#{_compile_urlpath_pat(urlpath)[0]}#{rexp_str}" if rexp_str
       end
-      #; [!bcgc9] skips classes which have only fixed urlpaths.
-      buf.compact!
-      rexp_str = _build_rexp_str(urlpath_pat, buf)
-      return rexp_str   # ex: '/api(?:/books/\d+(\z)|/authors/\d+(\z))'
+      #
+      return _build_rexp_str(buf)
     end
 
-    def _compile_class(action_class, base_urlpath_pat, urlpath_pat)
-      buf = []
-      curr_urlpath_pat = "#{base_urlpath_pat}#{urlpath_pat}"
-      action_class._mappings.each do |child_urlpath_pat, methods|
-        #; [!ue766] raises error when action method is not defined in action class.
-        _validate_action_method_existence(action_class, methods)
-        #; ex: '/api/books/{id}' -> '\A/api/books/(\d+)\z', ['id'], [proc{|x| x.to_i}]
-        fullpath_pat = "#{curr_urlpath_pat}#{child_urlpath_pat}"
-        rexp_str, pnames, procs = _compile_urlpath_pat(fullpath_pat, true)
-        #; [!z2iax] classifies urlpath contains any parameter as variable one.
-        if pnames
-          fullpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
-          range = @enable_urlpath_param_range ? _range_of_urlpath_param(fullpath_pat) : nil
-          tuple = [fullpath_pat, action_class, methods, fullpath_rexp, pnames.freeze, procs, range]
-          @variable_endpoints << tuple
-          buf << (_compile_urlpath_pat(child_urlpath_pat).first << '(\z)')
-        #; [!rvdes] classifies urlpath contains no parameters as fixed one.
-        else
-          tuple = [fullpath_pat, action_class, methods]
-          @fixed_endpoints[fullpath_pat] = tuple
-        end
-        #
-        @all_endpoints << tuple
-      end
-      #; [!6xwhq] builds action infos for each action methods.
-      action_class._build_action_info(curr_urlpath_pat) if action_class
-      #
-      rexp_str = _build_rexp_str(urlpath_pat, buf)
-      return rexp_str    # ex: '/books(?:/\d+(\z)|/\d+/edit(\z))'
+    def has_urlpath_param?(urlpath)
+      return urlpath.include?('{')
     end
 
     ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
-    def _build_rexp_str(urlpath_pat, buf)
-      return nil if buf.empty?
-      prefix = _compile_urlpath_pat(urlpath_pat).first
+    def _build_rexp_str(buf)
       #; [!169ad] removes unnecessary grouping.
-      return "#{prefix}#{buf.first}" if buf.length == 1
-      return "#{prefix}(?:#{buf.join('|')})"
+      n = buf.length
+      return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"
     ensure
       buf.clear()   # for GC
     end
@@ -1536,11 +1535,6 @@ module K8
     #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?))?\}/
     #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
     URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
-    URLPATH_PARAM_REXP_NOGROUP = /\{(?:\w*)(?::(?:[^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
-    proc {|rx1, rx2|
-      rx1.source.gsub(/\(([^?])/, '(?:\1') == rx2.source  or
-        raise "*** assertion failed: #{rx1.source.inspect} != #{rx2.source.inspect}"
-    }.call(URLPATH_PARAM_REXP, URLPATH_PARAM_REXP_NOGROUP)
 
     ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
     def _compile_urlpath_pat(urlpath_pat, enable_capture=false)
@@ -1580,14 +1574,18 @@ module K8
     ## range object to retrieve urlpath parameter value faster than Regexp matching
     ## ex:
     ##   urlpath_pat == '/books/{id}/edit'
-    ##   arr = urlpath_pat.split(/\{.*?\}/, -1)           #=> ['/books/', '/edit']
-    ##   range = (arr[0].length .. - (arr[01].length+1))  #=> 7..-6 (Range object)
-    ##   p "/books/123/edit"[range]                       #=> '123'
-    def _range_of_urlpath_param(urlpath_pattern)
-      rexp = URLPATH_PARAM_REXP_NOGROUP
-      arr = urlpath_pattern.split(rexp, -1)            # ex: ['/books/', '/edit']
-      return nil unless arr.length == 2
-      return (arr[0].length .. - (arr[1].length+1))    # ex: 7..-6  (Range object)
+    ##   range = _range_of_urlpath_param(urlpath_pat)
+    ##   p range                       #=> 7..-6 (Range object)
+    ##   p "/books/123/edit"[range]    #=> '123'
+    def _range_of_urlpath_param(urlpath)
+      i = 0
+      m = nil
+      urlpath.scan(URLPATH_PARAM_REXP) do
+        i += 1
+        m = Regexp.last_match
+      end
+      return nil unless i == 1
+      return m.begin(0) .. (m.end(0) - urlpath.length - 1)  # ex: 7..-6 (Range object)
     end
 
     ## ex: './api/admin/books:Admin::BookAPI'  ->  Admin::BookAPI

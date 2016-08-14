@@ -950,14 +950,14 @@ module K8
 
     attr_reader :req, :resp, :sess
 
-    def handle_action(action_method, urlpath_params)
+    def handle_action(action_method, urlpath_args)
       @current_action = action_method
       ex = nil
       begin
         #; [!5jnx6] calls '#before_action()' before handling request.
         before_action()
         #; [!ddgx3] invokes action method with urlpath params.
-        content = invoke_action(action_method, urlpath_params)
+        content = invoke_action(action_method, urlpath_args)
         #; [!aqa4e] returns content.
         return handle_content(content)
       rescue Exception => ex
@@ -977,8 +977,8 @@ module K8
     def after_action(ex)
     end
 
-    def invoke_action(action_method, urlpath_params)
-      return self.__send__(action_method, *urlpath_params)
+    def invoke_action(action_method, urlpath_args)
+      return self.__send__(action_method, *urlpath_args)
     end
 
     def handle_content(content)
@@ -1047,7 +1047,7 @@ module K8
       end
     end
 
-    def invoke_action(action_method, urlpath_params)
+    def invoke_action(action_method, urlpath_args)
       begin
         return super
       #; [!d5v0l] handles exception when handler method defined.

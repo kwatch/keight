@@ -1381,48 +1381,6 @@ module K8
   }.call()
 
 
-  class ActionMethodMapping
-
-    def initialize
-      @mappings = []
-    end
-
-    ##
-    ## ex:
-    ##   map '/',         :GET=>:do_index, :POST=>:do_create
-    ##   map '/{id:\d+}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
-    ##
-    def map(urlpath_pattern, action_methods={})
-      action_methods = _normalize(action_methods)
-      #; [!s7cs9] maps urlpath and methods.
-      #; [!o6cxr] returns self.
-      @mappings << [urlpath_pattern, action_methods]
-      return self
-    end
-
-    def _normalize(action_methods)
-      d = {}
-      action_methods.each do |req_meth, action_method|
-        k = HTTP_REQUEST_METHODS[req_meth.to_s]  or
-          raise ArgumentError.new("#{req_meth.inspect}: unknown request method.")
-        v = action_method
-        d[k] = v.is_a?(Symbol) ? v : v.to_s.intern
-      end
-      return d   # ex: {:GET=>:do_index, :POST=>:do_create}
-    end
-    private :_normalize
-
-    def each
-      #; [!62y5q] yields each urlpath pattern and action methods.
-      @mappings.each do |urlpath_pattern, action_methods|
-        yield urlpath_pattern, action_methods
-      end
-      self
-    end
-
-  end
-
-
   class ActionMapping
 
     def initialize(urlpath_mapping, default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0,

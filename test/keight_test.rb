@@ -1912,63 +1912,6 @@ Oktest.scope do
   end
 
 
-  topic K8::ActionMethodMapping do
-
-    fixture :mapping do
-      mapping = K8::ActionMethodMapping.new
-      mapping.map '/',         :GET=>:do_index, :POST=>:do_create
-      mapping.map '/{id:\d+}', :GET=>:do_show, :PUT=>:do_update
-      mapping
-    end
-
-    fixture :methods1 do
-      {:GET=>:do_index, :POST=>:do_create}
-    end
-
-    fixture :methods2 do
-      {:GET=>:do_show, :PUT=>:do_update}
-    end
-
-
-    topic '#map()' do
-
-      spec "[!s7cs9] maps urlpath and methods." do
-        |mapping|
-        arr = mapping.instance_variable_get('@mappings')
-        ok {arr}.is_a?(Array)
-        ok {arr.length} == 2
-        ok {arr[0]} == ['/',         {:GET=>:do_index, :POST=>:do_create}]
-        ok {arr[1]} == ['/{id:\d+}', {:GET=>:do_show, :PUT=>:do_update}]
-      end
-
-      spec "[!o6cxr] returns self." do
-        |mapping|
-        ok {mapping.map '/new', :GET=>:do_new}.same?(mapping)
-      end
-
-    end
-
-
-    topic '#each()' do
-
-      spec "[!62y5q] yields each urlpath pattern and action methods." do
-        |mapping, methods1, methods2|
-        arr = []
-        mapping.each do |urlpath_pat, action_methods|
-          arr << [urlpath_pat, action_methods]
-        end
-        ok {arr} == [
-          ['/',         methods1],
-          ['/{id:\d+}', methods2],
-        ]
-      end
-
-    end
-
-
-  end
-
-
   topic K8::ActionMapping do
 
 

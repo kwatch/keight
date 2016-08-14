@@ -90,3 +90,29 @@ def require_release_number
     raise StandardError
   end
 end
+
+
+task :http_status_codes do
+  require 'open-uri'
+  url = "https://en.wikipedia.org/wiki/List_of_HTTP_status_codes"
+  content = open(url) {|f| f.read }
+  #File.open("/tmp/http_status_code", 'w') {|f| f.write(content) }
+  #content = File.open("/tmp/http_status_code", 'rb') {|f| f.read }
+  lines = []
+  content.scan(/>(\d\d\d)\s+(.*?)<\/dt>/) do |code, text|
+    desc = nil
+    if text =~ /(.*?)\s+\((.*?)\)/
+      text = $1
+      desc = $2
+      desc = desc.gsub(/<a .*?>(.*?)<\/a>/, '\1')
+    end
+    text = text.sub(/<\/a>/, '')
+    line = "    #{code} => \"#{text}\","
+    if desc
+      line = "%-50s # %s" % [line, desc]
+    end
+    lines << line
+  end
+  lines.sort!
+  puts lines
+end

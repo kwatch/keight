@@ -1007,14 +1007,14 @@ module K8
     def self._build_action_info(full_urlpath_pattern)   # :nodoc:
       #; [!ordhc] build ActionInfo objects for each action methods.
       parent = full_urlpath_pattern
-      @action_infos = {}
-      self._mappings.each do |urlpath_pat, methods|
-        methods.each do |req_meth, action_method_name|
+      d = {}
+      self._mappings.each do |urlpath_pat, action_methods|
+        action_methods.each do |req_meth, action_name|
           info = ActionInfo.create(req_meth, "#{parent}#{urlpath_pat}")
-          @action_infos[action_method_name] = info
+          d[action_name] = info
         end
       end
-      @action_infos
+      @action_infos = d
     end
 
     def self.[](action_method_name)

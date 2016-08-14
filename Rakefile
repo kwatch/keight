@@ -27,7 +27,7 @@ end
 desc "run test scripts"
 task :test do
   #sh "ruby -r minitest/autorun test/*_test.rb"
-  sh "ruby test/#{PROJECT}_test.rb"
+  sh "ruby test/#{PROJECT}_test.rb -ss"
 end
 
 

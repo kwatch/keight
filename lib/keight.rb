@@ -1387,21 +1387,23 @@ module K8
       @urlpath_cache_size = urlpath_cache_size
       @urlpath_lru_cache  = urlpath_cache_size > 0 ? {} : nil
       #; [!wsz8g] compiles urlpath mapping passed.
-      compile(urlpath_mapping)
-    end
-
-    def compile(urlpath_mapping)
-      #; [!6f3vl] compiles urlpath mapping.
       @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
       @variable_endpoints = []  # urlpath patterns which have any ulrpath param
       @all_endpoints      = []  # all urlpath patterns (fixed + variable)
+      @urlpath_rexp       = build(urlpath_mapping)
+    end
+
+    private
+
+    def build(urlpath_mapping)
+      #; [!6f3vl] compiles urlpath mapping.
       empty_pargs = [].freeze
-      rexp_str = _traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
+      rexp_str = traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
         #; [!z2iax] classifies urlpath contains any parameter as variable one.
         if has_urlpath_param?(full_urlpath)
-          pattern, pnames, procs = _compile_urlpath_pat(full_urlpath, true)
-          rexp = Regexp.compile("\\A#{pattern}\\z")
-          range = @enable_urlpath_param_range ? _range_of_urlpath_param(full_urlpath) : nil
+          pattern, pnames, procs = compile_urlpath(full_urlpath, true)
+          rexp  = Regexp.compile("\\A#{pattern}\\z")
+          range = @enable_urlpath_param_range ? range_of_urlpath_param(full_urlpath) : nil
           tuple = [full_urlpath, action_class, action_methods, rexp, pnames, procs, range]
           @variable_endpoints << tuple
         #; [!rvdes] classifies urlpath contains no parameters as fixed one.
@@ -1412,9 +1414,148 @@ module K8
         #
         @all_endpoints << tuple
       end
-      @urlpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
-      return self
+      return Regexp.compile("\\A#{rexp_str}\\z")
     end
+
+    def traverse(urlpath_mapping, base_urlpath="", &block)
+      buf = []
+      urlpath_mapping.each do |urlpath, target|
+        curr_urlpath = "#{base_urlpath}#{urlpath}"
+        rexp_str = nil
+        #; [!w45ad] can compile nested array.
+        if target.is_a?(Array)
+          rexp_str = traverse(target, curr_urlpath, &block)
+        #; [!wd2eb] accepts subclass of Action class.
+        else
+          #; [!l2kz5] requires library when filepath and classname specified.
+          klass = target.is_a?(String) ? require_action_class(target) : target
+          #; [!irt5g] raises TypeError when unknown object specified.
+          klass.is_a?(Class) && klass < BaseAction  or
+            raise TypeError.new("Action class or nested array expected, but got #{klass.inspect}")
+          #; [!6xwhq] builds action infos for each action methods.
+          action_class = klass
+          action_class._build_action_info(curr_urlpath)
+          #
+          buf2 = []
+          action_class._mappings.each do |upath, action_methods|
+            validate(action_class, action_methods)
+            full_urlpath = "#{curr_urlpath}#{upath}"
+            if has_urlpath_param?(full_urlpath)
+              buf2 << "#{compile_urlpath(upath)[0]}(\\z)"  # ex: /{id} -> /\d+(\z)
+            end
+            yield full_urlpath, action_class, action_methods
+          end
+          rexp_str = build_rexp_str(buf2)
+        end
+        #; [!bcgc9] skips classes which have only fixed urlpaths.
+        buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str
+      end
+      #
+      return build_rexp_str(buf)
+    end
+
+    ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
+    def build_rexp_str(buf)
+      #; [!169ad] removes unnecessary grouping.
+      n = buf.length
+      return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"
+    ensure
+      buf.clear()   # for GC
+    end
+
+    #; [!92jcn] '{' and '}' are available in urlpath param pattern.
+    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?))?\}/
+    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
+    URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+
+    ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
+    def compile_urlpath(urlpath_pat, enable_capture=false)
+      #; [!iln54] param names and conveter procs are nil when no urlpath params.
+      pnames = nil   # urlpath parameter names  (ex: ['id'])
+      procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])
+      #
+      rexp_str = urlpath_pat.gsub(URLPATH_PARAM_REXP) {
+        pname, s, proc_ = $1, $2, nil
+        s, proc_ = @default_patterns.lookup(pname) if s.nil?
+        #; [!lhtiz] skips empty param name.
+        #; [!66zas] skips param name starting with '_'.
+        skip = pname.empty? || pname.start_with?('_')
+        pnames ||= []; pnames << pname unless skip
+        procs  ||= []; procs  << proc_ unless skip
+        #; [!bi7gr] captures urlpath params when 2nd argument is truthy.
+        #; [!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'
+        if enable_capture && ! skip
+          s = "(#{s})"
+        elsif s =~ /\|/
+          s = "(?:#{s})"
+        end
+        s
+      }
+      #; [!awfgs] returns regexp string, param names, and converter procs.
+      return rexp_str, pnames, procs   # ex: '/books/(\d+)', ['id'], [proc{|x| x.to_i}]}]
+    end
+
+    def has_urlpath_param?(urlpath)
+      return urlpath.include?('{')
+    end
+
+    ## range object to retrieve urlpath parameter value faster than Regexp matching
+    ## ex:
+    ##   urlpath_pat == '/books/{id}/edit'
+    ##   range = _range_of_urlpath_param(urlpath_pat)
+    ##   p range                       #=> 7..-6 (Range object)
+    ##   p "/books/123/edit"[range]    #=> '123'
+    def range_of_urlpath_param(urlpath)
+      i = 0
+      m = nil
+      urlpath.scan(URLPATH_PARAM_REXP) do
+        i += 1
+        m = Regexp.last_match
+      end
+      return nil unless i == 1
+      return m.begin(0) .. (m.end(0) - urlpath.length - 1)  # ex: 7..-6 (Range object)
+    end
+
+    ## ex: './api/admin/books:Admin::BookAPI'  ->  Admin::BookAPI
+    def require_action_class(filepath_and_classname)
+      #; [!px9jy] requires file and finds class object.
+      str = filepath_and_classname   # ex: './admin/api/book:Admin::BookAPI'
+      filepath, classname = filepath_and_classname.split(':', 2)
+      begin
+        require filepath
+      rescue LoadError => ex
+        #; [!dlcks] don't rescue LoadError when it is not related to argument.
+        raise unless ex.path == filepath
+        #; [!mngjz] raises error when failed to load file.
+        raise LoadError.new("'#{str}': cannot load '#{filepath}'.")
+      end
+      #; [!8n6pf] class name may have module prefix name.
+      #; [!6lv7l] raises error when action class not found.
+      begin
+        klass = classname.split('::').inject(Object) {|cls, x| cls.const_get(x) }
+      rescue NameError
+        raise NameError.new("'#{str}': class not found (#{classname}).")
+      end
+      #; [!thf7t] raises TypeError when not a class.
+      klass.is_a?(Class)  or
+        raise TypeError.new("'#{str}': class name expected but got #{klass.inspect}.")
+      #; [!yqcgx] raises TypeError when not a subclass of K8::Action.
+      klass < Action  or
+        raise TypeError.new("'#{str}': expected subclass of K8::Action but not.")
+      #
+      return klass
+    end
+
+    ## raises error when action method is not defined in action class
+    def validate(action_class, action_methods)
+      #; [!ue766] raises error when action method is not defined in action class.
+      action_methods.each do |req_meth, action_name|
+        action_class.method_defined?(action_name)  or
+          raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_name.inspect}: unknown action method in #{action_class}.")
+      end
+    end
+
+    public
 
     def lookup(req_urlpath)
       #; [!j34yh] finds from fixed urlpaths at first.
@@ -1471,147 +1612,6 @@ module K8
         yield urlpath_pat, action_class, action_methods
       end
       self
-    end
-
-    private
-
-    def _traverse(urlpath_mapping, base_urlpath="", &block)
-      buf = []
-      urlpath_mapping.each do |urlpath, target|
-        curr_urlpath = "#{base_urlpath}#{urlpath}"
-        rexp_str = nil
-        #; [!w45ad] can compile nested array.
-        if target.is_a?(Array)
-          rexp_str = _traverse(target, curr_urlpath, &block)
-        #; [!wd2eb] accepts subclass of Action class.
-        else
-          #; [!l2kz5] requires library when filepath and classname specified.
-          klass = target.is_a?(String) ? _require_action_class(target) : target
-          #; [!irt5g] raises TypeError when unknown object specified.
-          klass.is_a?(Class) && klass < BaseAction  or
-            raise TypeError.new("Action class or nested array expected, but got #{klass.inspect}")
-          action_class = klass
-          #
-          buf2 = []
-          action_class._mappings.each do |upath, action_methods|
-            #; [!ue766] raises error when action method is not defined in action class.
-            _validate_action_method_existence(action_class, action_methods)
-            #
-            full_urlpath = "#{curr_urlpath}#{upath}"
-            if has_urlpath_param?(full_urlpath)
-              buf2 << "#{_compile_urlpath_pat(upath)[0]}(\\z)"  # ex: /{id} -> /\d+(\z)
-            end
-            yield full_urlpath, action_class, action_methods
-          end
-          rexp_str = _build_rexp_str(buf2)
-          #; [!6xwhq] builds action infos for each action methods.
-          action_class._build_action_info(curr_urlpath) if action_class
-        end
-        #; [!bcgc9] skips classes which have only fixed urlpaths.
-        buf << "#{_compile_urlpath_pat(urlpath)[0]}#{rexp_str}" if rexp_str
-      end
-      #
-      return _build_rexp_str(buf)
-    end
-
-    def has_urlpath_param?(urlpath)
-      return urlpath.include?('{')
-    end
-
-    ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
-    def _build_rexp_str(buf)
-      #; [!169ad] removes unnecessary grouping.
-      n = buf.length
-      return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"
-    ensure
-      buf.clear()   # for GC
-    end
-
-    #; [!92jcn] '{' and '}' are available in urlpath param pattern.
-    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?))?\}/
-    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
-    URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
-
-    ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
-    def _compile_urlpath_pat(urlpath_pat, enable_capture=false)
-      #; [!iln54] param names and conveter procs are nil when no urlpath params.
-      pnames = nil   # urlpath parameter names  (ex: ['id'])
-      procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])
-      #
-      rexp_str = urlpath_pat.gsub(URLPATH_PARAM_REXP) {
-        pname, s, proc_ = $1, $2, nil
-        s, proc_ = @default_patterns.lookup(pname) if s.nil?
-        #; [!lhtiz] skips empty param name.
-        #; [!66zas] skips param name starting with '_'.
-        skip = pname.empty? || pname.start_with?('_')
-        pnames ||= []; pnames << pname unless skip
-        procs  ||= []; procs  << proc_ unless skip
-        #; [!bi7gr] captures urlpath params when 2nd argument is truthy.
-        #; [!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'
-        if enable_capture && ! skip
-          s = "(#{s})"
-        elsif s =~ /\|/
-          s = "(?:#{s})"
-        end
-        s
-      }
-      #; [!awfgs] returns regexp string, param names, and converter procs.
-      return rexp_str, pnames, procs   # ex: '/books/(\d+)', ['id'], [proc{|x| x.to_i}]}]
-    end
-
-    ## raises error when action method is not defined in action class
-    def _validate_action_method_existence(action_class, action_methods)
-      action_methods.each do |req_meth, action_method_name|
-        action_class.method_defined?(action_method_name)  or
-          raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_method_name.inspect}: unknown action method in #{action_class}.")
-      end
-    end
-
-    ## range object to retrieve urlpath parameter value faster than Regexp matching
-    ## ex:
-    ##   urlpath_pat == '/books/{id}/edit'
-    ##   range = _range_of_urlpath_param(urlpath_pat)
-    ##   p range                       #=> 7..-6 (Range object)
-    ##   p "/books/123/edit"[range]    #=> '123'
-    def _range_of_urlpath_param(urlpath)
-      i = 0
-      m = nil
-      urlpath.scan(URLPATH_PARAM_REXP) do
-        i += 1
-        m = Regexp.last_match
-      end
-      return nil unless i == 1
-      return m.begin(0) .. (m.end(0) - urlpath.length - 1)  # ex: 7..-6 (Range object)
-    end
-
-    ## ex: './api/admin/books:Admin::BookAPI'  ->  Admin::BookAPI
-    def _require_action_class(filepath_and_classname)
-      #; [!px9jy] requires file and finds class object.
-      str = filepath_and_classname   # ex: './admin/api/book:Admin::BookAPI'
-      filepath, classname = filepath_and_classname.split(':', 2)
-      begin
-        require filepath
-      rescue LoadError => ex
-        #; [!dlcks] don't rescue LoadError when it is not related to argument.
-        raise unless ex.path == filepath
-        #; [!mngjz] raises error when failed to load file.
-        raise LoadError.new("'#{str}': cannot load '#{filepath}'.")
-      end
-      #; [!8n6pf] class name may have module prefix name.
-      #; [!6lv7l] raises error when action class not found.
-      begin
-        klass = classname.split('::').inject(Object) {|cls, x| cls.const_get(x) }
-      rescue NameError
-        raise NameError.new("'#{str}': class not found (#{classname}).")
-      end
-      #; [!thf7t] raises TypeError when not a class.
-      klass.is_a?(Class)  or
-        raise TypeError.new("'#{str}': class name expected but got #{klass.inspect}.")
-      #; [!yqcgx] raises TypeError when not a subclass of K8::Action.
-      klass < Action  or
-        raise TypeError.new("'#{str}': expected subclass of K8::Action but not.")
-      #
-      return klass
     end
 
   end

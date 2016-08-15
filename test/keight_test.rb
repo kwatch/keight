@@ -1961,7 +1961,7 @@ Oktest.scope do
     end
 
 
-    topic '#compile()' do
+    topic '#build()' do
 
       fixture :proc1 do
         proc {|x| x.to_i }
@@ -2378,7 +2378,7 @@ Oktest.scope do
     end
 
 
-    topic '#_compile_urlpath_pat()' do
+    topic '#compile_urlpath()' do
 
       fixture :proc1 do
         proc {|x| x.to_i }
@@ -2397,13 +2397,13 @@ Oktest.scope do
         mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
         mapping.instance_exec(self) do |_|
           #
-          actual = _compile_urlpath_pat('/books/{id}')
+          actual = compile_urlpath('/books/{id}')
           _.ok {actual} == ['/books/\d+', ['id'], [proc1]]
           #
-          actual = _compile_urlpath_pat('/books/{book_id}/comments/{comment_id}')
+          actual = compile_urlpath('/books/{book_id}/comments/{comment_id}')
           _.ok {actual} == ['/books/\d+/comments/\d+', ['book_id', 'comment_id'], [proc1, proc1]]
           #
-          actual = _compile_urlpath_pat('/books/{id:[0-9]+}')
+          actual = compile_urlpath('/books/{id:[0-9]+}')
           _.ok {actual} == ['/books/[0-9]+', ['id'], [nil]]
         end
       end
@@ -2412,13 +2412,13 @@ Oktest.scope do
         |default_patterns, proc1|
         mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
         mapping.instance_exec(self) do |_|
-          actual = _compile_urlpath_pat('/books/{id}', true)
+          actual = compile_urlpath('/books/{id}', true)
           _.ok {actual} == ['/books/(\d+)', ['id'], [proc1]]
           #
-          actual = _compile_urlpath_pat('/books/{book_id}/comments/{comment_id}', true)
+          actual = compile_urlpath('/books/{book_id}/comments/{comment_id}', true)
           _.ok {actual} == ['/books/(\d+)/comments/(\d+)', ['book_id', 'comment_id'], [proc1, proc1]]
           #
-          actual = _compile_urlpath_pat('/books/{id:[0-9]+}', true)
+          actual = compile_urlpath('/books/{id:[0-9]+}', true)
           _.ok {actual} == ['/books/([0-9]+)', ['id'], [nil]]
         end
       end
@@ -2427,10 +2427,10 @@ Oktest.scope do
         |default_patterns|
         mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
         mapping.instance_exec(self) do |_|
-          _.ok {_compile_urlpath_pat('/item/{key:x|y}', true)}  == ['/item/(x|y)', ['key'], [nil]]
-          _.ok {_compile_urlpath_pat('/item/{key:x|y}', false)} == ['/item/(?:x|y)', ['key'], [nil]]
-          _.ok {_compile_urlpath_pat('/item/{:x|y}',    true)}  == ['/item/(?:x|y)', [], []]
-          _.ok {_compile_urlpath_pat('/item/{:x|y}',    false)} == ['/item/(?:x|y)', [], []]
+          _.ok {compile_urlpath('/item/{key:x|y}', true)}  == ['/item/(x|y)', ['key'], [nil]]
+          _.ok {compile_urlpath('/item/{key:x|y}', false)} == ['/item/(?:x|y)', ['key'], [nil]]
+          _.ok {compile_urlpath('/item/{:x|y}',    true)}  == ['/item/(?:x|y)', [], []]
+          _.ok {compile_urlpath('/item/{:x|y}',    false)} == ['/item/(?:x|y)', [], []]
         end
       end
 
@@ -2438,7 +2438,7 @@ Oktest.scope do
         |default_patterns|
         mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
         mapping.instance_exec(self) do |_|
-          actual = _compile_urlpath_pat('/books/new')
+          actual = compile_urlpath('/books/new')
           _.ok {actual} == ['/books/new', nil, nil]
         end
       end
@@ -2446,9 +2446,9 @@ Oktest.scope do
       spec "[!lhtiz] skips empty param name." do
         |default_patterns, proc1|
         K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
-          actual = _compile_urlpath_pat('/api/{:\d+}/books')
+          actual = compile_urlpath('/api/{:\d+}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
-          actual = _compile_urlpath_pat('/api/{:\d+}/books/{id}')
+          actual = compile_urlpath('/api/{:\d+}/books/{id}')
           _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc1]]
         end
       end
@@ -2456,9 +2456,9 @@ Oktest.scope do
       spec "[!66zas] skips param name starting with '_'." do
         |default_patterns, proc1|
         K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
-          actual = _compile_urlpath_pat('/api/{_ver:\d+}/books')
+          actual = compile_urlpath('/api/{_ver:\d+}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
-          actual = _compile_urlpath_pat('/api/{_ver:\d+}/books/{id}')
+          actual = compile_urlpath('/api/{_ver:\d+}/books/{id}')
           _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc1]]
         end
       end
@@ -2466,7 +2466,7 @@ Oktest.scope do
       spec "[!92jcn] '{' and '}' are available in urlpath param pattern." do
         |default_patterns, proc1|
         K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
-          actual = _compile_urlpath_pat('/blog/{date:\d{4}-\d{2}-\d{2}}')
+          actual = compile_urlpath('/blog/{date:\d{4}-\d{2}-\d{2}}')
           _.ok {actual} == ['/blog/\d{4}-\d{2}-\d{2}', ['date'], [nil]]
         end
       end
@@ -2474,7 +2474,7 @@ Oktest.scope do
     end
 
 
-    topic '#_require_action_class()' do
+    topic '#require_action_class()' do
 
       spec "[!px9jy] requires file and finds class object." do
         filename = 'test_px9jy.rb'
@@ -2482,7 +2482,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          _.ok { _require_action_class './test_px9jy:Ex_px9jy' } == Ex_px9jy
+          _.ok { require_action_class './test_px9jy:Ex_px9jy' } == Ex_px9jy
         end
       end
 
@@ -2492,7 +2492,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_dlcks:Ex_dlcks' }
+          pr = proc { require_action_class './test_dlcks:Ex_dlcks' }
           _.ok {pr}.raise?(LoadError, "cannot load such file -- homhomhom")
           _.ok {pr.exception.path} == "homhomhom"
         end
@@ -2501,7 +2501,7 @@ Oktest.scope do
       spec "[!mngjz] raises error when failed to load file." do
         filename = 'test_mngjz.rb'
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_mngjz:Ex_mngjz' }
+          pr = proc { require_action_class './test_mngjz:Ex_mngjz' }
           _.ok {pr}.raise?(LoadError, "'./test_mngjz:Ex_mngjz': cannot load './test_mngjz'.")
         end
       end
@@ -2512,7 +2512,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          _.ok { _require_action_class './test_8n6pf:Ex_8n6pf::Sample' } == Ex_8n6pf::Sample
+          _.ok { require_action_class './test_8n6pf:Ex_8n6pf::Sample' } == Ex_8n6pf::Sample
         end
       end
 
@@ -2522,7 +2522,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_6lv7l:Ex_6lv7l::Sample' }
+          pr = proc { require_action_class './test_6lv7l:Ex_6lv7l::Sample' }
           _.ok {pr}.raise?(NameError, "'./test_6lv7l:Ex_6lv7l::Sample': class not found (Ex_6lv7l::Sample).")
         end
       end
@@ -2533,7 +2533,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_thf7t:Ex_thf7t' }
+          pr = proc { require_action_class './test_thf7t:Ex_thf7t' }
           _.ok {pr}.raise?(TypeError, "'./test_thf7t:Ex_thf7t': class name expected but got \"XXX\".")
         end
       end
@@ -2544,7 +2544,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_yqcgx:Ex_yqcgx' }
+          pr = proc { require_action_class './test_yqcgx:Ex_yqcgx' }
           _.ok {pr}.raise?(TypeError, "'./test_yqcgx:Ex_yqcgx': expected subclass of K8::Action but not.")
         end
       end

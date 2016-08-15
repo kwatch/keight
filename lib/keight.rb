@@ -1503,7 +1503,7 @@ module K8
             end
             yield full_urlpath, action_class, action_methods
           end
-          rexp_str = _build_rexp_str(buf2)
+          rexp_str = build_rexp_str(buf2)
           #; [!6xwhq] builds action infos for each action methods.
           action_class._build_action_info(curr_urlpath) if action_class
         end
@@ -1511,7 +1511,7 @@ module K8
         buf << "#{_compile_urlpath_pat(urlpath)[0]}#{rexp_str}" if rexp_str
       end
       #
-      return _build_rexp_str(buf)
+      return build_rexp_str(buf)
     end
 
     def has_urlpath_param?(urlpath)
@@ -1519,7 +1519,7 @@ module K8
     end
 
     ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
-    def _build_rexp_str(buf)
+    def build_rexp_str(buf)
       #; [!169ad] removes unnecessary grouping.
       n = buf.length
       return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"

@@ -2658,6 +2658,75 @@ Oktest.scope do
     end
 
 
+    topic '#lookup()' do
+
+      spec "[!4vmd3] uses '_method' value of query string as request method when 'POST' method." do
+        |app|
+        tuple = app.lookup(:POST, "/api/books/123", "_method=DELETE")
+        ok {tuple} == [BooksAction, :do_delete, [123]]  # found :do_delete
+      end
+
+      spec "[!vz07j] redirects only when request method is GET or HEAD." do
+        |app|
+        ## not redirect on :POST
+        pr3 = proc { app.lookup(:POST, "/api/books", "") }
+        ok {pr3}.raise?(K8::HttpException)
+        ex3 = pr3.exception
+        ok {ex3.status_code} == 404
+      end
+
+      spec "[!eb2ms] raises 301 when urlpath not found but found with tailing '/'." do
+        |app|
+        pr = proc { app.lookup(:GET, "/api/books", "") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 301
+        ok {ex.response_headers} == {"Location"=>"/api/books/"}
+      end
+
+      spec "[!02dow] raises 301 when urlpath not found but found without tailing '/'." do
+        |app|
+        pr = proc { app.lookup(:GET, "/api/books/123/", "") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 301
+        ok {ex.response_headers} == {"Location"=>"/api/books/123"}
+      end
+
+      spec "[!2a9c9] adds query string to 'Location' header when redirecting." do
+        |app|
+        pr = proc { app.lookup(:GET, "/api/books", "x=1&y=2") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 301
+        ok {ex.response_headers} == {"Location"=>"/api/books/?x=1&y=2"}
+      end
+
+      spec "[!rz13i] raises HTTP 404 when urlpath not found." do
+        |app|
+        pr = proc { app.lookup(:GET, "/api/book/comments", "") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 404
+      end
+
+      spec "[!l6kmc] uses 'GET' method to find action when request method is 'HEAD'." do
+        |app|
+        tuple = app.lookup(:HEAD, "/api/books/123")
+        ok {tuple} == [BooksAction, :do_show, [123]]
+      end
+
+      spec "[!rv3cf] raises HTTP 405 when urlpath found but request method not allowed." do
+        |app|
+        pr = proc { app.lookup(:POST, "/api/books/123", "") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 405
+      end
+
+    end
+
+
     topic '#call()' do
 
       spec "[!uvmxe] takes env object." do

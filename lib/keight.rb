@@ -1445,7 +1445,7 @@ module K8
           end
           rexp_str = build_rexp_str(buf2)
           #; [!6xwhq] builds action infos for each action methods.
-          action_class._build_action_info(curr_urlpath) if action_class
+          action_class._build_action_info(curr_urlpath)
         end
         #; [!bcgc9] skips classes which have only fixed urlpaths.
         buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str

@@ -2266,7 +2266,7 @@ Oktest.scope do
     end
 
 
-    topic '#lookup()' do
+    topic '#find()' do
 
       fixture :proc1 do
         proc {|x| x.to_i }
@@ -2287,35 +2287,35 @@ Oktest.scope do
 
       spec "[!jyxlm] returns action class, action methods and urlpath param args." do
         |mapping|
-        tuple = mapping.lookup('/api/books/123')
+        tuple = mapping.find('/api/books/123')
         ok {tuple} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, [123]]
-        tuple = mapping.lookup('/api/books/123/comments/999')
+        tuple = mapping.find('/api/books/123/comments/999')
         ok {tuple} == [BookCommentsAction, {:GET=>:do_comment}, [123, 999]]
       end
 
       spec "[!j34yh] finds from fixed urlpaths at first." do
         |mapping|
         mapping.instance_exec(self) do |_|
-          _.ok {lookup('/books')} == nil
+          _.ok {find('/books')} == nil
           tuple = @fixed_endpoints['/api/books/']
           _.ok {tuple} != nil
           @fixed_endpoints['/books'] = tuple
           expected = [BooksAction, {:GET=>:do_index, :POST=>:do_create}, []]
-          _.ok {lookup('/books')} != nil
-          _.ok {lookup('/books')} == expected
-          _.ok {lookup('/api/books/')} == expected
+          _.ok {find('/books')} != nil
+          _.ok {find('/books')} == expected
+          _.ok {find('/api/books/')} == expected
         end
       end
 
       spec "[!95q61] finds from variable urlpath patterns when not found in fixed ones." do
         |mapping|
-        ok {mapping.lookup('/api/books/123')} == \
+        ok {mapping.find('/api/books/123')} == \
           [
             BooksAction,
             {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
             [123],
           ]
-        ok {mapping.lookup('/api/books/123/comments/999')} == \
+        ok {mapping.find('/api/books/123/comments/999')} == \
           [
             BookCommentsAction,
             {:GET=>:do_comment},
@@ -2325,20 +2325,20 @@ Oktest.scope do
 
       spec "[!sos5i] returns nil when request path not matched to urlpath patterns." do
         |mapping|
-        ok {mapping.lookup('/api/booking')} == nil
+        ok {mapping.find('/api/booking')} == nil
       end
 
       spec "[!1k1k5] converts urlpath param values by converter procs." do
         |mapping|
-        tuple = mapping.lookup('/api/books/123')
+        tuple = mapping.find('/api/books/123')
         ok {tuple[-1]} == [123]   # id
-        tuple = mapping.lookup('/api/books/123/comments/999')
+        tuple = mapping.find('/api/books/123/comments/999')
         ok {tuple[-1]} == [123, 999]  # book_id, comment_id
       end
 
       spec "[!uqwr7] stores result into cache if cache is enabled." do
         |mapping|
-        tuple = mapping.lookup('/api/books/111')
+        tuple = mapping.find('/api/books/111')
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_lru_cache} == {'/api/books/111' => tuple}
         end
@@ -2346,11 +2346,11 @@ Oktest.scope do
 
       spec "[!3ps5g] deletes item from cache when cache size over limit." do
         |mapping|
-        mapping.lookup('/api/books/1')
-        mapping.lookup('/api/books/2')
-        mapping.lookup('/api/books/3')
-        mapping.lookup('/api/books/4')
-        mapping.lookup('/api/books/5')
+        mapping.find('/api/books/1')
+        mapping.find('/api/books/2')
+        mapping.find('/api/books/3')
+        mapping.find('/api/books/4')
+        mapping.find('/api/books/5')
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_lru_cache.length} == 3
         end
@@ -2359,18 +2359,18 @@ Oktest.scope do
       spec "[!uqwr7] uses LRU as cache algorithm." do
         |mapping|
         mapping.instance_exec(self) do |_|
-          t1 = lookup('/api/books/1')
-          t2 = lookup('/api/books/2')
-          t3 = lookup('/api/books/3')
+          t1 = find('/api/books/1')
+          t2 = find('/api/books/2')
+          t3 = find('/api/books/3')
           _.ok {@urlpath_lru_cache.values} == [t1, t2, t3]
-          t4 = lookup('/api/books/4')
+          t4 = find('/api/books/4')
           _.ok {@urlpath_lru_cache.values} == [t2, t3, t4]
-          t5 = lookup('/api/books/5')
+          t5 = find('/api/books/5')
           _.ok {@urlpath_lru_cache.values} == [t3, t4, t5]
           #
-          lookup('/api/books/4')
+          find('/api/books/4')
           _.ok {@urlpath_lru_cache.values} == [t3, t5, t4]
-          lookup('/api/books/3')
+          find('/api/books/3')
           _.ok {@urlpath_lru_cache.values} == [t5, t4, t3]
         end
       end
@@ -2645,13 +2645,13 @@ Oktest.scope do
     end
 
 
-    topic '#lookup()' do
+    topic '#find()' do
 
       spec "[!o0rnr] returns action class, action methods, urlpath names and values." do
         |app|
-        ret = app.lookup('/api/books/')
+        ret = app.find('/api/books/')
         ok {ret} == [BooksAction, {:GET=>:do_index, :POST=>:do_create}, []]
-        ret = app.lookup('/api/books/123')
+        ret = app.find('/api/books/123')
         ok {ret} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, [123]]
       end
 

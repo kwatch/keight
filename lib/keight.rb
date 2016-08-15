@@ -1557,7 +1557,7 @@ module K8
 
     public
 
-    def lookup(req_urlpath)
+    def find(req_urlpath)
       #; [!j34yh] finds from fixed urlpaths at first.
       tuple = @fixed_endpoints[req_urlpath]
       return tuple[1..-1] if tuple     # ex: [BooksAction, {:GET=>:do_index}, []]
@@ -1628,9 +1628,9 @@ module K8
                                    enable_urlpath_param_range: enable_urlpath_param_range)
     end
 
-    def lookup(req_path)
+    def find(req_path)
       #; [!o0rnr] returns action class, action methods, urlpath names and values.
-      return @mapping.lookup(req_path)
+      return @mapping.find(req_path)
     end
 
     def call(env)
@@ -1653,7 +1653,7 @@ module K8
         req_meth_ = req_meth
       end
       begin
-        tuple = lookup(req.path)
+        tuple = find(req.path)
         #; [!vz07j] redirects only when request method is GET or HEAD.
         if tuple.nil? && req_meth_ == :GET
           #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
@@ -1730,7 +1730,7 @@ END
 
     def lookup_autoredirect_location(req)
       location = req.path.end_with?('/') ? req.path[0..-2] : "#{req.path}/"
-      return nil unless lookup(location)
+      return nil unless find(location)
       #; [!2a9c9] adds query string to 'Location' header.
       qs = req.env['QUERY_STRING']
       return qs && ! qs.empty? ? "#{location}?#{qs}" : location

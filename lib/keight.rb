@@ -1390,12 +1390,12 @@ module K8
       @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
       @variable_endpoints = []  # urlpath patterns which have any ulrpath param
       @all_endpoints      = []  # all urlpath patterns (fixed + variable)
-      @urlpath_rexp = compile(urlpath_mapping)
+      @urlpath_rexp = build(urlpath_mapping)
     end
 
     private
 
-    def compile(urlpath_mapping)
+    def build(urlpath_mapping)
       #; [!6f3vl] compiles urlpath mapping.
       empty_pargs = [].freeze
       rexp_str = traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|

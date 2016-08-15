@@ -1961,7 +1961,7 @@ Oktest.scope do
     end
 
 
-    topic '#compile()' do
+    topic '#build()' do
 
       fixture :proc1 do
         proc {|x| x.to_i }

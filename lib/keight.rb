@@ -1399,7 +1399,7 @@ module K8
       rexp_str = traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
         #; [!z2iax] classifies urlpath contains any parameter as variable one.
         if has_urlpath_param?(full_urlpath)
-          pattern, pnames, procs = _compile_urlpath_pat(full_urlpath, true)
+          pattern, pnames, procs = compile_urlpath(full_urlpath, true)
           rexp = Regexp.compile("\\A#{pattern}\\z")
           range = @enable_urlpath_param_range ? range_of_urlpath_param(full_urlpath) : nil
           tuple = [full_urlpath, action_class, action_methods, rexp, pnames, procs, range]
@@ -1499,7 +1499,7 @@ module K8
             #
             full_urlpath = "#{curr_urlpath}#{upath}"
             if has_urlpath_param?(full_urlpath)
-              buf2 << "#{_compile_urlpath_pat(upath)[0]}(\\z)"  # ex: /{id} -> /\d+(\z)
+              buf2 << "#{compile_urlpath(upath)[0]}(\\z)"  # ex: /{id} -> /\d+(\z)
             end
             yield full_urlpath, action_class, action_methods
           end
@@ -1508,7 +1508,7 @@ module K8
           action_class._build_action_info(curr_urlpath) if action_class
         end
         #; [!bcgc9] skips classes which have only fixed urlpaths.
-        buf << "#{_compile_urlpath_pat(urlpath)[0]}#{rexp_str}" if rexp_str
+        buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str
       end
       #
       return build_rexp_str(buf)
@@ -1533,7 +1533,7 @@ module K8
     URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
 
     ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
-    def _compile_urlpath_pat(urlpath_pat, enable_capture=false)
+    def compile_urlpath(urlpath_pat, enable_capture=false)
       #; [!iln54] param names and conveter procs are nil when no urlpath params.
       pnames = nil   # urlpath parameter names  (ex: ['id'])
       procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])

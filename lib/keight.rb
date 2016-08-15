@@ -1387,16 +1387,16 @@ module K8
       @urlpath_cache_size = urlpath_cache_size
       @urlpath_lru_cache  = urlpath_cache_size > 0 ? {} : nil
       #; [!wsz8g] compiles urlpath mapping passed.
-      compile(urlpath_mapping)
+      @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
+      @variable_endpoints = []  # urlpath patterns which have any ulrpath param
+      @all_endpoints      = []  # all urlpath patterns (fixed + variable)
+      @urlpath_rexp = compile(urlpath_mapping)
     end
 
     private
 
     def compile(urlpath_mapping)
       #; [!6f3vl] compiles urlpath mapping.
-      @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
-      @variable_endpoints = []  # urlpath patterns which have any ulrpath param
-      @all_endpoints      = []  # all urlpath patterns (fixed + variable)
       empty_pargs = [].freeze
       rexp_str = traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
         #; [!z2iax] classifies urlpath contains any parameter as variable one.
@@ -1414,8 +1414,7 @@ module K8
         #
         @all_endpoints << tuple
       end
-      @urlpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
-      return self
+      return Regexp.compile("\\A#{rexp_str}\\z")
     end
 
     def traverse(urlpath_mapping, base_urlpath="", &block)

@@ -1671,20 +1671,18 @@ module K8
     def call(env)
       #; [!uvmxe] takes env object.
       #; [!gpe4g] returns status, headers and content.
-      return handle_request(REQUEST_CLASS.new(env), RESPONSE_CLASS.new)
-    end
-
-    protected
-
-    def handle_request(req, resp)
-      req_meth = HTTP_REQUEST_METHODS[req.env['REQUEST_METHOD']] || req.env['REQUEST_METHOD']
+      #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
+      #; [!02dow] returns 301 when urlpath not found but found without tailing '/'.
+      #; [!2a9c9] adds query string to 'Location' header.
+      #; [!vz07j] redirects only when request method is GET or HEAD.
+      #; [!l6kmc] uses 'GET' method to find action when request method is 'HEAD'.
+      #; [!4vmd3] uses '_method' value of query string as request method when 'POST' method.
+      #; [!rz13i] returns HTTP 404 when urlpath not found.
+      #; [!rv3cf] returns HTTP 405 when urlpath found but request method not allowed.
+      req  = REQUEST_CLASS.new(env)
+      resp = RESPONSE_CLASS.new
       begin
-        #; [!0fgbd] finds action class and invokes action method with urlpath params.
-        tuple = lookup(req_meth, req.path, req.env['QUERY_STRING'])
-        action_class, action_name, pargs = tuple  # ex: [BooksAction, :do_show, [123]]
-        action_obj = action_class.new(req, resp)
-        content = action_obj.handle_action(action_name, pargs)
-        ret = [resp.status, resp.headers, content]
+        ret = handle_request(req, resp)
       rescue HttpException => ex
         ret = handle_http(ex, req, resp)
       rescue Exception => ex
@@ -1694,9 +1692,21 @@ module K8
         req.clear()  if req.respond_to?(:clear)
         resp.clear() if resp.respond_to?(:clear)
       end
-      #; [!9wp9z] returns empty body when request method is HEAD.
-      ret[2] = [""] if req_meth == :HEAD
       return ret
+    end
+
+    protected
+
+    def handle_request(req, resp)
+      #; [!0fgbd] finds action class and invokes action method with urlpath params.
+      req_meth = HTTP_REQUEST_METHODS[req.env['REQUEST_METHOD']] || req.env['REQUEST_METHOD']
+      tuple = lookup(req_meth, req.path, req.env['QUERY_STRING'])
+      action_class, action_name, pargs = tuple  # ex: [BooksAction, :do_show, [123]]
+      action_obj = action_class.new(req, resp)
+      content = action_obj.handle_action(action_name, pargs)
+      #; [!9wp9z] returns empty body when request method is HEAD.
+      content = [""] if req_meth == :HEAD
+      return [resp.status, resp.headers, content]
     end
 
     def handle_http(ex, req, resp)

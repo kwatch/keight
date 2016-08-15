@@ -2794,6 +2794,85 @@ Oktest.scope do
         ok {headers['Location']} == nil
       end
 
+      spec "[!l6kmc] uses 'GET' method to find action when request method is 'HEAD'." do
+        |app|
+        env = new_env("HEAD", "/api/books/123")
+        status, headers, body = app.call(env)
+        ok {status}  == 200
+        ok {body}    == [""]
+        ok {headers} == {
+          "Content-Length" => "18",
+          "Content-Type"   => "text/html; charset=utf-8",
+        }
+      end
+
+      spec "[!4vmd3] uses '_method' value of query string as request method when 'POST' method." do
+        |app|
+        env = new_env("POST", "/api/books/123", query: {"_method"=>"DELETE"})
+        status, headers, body = app.call(env)
+        ok {status}  == 200
+        ok {body}    == ["<delete:123(Fixnum)>"]  # do_delete() caled
+      end
+
+      spec "[!vdllr] clears request and response if possible." do
+        |app|
+        reqclass  = K8::REQUEST_CLASS
+        respclass = K8::RESPONSE_CLASS
+        K8.module_eval do
+          remove_const :REQUEST_CLASS
+          remove_const :RESPONSE_CLASS
+        end
+        $req_clear = $resp_clear = false
+        K8::REQUEST_CLASS = Class.new(reqclass) do
+          def clear; $req_clear = true; end
+        end
+        K8::RESPONSE_CLASS = Class.new(respclass) do
+          def clear; $resp_clear = true; end
+        end
+        at_end do
+          K8.REQUEST_CLASS = reqclass
+          K8.RESPONSE_CLASS = respclass
+          $req_clear  = nil
+          $resp_clear = nil
+        end
+        #
+        env = new_env("GET", "/")
+        ok {$req_clear}  == false
+        ok {$resp_clear} == false
+        app.call(env)
+        _ = self
+        K8::REQUEST_CLASS.class_eval do
+          _.ok {$req_clear} == true
+        end
+        K8::RESPONSE_CLASS.class_eval do
+          _.ok {$resp_clear} == true
+        end
+      end
+
+      spec "[!rz13i] returns HTTP 404 when urlpath not found." do
+        |app|
+        env = new_env("GET", "/api/book/comments")
+        status, headers, body = app.call(env)
+        ok {status} == 404
+        ok {headers} == {
+          "Content-Length" => "44",
+          "Content-Type"   => "text/html;charset=utf-8",
+        }
+        ok {body} == ["<div>\n<h2>404 Not Found</h2>\n<p></p>\n</div>\n"]
+      end
+
+      spec "[!rv3cf] returns HTTP 405 when urlpath found but request method not allowed." do
+        |app|
+        env = new_env("POST", "/api/books/123")
+        status, headers, body = app.call(env)
+        ok {status} == 405
+        ok {headers} == {
+          "Content-Length" => "53",
+          "Content-Type"   => "text/html;charset=utf-8",
+        }
+        ok {body} == ["<div>\n<h2>405 Method Not Allowed</h2>\n<p></p>\n</div>\n"]
+      end
+
     end
 
 
@@ -2815,85 +2894,13 @@ Oktest.scope do
         end
       end
 
-      spec "[!l6kmc] uses 'GET' method to find action when request method is 'HEAD'." do
-        |app|
-        env = new_env("HEAD", "/api/books/123")
-        app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
-          status, headers, body = tuple
-          _.ok {status}  == 200
-          _.ok {body}    == [""]
-          _.ok {headers} == {
-            "Content-Length" => "18",
-            "Content-Type"   => "text/html; charset=utf-8",
-          }
-        end
-      end
-
-      spec "[!4vmd3] uses '_method' value of query string as request method when 'POST' method." do
-        |app|
-        env = new_env("POST", "/api/books/123", query: {"_method"=>"DELETE"})
-        app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
-          status, headers, body = tuple
-          _.ok {status}  == 200
-          _.ok {body}    == ["<delete:123(Fixnum)>"]  # do_delete() caled
-        end
-      end
-
-      spec "[!vdllr] clears request and response if possible." do
-        |app|
-        req  = K8::Request.new(new_env("GET", "/"))
-        resp = K8::Response.new()
-        req_clear = false
-        (class << req; self; end).__send__(:define_method, :clear) { req_clear = true }
-        resp_clear = false
-        (class << resp; self; end).__send__(:define_method, :clear) { resp_clear = true }
-        #
-        app.instance_exec(self) do |_|
-          tuple = handle_request(req, resp)
-          _.ok {req_clear}  == true
-          _.ok {resp_clear} == true
-        end
-      end
-
       spec "[!9wp9z] returns empty body when request method is HEAD." do
         |app|
         env = new_env("HEAD", "/api/books/123")
         app.instance_exec(self) do |_|
           tuple = handle_request(K8::Request.new(env), K8::Response.new)
           status, headers, body = tuple
-          _.ok {body} == [""]
-        end
-      end
-
-      spec "[!rz13i] returns HTTP 404 when urlpath not found." do
-        |app|
-        env = new_env("GET", "/api/book/comments")
-        app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
-          status, headers, body = tuple
-          _.ok {status}  == 404
-          _.ok {body}    == ["<div>\n<h2>404 Not Found</h2>\n<p></p>\n</div>\n"]
-          _.ok {headers} == {
-            "Content-Length" => "44",
-            "Content-Type"   => "text/html;charset=utf-8",
-          }
-        end
-      end
-
-      spec "[!rv3cf] returns HTTP 405 when urlpath found but request method not allowed." do
-        |app|
-        env = new_env("POST", "/api/books/123")
-        app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
-          status, headers, body = tuple
-          _.ok {status}  == 405
-          _.ok {body}    == ["<div>\n<h2>405 Method Not Allowed</h2>\n<p></p>\n</div>\n"]
-          _.ok {headers} == {
-            "Content-Length" => "53",
-            "Content-Type"   => "text/html;charset=utf-8",
-          }
+          _.ok {body}    == [""]
         end
       end
 

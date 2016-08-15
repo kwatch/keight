@@ -1395,6 +1395,7 @@ module K8
       @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
       @variable_endpoints = []  # urlpath patterns which have any ulrpath param
       @all_endpoints      = []  # all urlpath patterns (fixed + variable)
+      empty_pargs = [].freeze
       rexp_str = _traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
         #; [!z2iax] classifies urlpath contains any parameter as variable one.
         if has_urlpath_param?(full_urlpath)
@@ -1405,7 +1406,7 @@ module K8
           @variable_endpoints << tuple
         #; [!rvdes] classifies urlpath contains no parameters as fixed one.
         else
-          tuple = [full_urlpath, action_class, action_methods]
+          tuple = [full_urlpath, action_class, action_methods, empty_pargs]
           @fixed_endpoints[full_urlpath] = tuple
         end
         #

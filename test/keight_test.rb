@@ -2660,13 +2660,13 @@ Oktest.scope do
 
     topic '#lookup()' do
 
-      spec "[!4vmd3] uses '_method' value of query string as request method when 'POST' method." do
+      spec "[!7476i] uses '_method' value of query string as request method when 'POST' method." do
         |app|
         tuple = app.lookup(:POST, "/api/books/123", "_method=DELETE")
         ok {tuple} == [BooksAction, :do_delete, [123]]  # found :do_delete
       end
 
-      spec "[!vz07j] redirects only when request method is GET or HEAD." do
+      spec "[!c0job] redirects only when request method is GET or HEAD." do
         |app|
         ## not redirect on :POST
         pr3 = proc { app.lookup(:POST, "/api/books", "") }
@@ -2675,7 +2675,7 @@ Oktest.scope do
         ok {ex3.status_code} == 404
       end
 
-      spec "[!eb2ms] raises 301 when urlpath not found but found with tailing '/'." do
+      spec "[!u1qfv] raises 301 when urlpath not found but found with tailing '/'." do
         |app|
         pr = proc { app.lookup(:GET, "/api/books", "") }
         ok {pr}.raise?(K8::HttpException)
@@ -2684,7 +2684,7 @@ Oktest.scope do
         ok {ex.response_headers} == {"Location"=>"/api/books/"}
       end
 
-      spec "[!02dow] raises 301 when urlpath not found but found without tailing '/'." do
+      spec "[!kbff3] raises 301 when urlpath not found but found without tailing '/'." do
         |app|
         pr = proc { app.lookup(:GET, "/api/books/123/", "") }
         ok {pr}.raise?(K8::HttpException)
@@ -2693,7 +2693,7 @@ Oktest.scope do
         ok {ex.response_headers} == {"Location"=>"/api/books/123"}
       end
 
-      spec "[!2a9c9] adds query string to 'Location' header when redirecting." do
+      spec "[!cgxx4] adds query string to 'Location' header when redirecting." do
         |app|
         pr = proc { app.lookup(:GET, "/api/books", "x=1&y=2") }
         ok {pr}.raise?(K8::HttpException)
@@ -2702,7 +2702,7 @@ Oktest.scope do
         ok {ex.response_headers} == {"Location"=>"/api/books/?x=1&y=2"}
       end
 
-      spec "[!rz13i] raises HTTP 404 when urlpath not found." do
+      spec "[!hdy1f] raises HTTP 404 when urlpath not found." do
         |app|
         pr = proc { app.lookup(:GET, "/api/book/comments", "") }
         ok {pr}.raise?(K8::HttpException)
@@ -2710,13 +2710,13 @@ Oktest.scope do
         ok {ex.status_code} == 404
       end
 
-      spec "[!l6kmc] uses 'GET' method to find action when request method is 'HEAD'." do
+      spec "[!0znwr] uses 'GET' method to find action when request method is 'HEAD'." do
         |app|
         tuple = app.lookup(:HEAD, "/api/books/123")
         ok {tuple} == [BooksAction, :do_show, [123]]
       end
 
-      spec "[!rv3cf] raises HTTP 405 when urlpath found but request method not allowed." do
+      spec "[!bfpav] raises HTTP 405 when urlpath found but request method not allowed." do
         |app|
         pr = proc { app.lookup(:POST, "/api/books/123", "") }
         ok {pr}.raise?(K8::HttpException)

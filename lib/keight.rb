@@ -1634,35 +1634,35 @@ module K8
     end
 
     def lookup(req_meth, req_path, query_string="")
-      #; [!4vmd3] uses '_method' value of query string as request method when 'POST' method.
+      #; [!7476i] uses '_method' value of query string as request method when 'POST' method.
       if req_meth == :POST && query_string =~ /\A_method=(\w+)/
         req_meth = HTTP_REQUEST_METHODS[$1.upcase] || $1.upcase
       end
       #
       tuple = find(req_path)
       unless tuple
-        #; [!vz07j] redirects only when request method is GET or HEAD.
+        #; [!c0job] redirects only when request method is GET or HEAD.
         if req_meth == :GET || req_meth == :HEAD
-          #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
-          #; [!02dow] returns 301 when urlpath not found but found without tailing '/'.
+          #; [!u1qfv] raises 301 when urlpath not found but found with tailing '/'.
+          #; [!kbff3] raises 301 when urlpath not found but found without tailing '/'.
           rpath  = req_path
           rpath2 = rpath.end_with?('/') ? rpath[0..-2] : rpath + '/'
           if find(rpath2)
-            #; [!2a9c9] adds query string to 'Location' header when redirecting.
+            #; [!cgxx4] adds query string to 'Location' header when redirecting.
             qs = query_string
             location = ! qs || qs.empty? ? rpath2 : "#{rpath2}?#{qs}"
             status = 301              # 301 Moved Permanently
             raise HttpException.new(status, nil, {'Location'=>location})
           end
         end
-        #; [!rz13i] returns HTTP 404 when urlpath not found.
+        #; [!hdy1f] raises HTTP 404 when urlpath not found.
         raise HttpException.new(404)  # 404 Not Found
       end
       action_class, action_methods, urlpath_args = tuple
-      #; [!l6kmc] uses 'GET' method to find action when request method is 'HEAD'.
+      #; [!0znwr] uses 'GET' method to find action when request method is 'HEAD'.
       d = action_methods
       action_name = d[req_meth] || (req_meth == :HEAD ? d[:GET] : nil) || d[:ANY]
-      #; [!rv3cf] returns HTTP 405 when urlpath found but request method not allowed.
+      #; [!bfpav] raises HTTP 405 when urlpath found but request method not allowed.
       action_name  or
         raise HttpException.new(405)  # 405 Method Not Allowed
       return action_class, action_name, urlpath_args

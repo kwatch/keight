@@ -1416,63 +1416,6 @@ module K8
       return self
     end
 
-    def lookup(req_urlpath)
-      #; [!j34yh] finds from fixed urlpaths at first.
-      tuple = @fixed_endpoints[req_urlpath]
-      return tuple[1..-1] if tuple     # ex: [BooksAction, {:GET=>:do_index}, []]
-      #; [!uqwr7] uses LRU as cache algorithm.
-      cache = @urlpath_lru_cache
-      if cache && (result = cache.delete(req_urlpath))
-        cache[req_urlpath] = result    # delete & append to simulate LRU
-        return result
-      end
-      #; [!sos5i] returns nil when request path not matched to urlpath patterns.
-      m = @urlpath_rexp.match(req_urlpath)
-      return nil unless m
-      #; [!95q61] finds from variable urlpath patterns when not found in fixed ones.
-      index = m.captures.find_index('')
-      tuple = @variable_endpoints[index]
-      _, action_class, action_methods, urlpath_rexp, pnames, procs, range = tuple
-      #; [!1k1k5] converts urlpath param values by converter procs.
-      if range
-        str = req_urlpath[range]
-        pvalues = [procs[0] ? procs[0].call(str) : str]
-      else
-        strs = urlpath_rexp.match(req_urlpath).captures
-        pvalues = \
-          case procs.length
-          when 1; [procs[0] ? procs[0].call(strs[0]) : strs[0]]
-          when 2; [procs[0] ? procs[0].call(strs[0]) : strs[0],
-                   procs[1] ? procs[1].call(strs[1]) : strs[1]]
-          when 3; [procs[0] ? procs[0].call(strs[0]) : strs[0],
-                   procs[1] ? procs[1].call(strs[1]) : strs[1],
-                   procs[2] ? procs[2].call(strs[2]) : strs[2]]
-          else  ; procs.zip(strs).map {|pr, v| pr ? pr.call(v) : v }
-          end    # ex: ["123"] -> [123]
-      end
-      #; [!jyxlm] returns action class, action methods and urlpath param args.
-      result = [action_class, action_methods, pvalues]
-      #; [!uqwr7] stores result into cache if cache is enabled.
-      if cache
-        cache[req_urlpath] = result
-        #; [!3ps5g] deletes item from cache when cache size over limit.
-        cache.shift() if cache.length > @urlpath_cache_size
-      end
-      #
-      return result
-    end
-
-    def each
-      #; [!2gwru] returns Enumerator if block is not provided.
-      return to_enum(:each) unless block_given?
-      #; [!7ynne] yields each urlpath pattern, action class and action methods.
-      @all_endpoints.each do |tuple|
-        urlpath_pat, action_class, action_methods, _ = tuple
-        yield urlpath_pat, action_class, action_methods
-      end
-      self
-    end
-
     private
 
     def traverse(urlpath_mapping, base_urlpath="", &block)
@@ -1612,6 +1555,65 @@ module K8
         raise TypeError.new("'#{str}': expected subclass of K8::Action but not.")
       #
       return klass
+    end
+
+    public
+
+    def lookup(req_urlpath)
+      #; [!j34yh] finds from fixed urlpaths at first.
+      tuple = @fixed_endpoints[req_urlpath]
+      return tuple[1..-1] if tuple     # ex: [BooksAction, {:GET=>:do_index}, []]
+      #; [!uqwr7] uses LRU as cache algorithm.
+      cache = @urlpath_lru_cache
+      if cache && (result = cache.delete(req_urlpath))
+        cache[req_urlpath] = result    # delete & append to simulate LRU
+        return result
+      end
+      #; [!sos5i] returns nil when request path not matched to urlpath patterns.
+      m = @urlpath_rexp.match(req_urlpath)
+      return nil unless m
+      #; [!95q61] finds from variable urlpath patterns when not found in fixed ones.
+      index = m.captures.find_index('')
+      tuple = @variable_endpoints[index]
+      _, action_class, action_methods, urlpath_rexp, pnames, procs, range = tuple
+      #; [!1k1k5] converts urlpath param values by converter procs.
+      if range
+        str = req_urlpath[range]
+        pvalues = [procs[0] ? procs[0].call(str) : str]
+      else
+        strs = urlpath_rexp.match(req_urlpath).captures
+        pvalues = \
+          case procs.length
+          when 1; [procs[0] ? procs[0].call(strs[0]) : strs[0]]
+          when 2; [procs[0] ? procs[0].call(strs[0]) : strs[0],
+                   procs[1] ? procs[1].call(strs[1]) : strs[1]]
+          when 3; [procs[0] ? procs[0].call(strs[0]) : strs[0],
+                   procs[1] ? procs[1].call(strs[1]) : strs[1],
+                   procs[2] ? procs[2].call(strs[2]) : strs[2]]
+          else  ; procs.zip(strs).map {|pr, v| pr ? pr.call(v) : v }
+          end    # ex: ["123"] -> [123]
+      end
+      #; [!jyxlm] returns action class, action methods and urlpath param args.
+      result = [action_class, action_methods, pvalues]
+      #; [!uqwr7] stores result into cache if cache is enabled.
+      if cache
+        cache[req_urlpath] = result
+        #; [!3ps5g] deletes item from cache when cache size over limit.
+        cache.shift() if cache.length > @urlpath_cache_size
+      end
+      #
+      return result
+    end
+
+    def each
+      #; [!2gwru] returns Enumerator if block is not provided.
+      return to_enum(:each) unless block_given?
+      #; [!7ynne] yields each urlpath pattern, action class and action methods.
+      @all_endpoints.each do |tuple|
+        urlpath_pat, action_class, action_methods, _ = tuple
+        yield urlpath_pat, action_class, action_methods
+      end
+      self
     end
 
   end

@@ -1456,10 +1456,6 @@ module K8
       return build_rexp_str(buf)
     end
 
-    def has_urlpath_param?(urlpath)
-      return urlpath.include?('{')
-    end
-
     ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
     def build_rexp_str(buf)
       #; [!169ad] removes unnecessary grouping.
@@ -1501,12 +1497,8 @@ module K8
       return rexp_str, pnames, procs   # ex: '/books/(\d+)', ['id'], [proc{|x| x.to_i}]}]
     end
 
-    ## raises error when action method is not defined in action class
-    def validate_action_method_existence(action_class, action_methods)
-      action_methods.each do |req_meth, action_name|
-        action_class.method_defined?(action_name)  or
-          raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_name.inspect}: unknown action method in #{action_class}.")
-      end
+    def has_urlpath_param?(urlpath)
+      return urlpath.include?('{')
     end
 
     ## range object to retrieve urlpath parameter value faster than Regexp matching
@@ -1554,6 +1546,14 @@ module K8
         raise TypeError.new("'#{str}': expected subclass of K8::Action but not.")
       #
       return klass
+    end
+
+    ## raises error when action method is not defined in action class
+    def validate_action_method_existence(action_class, action_methods)
+      action_methods.each do |req_meth, action_name|
+        action_class.method_defined?(action_name)  or
+          raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_name.inspect}: unknown action method in #{action_class}.")
+      end
     end
 
     public

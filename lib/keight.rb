@@ -1396,7 +1396,7 @@ module K8
       @variable_endpoints = []  # urlpath patterns which have any ulrpath param
       @all_endpoints      = []  # all urlpath patterns (fixed + variable)
       empty_pargs = [].freeze
-      rexp_str = _traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
+      rexp_str = traverse(urlpath_mapping, "") do |full_urlpath, action_class, action_methods|
         #; [!z2iax] classifies urlpath contains any parameter as variable one.
         if has_urlpath_param?(full_urlpath)
           pattern, pnames, procs = _compile_urlpath_pat(full_urlpath, true)
@@ -1475,14 +1475,14 @@ module K8
 
     private
 
-    def _traverse(urlpath_mapping, base_urlpath="", &block)
+    def traverse(urlpath_mapping, base_urlpath="", &block)
       buf = []
       urlpath_mapping.each do |urlpath, target|
         curr_urlpath = "#{base_urlpath}#{urlpath}"
         rexp_str = nil
         #; [!w45ad] can compile nested array.
         if target.is_a?(Array)
-          rexp_str = _traverse(target, curr_urlpath, &block)
+          rexp_str = traverse(target, curr_urlpath, &block)
         #; [!wd2eb] accepts subclass of Action class.
         else
           #; [!l2kz5] requires library when filepath and classname specified.

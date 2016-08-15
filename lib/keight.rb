@@ -1390,6 +1390,8 @@ module K8
       compile(urlpath_mapping)
     end
 
+    private
+
     def compile(urlpath_mapping)
       #; [!6f3vl] compiles urlpath mapping.
       @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
@@ -1415,8 +1417,6 @@ module K8
       @urlpath_rexp = Regexp.compile("\\A#{rexp_str}\\z")
       return self
     end
-
-    private
 
     def traverse(urlpath_mapping, base_urlpath="", &block)
       buf = []

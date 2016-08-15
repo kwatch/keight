@@ -1437,7 +1437,7 @@ module K8
           buf2 = []
           action_class._mappings.each do |upath, action_methods|
             #; [!ue766] raises error when action method is not defined in action class.
-            validate_action_method_existence(action_class, action_methods)
+            validate_action_class_and_methods(action_class, action_methods)
             #
             full_urlpath = "#{curr_urlpath}#{upath}"
             if has_urlpath_param?(full_urlpath)
@@ -1549,7 +1549,7 @@ module K8
     end
 
     ## raises error when action method is not defined in action class
-    def validate_action_method_existence(action_class, action_methods)
+    def validate_action_class_and_methods(action_class, action_methods)
       action_methods.each do |req_meth, action_name|
         action_class.method_defined?(action_name)  or
           raise UnknownActionMethodError.new("#{req_meth.inspect}=>#{action_name.inspect}: unknown action method in #{action_class}.")

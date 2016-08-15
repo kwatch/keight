@@ -1486,7 +1486,7 @@ module K8
         #; [!wd2eb] accepts subclass of Action class.
         else
           #; [!l2kz5] requires library when filepath and classname specified.
-          klass = target.is_a?(String) ? _require_action_class(target) : target
+          klass = target.is_a?(String) ? require_action_class(target) : target
           #; [!irt5g] raises TypeError when unknown object specified.
           klass.is_a?(Class) && klass < BaseAction  or
             raise TypeError.new("Action class or nested array expected, but got #{klass.inspect}")
@@ -1585,7 +1585,7 @@ module K8
     end
 
     ## ex: './api/admin/books:Admin::BookAPI'  ->  Admin::BookAPI
-    def _require_action_class(filepath_and_classname)
+    def require_action_class(filepath_and_classname)
       #; [!px9jy] requires file and finds class object.
       str = filepath_and_classname   # ex: './admin/api/book:Admin::BookAPI'
       filepath, classname = filepath_and_classname.split(':', 2)

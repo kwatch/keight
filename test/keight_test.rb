@@ -2474,7 +2474,7 @@ Oktest.scope do
     end
 
 
-    topic '#_require_action_class()' do
+    topic '#require_action_class()' do
 
       spec "[!px9jy] requires file and finds class object." do
         filename = 'test_px9jy.rb'
@@ -2482,7 +2482,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          _.ok { _require_action_class './test_px9jy:Ex_px9jy' } == Ex_px9jy
+          _.ok { require_action_class './test_px9jy:Ex_px9jy' } == Ex_px9jy
         end
       end
 
@@ -2492,7 +2492,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_dlcks:Ex_dlcks' }
+          pr = proc { require_action_class './test_dlcks:Ex_dlcks' }
           _.ok {pr}.raise?(LoadError, "cannot load such file -- homhomhom")
           _.ok {pr.exception.path} == "homhomhom"
         end
@@ -2501,7 +2501,7 @@ Oktest.scope do
       spec "[!mngjz] raises error when failed to load file." do
         filename = 'test_mngjz.rb'
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_mngjz:Ex_mngjz' }
+          pr = proc { require_action_class './test_mngjz:Ex_mngjz' }
           _.ok {pr}.raise?(LoadError, "'./test_mngjz:Ex_mngjz': cannot load './test_mngjz'.")
         end
       end
@@ -2512,7 +2512,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          _.ok { _require_action_class './test_8n6pf:Ex_8n6pf::Sample' } == Ex_8n6pf::Sample
+          _.ok { require_action_class './test_8n6pf:Ex_8n6pf::Sample' } == Ex_8n6pf::Sample
         end
       end
 
@@ -2522,7 +2522,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_6lv7l:Ex_6lv7l::Sample' }
+          pr = proc { require_action_class './test_6lv7l:Ex_6lv7l::Sample' }
           _.ok {pr}.raise?(NameError, "'./test_6lv7l:Ex_6lv7l::Sample': class not found (Ex_6lv7l::Sample).")
         end
       end
@@ -2533,7 +2533,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_thf7t:Ex_thf7t' }
+          pr = proc { require_action_class './test_thf7t:Ex_thf7t' }
           _.ok {pr}.raise?(TypeError, "'./test_thf7t:Ex_thf7t': class name expected but got \"XXX\".")
         end
       end
@@ -2544,7 +2544,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename }
         K8::ActionMapping.new([]).instance_exec(self) do |_|
-          pr = proc { _require_action_class './test_yqcgx:Ex_yqcgx' }
+          pr = proc { require_action_class './test_yqcgx:Ex_yqcgx' }
           _.ok {pr}.raise?(TypeError, "'./test_yqcgx:Ex_yqcgx': expected subclass of K8::Action but not.")
         end
       end

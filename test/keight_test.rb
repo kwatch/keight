@@ -2756,7 +2756,7 @@ Oktest.scope do
         status, headers, body = app.call(env)
         ok {status} == 301
         ok {headers['Location']} == "/api/books/"
-        ok {body} == []
+        ok {body} == ["<div>\n<h2>301 Moved Permanently</h2>\n<p></p>\n</div>\n"]
       end
 
       spec "[!02dow] returns 301 when urlpath not found but found without tailing '/'." do
@@ -2765,7 +2765,7 @@ Oktest.scope do
         status, headers, body = app.call(env)
         ok {status} == 301
         ok {headers['Location']} == "/api/books/123"
-        ok {body} == []
+        ok {body} == ["<div>\n<h2>301 Moved Permanently</h2>\n<p></p>\n</div>\n"]
       end
 
       spec "[!2a9c9] adds query string to 'Location' header." do

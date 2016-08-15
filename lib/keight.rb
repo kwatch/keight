@@ -1677,35 +1677,13 @@ module K8
     protected
 
     def handle_request(req, resp)
-      req_meth = HTTP_REQUEST_METHODS[req.env['REQUEST_METHOD']]
-      #; [!l6kmc] uses 'GET' method to find action when request method is 'HEAD'.
-      if req_meth == :HEAD
-        req_meth_ = :GET
-      #; [!4vmd3] uses '_method' value of query string as request method when 'POST' method.
-      elsif req_meth == :POST && /\A_method=(\w+)/.match(req.env['QUERY_STRING'])
-        req_meth_ = HTTP_REQUEST_METHODS[$1] || $1
-      else
-        req_meth_ = req_meth
-      end
+      req_meth = HTTP_REQUEST_METHODS[req.env['REQUEST_METHOD']] || req.env['REQUEST_METHOD']
       begin
-        tuple = find(req.path)
-        #; [!vz07j] redirects only when request method is GET or HEAD.
-        if tuple.nil? && req_meth_ == :GET
-          #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
-          #; [!02dow] returns 301 when urlpath not found but found without tailing '/'.
-          location = lookup_autoredirect_location(req)
-          return [301, {'Location'=>location}, []] if location
-        end
-        #; [!rz13i] returns HTTP 404 when urlpath not found.
-        tuple  or
-          raise HttpException.new(404)
-        action_class, action_methods, urlpath_param_values = tuple
-        #; [!rv3cf] returns HTTP 405 when urlpath found but request method not allowed.
-        action_method = action_methods[req_meth_]  or
-          raise HttpException.new(405)
         #; [!0fgbd] finds action class and invokes action method with urlpath params.
+        tuple = lookup(req_meth, req.path, req.env['QUERY_STRING'])
+        action_class, action_name, pargs = tuple  # ex: [BooksAction, :do_show, [123]]
         action_obj = action_class.new(req, resp)
-        content = action_obj.handle_action(action_method, urlpath_param_values)
+        content = action_obj.handle_action(action_name, pargs)
         ret = [resp.status, resp.headers, content]
       rescue HttpException => ex
         ret = handle_http(ex, req, resp)

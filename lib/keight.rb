@@ -1432,7 +1432,9 @@ module K8
           #; [!irt5g] raises TypeError when unknown object specified.
           klass.is_a?(Class) && klass < BaseAction  or
             raise TypeError.new("Action class or nested array expected, but got #{klass.inspect}")
+          #; [!6xwhq] builds action infos for each action methods.
           action_class = klass
+          action_class._build_action_info(curr_urlpath)
           #
           buf2 = []
           action_class._mappings.each do |upath, action_methods|
@@ -1444,8 +1446,6 @@ module K8
             yield full_urlpath, action_class, action_methods
           end
           rexp_str = build_rexp_str(buf2)
-          #; [!6xwhq] builds action infos for each action methods.
-          action_class._build_action_info(curr_urlpath)
         end
         #; [!bcgc9] skips classes which have only fixed urlpaths.
         buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str

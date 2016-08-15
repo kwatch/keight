@@ -1416,15 +1416,10 @@ module K8
       return self
     end
 
-    EMPTY_ARRAY = [].freeze     # :nodoc:
-
     def lookup(req_urlpath)
       #; [!j34yh] finds from fixed urlpaths at first.
-      if (tuple = @fixed_endpoints[req_urlpath])
-        _, action_class, action_methods = tuple
-        pvalues = EMPTY_ARRAY
-        return action_class, action_methods, pvalues
-      end
+      tuple = @fixed_endpoints[req_urlpath]
+      return tuple[1..-1] if tuple     # ex: [BooksAction, {:GET=>:do_index}, []]
       #; [!uqwr7] uses LRU as cache algorithm.
       cache = @urlpath_lru_cache
       if cache && (result = cache.delete(req_urlpath))

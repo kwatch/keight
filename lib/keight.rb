@@ -1401,7 +1401,7 @@ module K8
         if has_urlpath_param?(full_urlpath)
           pattern, pnames, procs = _compile_urlpath_pat(full_urlpath, true)
           rexp = Regexp.compile("\\A#{pattern}\\z")
-          range = @enable_urlpath_param_range ? _range_of_urlpath_param(full_urlpath) : nil
+          range = @enable_urlpath_param_range ? range_of_urlpath_param(full_urlpath) : nil
           tuple = [full_urlpath, action_class, action_methods, rexp, pnames, procs, range]
           @variable_endpoints << tuple
         #; [!rvdes] classifies urlpath contains no parameters as fixed one.
@@ -1573,7 +1573,7 @@ module K8
     ##   range = _range_of_urlpath_param(urlpath_pat)
     ##   p range                       #=> 7..-6 (Range object)
     ##   p "/books/123/edit"[range]    #=> '123'
-    def _range_of_urlpath_param(urlpath)
+    def range_of_urlpath_param(urlpath)
       i = 0
       m = nil
       urlpath.scan(URLPATH_PARAM_REXP) do

@@ -1390,7 +1390,7 @@ module K8
       @fixed_endpoints    = {}  # urlpath patterns which have no urlpath params
       @variable_endpoints = []  # urlpath patterns which have any ulrpath param
       @all_endpoints      = []  # all urlpath patterns (fixed + variable)
-      @urlpath_rexp = build(urlpath_mapping)
+      @urlpath_rexp       = build(urlpath_mapping)
     end
 
     private
@@ -1402,7 +1402,7 @@ module K8
         #; [!z2iax] classifies urlpath contains any parameter as variable one.
         if has_urlpath_param?(full_urlpath)
           pattern, pnames, procs = compile_urlpath(full_urlpath, true)
-          rexp = Regexp.compile("\\A#{pattern}\\z")
+          rexp  = Regexp.compile("\\A#{pattern}\\z")
           range = @enable_urlpath_param_range ? range_of_urlpath_param(full_urlpath) : nil
           tuple = [full_urlpath, action_class, action_methods, rexp, pnames, procs, range]
           @variable_endpoints << tuple

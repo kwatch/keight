@@ -2285,12 +2285,12 @@ Oktest.scope do
         ], default_patterns: dp, urlpath_cache_size: 3)
       end
 
-      spec "[!jyxlm] returns action class and methods, parameter names and values." do
+      spec "[!jyxlm] returns action class, action methods and urlpath param args." do
         |mapping|
         tuple = mapping.lookup('/api/books/123')
-        ok {tuple} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, ['id'], [123]]
+        ok {tuple} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, [123]]
         tuple = mapping.lookup('/api/books/123/comments/999')
-        ok {tuple} == [BookCommentsAction, {:GET=>:do_comment}, ['book_id', 'comment_id'], [123, 999]]
+        ok {tuple} == [BookCommentsAction, {:GET=>:do_comment}, [123, 999]]
       end
 
       spec "[!j34yh] finds from fixed urlpaths at first." do
@@ -2300,7 +2300,7 @@ Oktest.scope do
           tuple = @fixed_endpoints['/api/books/']
           _.ok {tuple} != nil
           @fixed_endpoints['/books'] = tuple
-          expected = [BooksAction, {:GET=>:do_index, :POST=>:do_create}, [], []]
+          expected = [BooksAction, {:GET=>:do_index, :POST=>:do_create}, []]
           _.ok {lookup('/books')} != nil
           _.ok {lookup('/books')} == expected
           _.ok {lookup('/api/books/')} == expected
@@ -2313,14 +2313,12 @@ Oktest.scope do
           [
             BooksAction,
             {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
-            ["id"],
             [123],
           ]
         ok {mapping.lookup('/api/books/123/comments/999')} == \
           [
             BookCommentsAction,
             {:GET=>:do_comment},
-            ["book_id", "comment_id"],
             [123, 999],
           ]
       end
@@ -2333,9 +2331,9 @@ Oktest.scope do
       spec "[!1k1k5] converts urlpath param values by converter procs." do
         |mapping|
         tuple = mapping.lookup('/api/books/123')
-        ok {tuple[2..3]} == [['id'], [123]]
+        ok {tuple[-1]} == [123]   # id
         tuple = mapping.lookup('/api/books/123/comments/999')
-        ok {tuple[2..3]} == [['book_id', 'comment_id'], [123, 999]]
+        ok {tuple[-1]} == [123, 999]  # book_id, comment_id
       end
 
       spec "[!uqwr7] stores result into cache if cache is enabled." do
@@ -2652,9 +2650,9 @@ Oktest.scope do
       spec "[!o0rnr] returns action class, action methods, urlpath names and values." do
         |app|
         ret = app.lookup('/api/books/')
-        ok {ret} == [BooksAction, {:GET=>:do_index, :POST=>:do_create}, [], []]
+        ok {ret} == [BooksAction, {:GET=>:do_index, :POST=>:do_create}, []]
         ret = app.lookup('/api/books/123')
-        ok {ret} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, ["id"], [123]]
+        ok {ret} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, [123]]
       end
 
     end

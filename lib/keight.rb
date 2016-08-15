@@ -1421,8 +1421,8 @@ module K8
       #; [!j34yh] finds from fixed urlpaths at first.
       if (tuple = @fixed_endpoints[req_urlpath])
         _, action_class, action_methods = tuple
-        pnames = pvalues = EMPTY_ARRAY
-        return action_class, action_methods, pnames, pvalues
+        pvalues = EMPTY_ARRAY
+        return action_class, action_methods, pvalues
       end
       #; [!uqwr7] uses LRU as cache algorithm.
       cache = @urlpath_lru_cache
@@ -1454,8 +1454,8 @@ module K8
           else  ; procs.zip(strs).map {|pr, v| pr ? pr.call(v) : v }
           end    # ex: ["123"] -> [123]
       end
-      #; [!jyxlm] returns action class and methods, parameter names and values.
-      result = [action_class, action_methods, pnames, pvalues]
+      #; [!jyxlm] returns action class, action methods and urlpath param args.
+      result = [action_class, action_methods, pvalues]
       #; [!uqwr7] stores result into cache if cache is enabled.
       if cache
         cache[req_urlpath] = result
@@ -1657,18 +1657,18 @@ module K8
         req_meth_ = req_meth
       end
       begin
-        tuple4 = lookup(req.path)
+        tuple = lookup(req.path)
         #; [!vz07j] redirects only when request method is GET or HEAD.
-        if tuple4.nil? && req_meth_ == :GET
+        if tuple.nil? && req_meth_ == :GET
           #; [!eb2ms] returns 301 when urlpath not found but found with tailing '/'.
           #; [!02dow] returns 301 when urlpath not found but found without tailing '/'.
           location = lookup_autoredirect_location(req)
           return [301, {'Location'=>location}, []] if location
         end
         #; [!rz13i] returns HTTP 404 when urlpath not found.
-        tuple4  or
+        tuple  or
           raise HttpException.new(404)
-        action_class, action_methods, urlpath_param_names, urlpath_param_values = tuple4
+        action_class, action_methods, urlpath_param_values = tuple
         #; [!rv3cf] returns HTTP 405 when urlpath found but request method not allowed.
         action_method = action_methods[req_meth_]  or
           raise HttpException.new(405)

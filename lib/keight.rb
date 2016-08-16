@@ -656,287 +656,6 @@ module K8
   end
 
 
-  class Request
-
-    def initialize(env)
-      #; [!yb9k9] sets @env.
-      @env = env
-      #; [!yo22o] sets @method as Symbol value.
-      @method = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
-        raise HTTPException.new(400, "#{env['REQUEST_METHOD'].inspect}: unknown request method.")
-      #; [!twgmi] sets @path.
-      @path = (x = env['PATH_INFO'])
-      #; [!ae8ws] uses SCRIPT_NAME as urlpath when PATH_INFO is not provided.
-      @path = env['SCRIPT_NAME'] if x.nil? || x.empty?
-    end
-
-    attr_reader :env, :method, :path
-
-    def method(name=nil)
-      #; [!084jo] returns current request method when argument is not specified.
-      #; [!gwskf] calls Object#method() when argument specified.
-      return name ? super : @method
-    end
-
-    def header(name)
-      #; [!1z7wj] returns http header value from environment.
-      return @env["HTTP_#{name.upcase.sub('-', '_')}"]
-    end
-
-    def request_method
-      #; [!y8eos] returns env['REQUEST_METHOD'] as string.
-      return @env['REQUEST_METHOD']
-    end
-
-    ##--
-    #def get?         ; @method == :GET           ; end
-    #def post?        ; @method == :POST          ; end
-    #def put?         ; @method == :PUT           ; end
-    #def delete?      ; @method == :DELETE        ; end
-    #def head?        ; @method == :HEAD          ; end
-    #def patch?       ; @method == :PATCH         ; end
-    #def options?     ; @method == :OPTIONS       ; end
-    #def trace?       ; @method == :TRACE         ; end
-    ##++
-
-    def script_name  ; @env['SCRIPT_NAME' ] || ''; end   # may be empty
-    def path_info    ; @env['PATH_INFO'   ] || ''; end   # may be empty
-    def query_string ; @env['QUERY_STRING'] || ''; end   # may be empty
-    def server_name  ; @env['SERVER_NAME' ]      ; end   # should NOT be empty
-    def server_port  ; @env['SERVER_PORT' ].to_i ; end   # should NOT be empty
-
-    def content_type
-      #; [!95g9o] returns env['CONTENT_TYPE'].
-      return @env['CONTENT_TYPE']
-    end
-
-    def content_length
-      #; [!0wbek] returns env['CONTENT_LENGHT'] as integer.
-      len = @env['CONTENT_LENGTH']
-      return len ? len.to_i : len
-    end
-
-    def referer          ; @env['HTTP_REFERER']         ; end
-    def user_agent       ; @env['HTTP_USER_AGENT']      ; end
-    def x_requested_with ; @env['HTTP_X_REQUESTED_WITH']; end
-
-    def xhr?
-      #; [!hsgkg] returns true when 'X-Requested-With' header is 'XMLHttpRequest'.
-      return self.x_requested_with == 'XMLHttpRequest'
-    end
-
-    def client_ip_addr
-      #; [!e1uvg] returns 'X-Real-IP' header value if provided.
-      addr = @env['HTTP_X_REAL_IP']          # nginx
-      return addr if addr
-      #; [!qdlyl] returns first item of 'X-Forwarded-For' header if provided.
-      addr = @env['HTTP_X_FORWARDED_FOR']    # apache, squid, etc
-      return addr.split(',').first if addr
-      #; [!8nzjh] returns 'REMOTE_ADDR' if neighter 'X-Real-IP' nor 'X-Forwarded-For' provided.
-      addr = @env['REMOTE_ADDR']             # http standard
-      return addr
-    end
-
-    def scheme
-      #; [!jytwy] returns 'https' when env['HTTPS'] is 'on'.
-      return 'https' if @env['HTTPS'] == 'on'
-      #; [!zg8r2] returns env['rack.url_scheme'] ('http' or 'https').
-      return @env['rack.url_scheme']
-    end
-
-    def rack_version      ; @env['rack.version']      ; end  # ex: [1, 3]
-    def rack_url_scheme   ; @env['rack.url_scheme']   ; end  # ex: 'http' or 'https'
-    def rack_input        ; @env['rack.input']        ; end  # ex: $stdout
-    def rack_errors       ; @env['rack.errors']       ; end  # ex: $stderr
-    def rack_multithread  ; @env['rack.multithread']  ; end  # ex: true
-    def rack_multiprocess ; @env['rack.multiprocess'] ; end  # ex: true
-    def rack_run_once     ; @env['rack.run_once']     ; end  # ex: false
-    def rack_session      ; @env['rack.session']      ; end  # ex: {}
-    def rack_logger       ; @env['rack.logger']       ; end  # ex: Logger.new
-    def rack_hijack       ; @env['rack.hijack']       ; end  # ex: callable object
-    def rack_hijack?      ; @env['rack.hijack?']      ; end  # ex: true or false
-    def rack_hijack_io    ; @env['rack.hijack_io']    ; end  # ex: socket object
-
-    def params_query
-      #; [!6ezqw] parses QUERY_STRING and returns it as Hash/dict object.
-      #; [!o0ws7] unquotes both keys and values.
-      return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
-    end
-    alias query params_query
-
-    MAX_POST_SIZE      =  10*1024*1024
-    MAX_MULTIPART_SIZE = 100*1024*1024
-
-    def params_form
-      d = @params_form
-      return d if d
-      #
-      d = @params_form = _parse_post_data(:form)
-      return d
-    end
-    alias form params_form
-
-    def params_multipart
-      d1 = @params_form
-      d2 = @params_file
-      return d1, d2 if d1 && d2
-      d1, d2 = _parse_post_data(:multipart)
-      @params_form = d1; @params_file = d2
-      return d1, d2
-    end
-    alias multipart params_multipart
-
-    def params_json
-      d = @params_json
-      return d if d
-      d = @params_json = _parse_post_data(:json)
-      return d
-    end
-    alias json params_json
-
-    def _parse_post_data(kind)
-      #; [!q88w9] raises error when content length is missing.
-      cont_len = @env['CONTENT_LENGTH']  or
-        raise HttpException.new(400, 'Content-Length header expected.')
-      #; [!gi4qq] raises error when content length is invalid.
-      cont_len =~ /\A\d+\z/  or
-        raise HttpException.new(400, 'Content-Length should be an integer.')
-      #
-      len = cont_len.to_i
-      case @env['CONTENT_TYPE']
-      #; [!59ad2] parses form parameters and returns it as Hash object when form requested.
-      when 'application/x-www-form-urlencoded'
-        kind == :form  or
-          raise HttpException.new(400, 'unexpected form data (expected multipart).')
-        #; [!puxlr] raises 400 error when content length is too large (> 10MB).
-        len <= MAX_POST_SIZE  or
-          raise HttpException.new(400, 'Content-Length is too large.')
-        qstr = @env['rack.input'].read(len)
-        d = Util.parse_query_string(qstr)
-        return d
-      #; [!y1jng] parses multipart when multipart form requested.
-      when /\Amultipart\/form-data(?:;\s*boundary=(.*))?/
-        kind == :multipart  or
-          raise HttpException.new(400, 'unexpected multipart data.')
-        boundary = $1  or
-          raise HttpException.new(400, 'bounday attribute of multipart required.')
-        #; [!mtx6t] raises error when content length of multipart is too large (> 100MB).
-        len <= MAX_MULTIPART_SIZE  or
-          raise HttpException.new(400, 'Content-Length of multipart is too large.')
-        d1, d2 = Util.parse_multipart(@env['rack.input'], boundary, len, nil, nil)
-        return d1, d2
-      #; [!ugik5] parses json data and returns it as hash object when json data is sent.
-      when /\Aapplication\/json\b/
-        kind == :json  or
-          raise HttpException.new(400, 'unexpected JSON data.')
-        json_str = @env['rack.input'].read(10*1024*1024)   # TODO
-        d = JSON.parse(json_str)
-      #; [!p9ybb] raises error when not a form data.
-      else
-        raise HttpException.new(400, 'POST data expected, but not.')
-      end
-    end
-    private :_parse_post_data
-
-    def params
-      #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
-      #; [!cr0zj] parses JSON when content type is 'application/json'.
-      #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
-      #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
-      if @method == :GET || @method == :HEAD
-        return params_query()
-      end
-      case @env['CONTENT_TYPE']
-      when /\Aapplication\/json\b/
-        return params_json()
-      when /\Aapplication\/x-www-form-urlencoded\b/
-        return params_form()
-      when /\Amultipart\/form-data\b/
-        return params_multipart()
-      else
-        return {}
-      end
-    end
-
-    def cookies
-      #; [!c9pwr] parses cookie data and returns it as hash object.
-      return @cookies ||= Util.parse_cookie_string(@env['HTTP_COOKIE'] || "")
-    end
-
-    def clear
-      #; [!0jdal] removes uploaded files.
-      d = nil
-      d.each {|_, uploaded| uploaded.clean() } if (d = @params_file)
-    end
-
-  end
-
-
-  class Response
-
-    def initialize
-      @status_code = 200
-      @headers = {}
-    end
-
-    attr_accessor :status_code
-    attr_reader :headers
-    ## for compatibility with Rack::Response
-    alias status status_code
-    alias status= status_code=
-
-    def content_type
-      return @headers['Content-Type']
-    end
-
-    def content_type=(content_type)
-      @headers['Content-Type'] = content_type
-    end
-
-    def content_length
-      s = @headers['Content-Length']
-      return s ? s.to_i : nil
-    end
-
-    def content_length=(length)
-      @headers['Content-Length'] = length.to_s
-    end
-
-    def set_cookie(name, value, domain: nil, path: nil, expires: nil, max_age: nil, httponly: nil, secure: nil)
-      s = "#{name}=#{value}"
-      s << "; Domain=#{domain}"   if domain
-      s << "; Path=#{path}"       if path
-      s << "; Expires=#{expires}" if expires
-      s << "; Max-Age=#{max_age}" if max_age
-      s << "; HttpOnly"           if httponly
-      s << "; Secure"             if secure
-      value = @headers['Set-Cookie']
-      @headers['Set-Cookie'] = value ? (value << "\n" << s) : s
-      return value
-    end
-
-    def clear
-    end
-
-  end
-
-
-  REQUEST_CLASS  = Request
-  RESPONSE_CLASS = Response
-
-  def self.REQUEST_CLASS=(klass)
-    #; [!7uqb4] changes default request class.
-    remove_const :REQUEST_CLASS
-    const_set :REQUEST_CLASS, klass
-  end
-
-  def self.RESPONSE_CLASS=(klass)
-    #; [!c1bd0] changes default response class.
-    remove_const :RESPONSE_CLASS
-    const_set :RESPONSE_CLASS, klass
-  end
-
-
   ## Equivarent to BaseController or AbstractRequestHandler in other framework.
   class BaseAction
 
@@ -1614,6 +1333,287 @@ module K8
       self
     end
 
+  end
+
+
+  class RackRequest
+
+    def initialize(env)
+      #; [!yb9k9] sets @env.
+      @env = env
+      #; [!yo22o] sets @method as Symbol value.
+      @method = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
+        raise HTTPException.new(400, "#{env['REQUEST_METHOD'].inspect}: unknown request method.")
+      #; [!twgmi] sets @path.
+      @path = (x = env['PATH_INFO'])
+      #; [!ae8ws] uses SCRIPT_NAME as urlpath when PATH_INFO is not provided.
+      @path = env['SCRIPT_NAME'] if x.nil? || x.empty?
+    end
+
+    attr_reader :env, :method, :path
+
+    def method(name=nil)
+      #; [!084jo] returns current request method when argument is not specified.
+      #; [!gwskf] calls Object#method() when argument specified.
+      return name ? super : @method
+    end
+
+    def header(name)
+      #; [!1z7wj] returns http header value from environment.
+      return @env["HTTP_#{name.upcase.sub('-', '_')}"]
+    end
+
+    def request_method
+      #; [!y8eos] returns env['REQUEST_METHOD'] as string.
+      return @env['REQUEST_METHOD']
+    end
+
+    ##--
+    #def get?         ; @method == :GET           ; end
+    #def post?        ; @method == :POST          ; end
+    #def put?         ; @method == :PUT           ; end
+    #def delete?      ; @method == :DELETE        ; end
+    #def head?        ; @method == :HEAD          ; end
+    #def patch?       ; @method == :PATCH         ; end
+    #def options?     ; @method == :OPTIONS       ; end
+    #def trace?       ; @method == :TRACE         ; end
+    ##++
+
+    def script_name  ; @env['SCRIPT_NAME' ] || ''; end   # may be empty
+    def path_info    ; @env['PATH_INFO'   ] || ''; end   # may be empty
+    def query_string ; @env['QUERY_STRING'] || ''; end   # may be empty
+    def server_name  ; @env['SERVER_NAME' ]      ; end   # should NOT be empty
+    def server_port  ; @env['SERVER_PORT' ].to_i ; end   # should NOT be empty
+
+    def content_type
+      #; [!95g9o] returns env['CONTENT_TYPE'].
+      return @env['CONTENT_TYPE']
+    end
+
+    def content_length
+      #; [!0wbek] returns env['CONTENT_LENGHT'] as integer.
+      len = @env['CONTENT_LENGTH']
+      return len ? len.to_i : len
+    end
+
+    def referer          ; @env['HTTP_REFERER']         ; end
+    def user_agent       ; @env['HTTP_USER_AGENT']      ; end
+    def x_requested_with ; @env['HTTP_X_REQUESTED_WITH']; end
+
+    def xhr?
+      #; [!hsgkg] returns true when 'X-Requested-With' header is 'XMLHttpRequest'.
+      return self.x_requested_with == 'XMLHttpRequest'
+    end
+
+    def client_ip_addr
+      #; [!e1uvg] returns 'X-Real-IP' header value if provided.
+      addr = @env['HTTP_X_REAL_IP']          # nginx
+      return addr if addr
+      #; [!qdlyl] returns first item of 'X-Forwarded-For' header if provided.
+      addr = @env['HTTP_X_FORWARDED_FOR']    # apache, squid, etc
+      return addr.split(',').first if addr
+      #; [!8nzjh] returns 'REMOTE_ADDR' if neighter 'X-Real-IP' nor 'X-Forwarded-For' provided.
+      addr = @env['REMOTE_ADDR']             # http standard
+      return addr
+    end
+
+    def scheme
+      #; [!jytwy] returns 'https' when env['HTTPS'] is 'on'.
+      return 'https' if @env['HTTPS'] == 'on'
+      #; [!zg8r2] returns env['rack.url_scheme'] ('http' or 'https').
+      return @env['rack.url_scheme']
+    end
+
+    def rack_version      ; @env['rack.version']      ; end  # ex: [1, 3]
+    def rack_url_scheme   ; @env['rack.url_scheme']   ; end  # ex: 'http' or 'https'
+    def rack_input        ; @env['rack.input']        ; end  # ex: $stdout
+    def rack_errors       ; @env['rack.errors']       ; end  # ex: $stderr
+    def rack_multithread  ; @env['rack.multithread']  ; end  # ex: true
+    def rack_multiprocess ; @env['rack.multiprocess'] ; end  # ex: true
+    def rack_run_once     ; @env['rack.run_once']     ; end  # ex: false
+    def rack_session      ; @env['rack.session']      ; end  # ex: {}
+    def rack_logger       ; @env['rack.logger']       ; end  # ex: Logger.new
+    def rack_hijack       ; @env['rack.hijack']       ; end  # ex: callable object
+    def rack_hijack?      ; @env['rack.hijack?']      ; end  # ex: true or false
+    def rack_hijack_io    ; @env['rack.hijack_io']    ; end  # ex: socket object
+
+    def params_query
+      #; [!6ezqw] parses QUERY_STRING and returns it as Hash/dict object.
+      #; [!o0ws7] unquotes both keys and values.
+      return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
+    end
+    alias query params_query
+
+    MAX_POST_SIZE      =  10*1024*1024
+    MAX_MULTIPART_SIZE = 100*1024*1024
+
+    def params_form
+      d = @params_form
+      return d if d
+      #
+      d = @params_form = _parse_post_data(:form)
+      return d
+    end
+    alias form params_form
+
+    def params_multipart
+      d1 = @params_form
+      d2 = @params_file
+      return d1, d2 if d1 && d2
+      d1, d2 = _parse_post_data(:multipart)
+      @params_form = d1; @params_file = d2
+      return d1, d2
+    end
+    alias multipart params_multipart
+
+    def params_json
+      d = @params_json
+      return d if d
+      d = @params_json = _parse_post_data(:json)
+      return d
+    end
+    alias json params_json
+
+    def _parse_post_data(kind)
+      #; [!q88w9] raises error when content length is missing.
+      cont_len = @env['CONTENT_LENGTH']  or
+        raise HttpException.new(400, 'Content-Length header expected.')
+      #; [!gi4qq] raises error when content length is invalid.
+      cont_len =~ /\A\d+\z/  or
+        raise HttpException.new(400, 'Content-Length should be an integer.')
+      #
+      len = cont_len.to_i
+      case @env['CONTENT_TYPE']
+      #; [!59ad2] parses form parameters and returns it as Hash object when form requested.
+      when 'application/x-www-form-urlencoded'
+        kind == :form  or
+          raise HttpException.new(400, 'unexpected form data (expected multipart).')
+        #; [!puxlr] raises 400 error when content length is too large (> 10MB).
+        len <= MAX_POST_SIZE  or
+          raise HttpException.new(400, 'Content-Length is too large.')
+        qstr = @env['rack.input'].read(len)
+        d = Util.parse_query_string(qstr)
+        return d
+      #; [!y1jng] parses multipart when multipart form requested.
+      when /\Amultipart\/form-data(?:;\s*boundary=(.*))?/
+        kind == :multipart  or
+          raise HttpException.new(400, 'unexpected multipart data.')
+        boundary = $1  or
+          raise HttpException.new(400, 'bounday attribute of multipart required.')
+        #; [!mtx6t] raises error when content length of multipart is too large (> 100MB).
+        len <= MAX_MULTIPART_SIZE  or
+          raise HttpException.new(400, 'Content-Length of multipart is too large.')
+        d1, d2 = Util.parse_multipart(@env['rack.input'], boundary, len, nil, nil)
+        return d1, d2
+      #; [!ugik5] parses json data and returns it as hash object when json data is sent.
+      when /\Aapplication\/json\b/
+        kind == :json  or
+          raise HttpException.new(400, 'unexpected JSON data.')
+        json_str = @env['rack.input'].read(10*1024*1024)   # TODO
+        d = JSON.parse(json_str)
+      #; [!p9ybb] raises error when not a form data.
+      else
+        raise HttpException.new(400, 'POST data expected, but not.')
+      end
+    end
+    private :_parse_post_data
+
+    def params
+      #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
+      #; [!cr0zj] parses JSON when content type is 'application/json'.
+      #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
+      #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
+      if @method == :GET || @method == :HEAD
+        return params_query()
+      end
+      case @env['CONTENT_TYPE']
+      when /\Aapplication\/json\b/
+        return params_json()
+      when /\Aapplication\/x-www-form-urlencoded\b/
+        return params_form()
+      when /\Amultipart\/form-data\b/
+        return params_multipart()
+      else
+        return {}
+      end
+    end
+
+    def cookies
+      #; [!c9pwr] parses cookie data and returns it as hash object.
+      return @cookies ||= Util.parse_cookie_string(@env['HTTP_COOKIE'] || "")
+    end
+
+    def clear
+      #; [!0jdal] removes uploaded files.
+      d = nil
+      d.each {|_, uploaded| uploaded.clean() } if (d = @params_file)
+    end
+
+  end
+
+
+  class RackResponse
+
+    def initialize
+      @status_code = 200
+      @headers = {}
+    end
+
+    attr_accessor :status_code
+    attr_reader :headers
+    ## for compatibility with Rack::Response
+    alias status status_code
+    alias status= status_code=
+
+    def content_type
+      return @headers['Content-Type']
+    end
+
+    def content_type=(content_type)
+      @headers['Content-Type'] = content_type
+    end
+
+    def content_length
+      s = @headers['Content-Length']
+      return s ? s.to_i : nil
+    end
+
+    def content_length=(length)
+      @headers['Content-Length'] = length.to_s
+    end
+
+    def set_cookie(name, value, domain: nil, path: nil, expires: nil, max_age: nil, httponly: nil, secure: nil)
+      s = "#{name}=#{value}"
+      s << "; Domain=#{domain}"   if domain
+      s << "; Path=#{path}"       if path
+      s << "; Expires=#{expires}" if expires
+      s << "; Max-Age=#{max_age}" if max_age
+      s << "; HttpOnly"           if httponly
+      s << "; Secure"             if secure
+      value = @headers['Set-Cookie']
+      @headers['Set-Cookie'] = value ? (value << "\n" << s) : s
+      return value
+    end
+
+    def clear
+    end
+
+  end
+
+
+  REQUEST_CLASS  = RackRequest
+  RESPONSE_CLASS = RackResponse
+
+  def self.REQUEST_CLASS=(klass)
+    #; [!7uqb4] changes default request class.
+    remove_const :REQUEST_CLASS
+    const_set :REQUEST_CLASS, klass
+  end
+
+  def self.RESPONSE_CLASS=(klass)
+    #; [!c1bd0] changes default response class.
+    remove_const :RESPONSE_CLASS
+    const_set :RESPONSE_CLASS, klass
   end
 
 

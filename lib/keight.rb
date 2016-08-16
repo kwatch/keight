@@ -1336,7 +1336,7 @@ module K8
   end
 
 
-  class Request
+  class RackRequest
 
     def initialize(env)
       #; [!yb9k9] sets @env.
@@ -1552,7 +1552,7 @@ module K8
   end
 
 
-  class Response
+  class RackResponse
 
     def initialize
       @status_code = 200
@@ -1601,8 +1601,8 @@ module K8
   end
 
 
-  REQUEST_CLASS  = Request
-  RESPONSE_CLASS = Response
+  REQUEST_CLASS  = RackRequest
+  RESPONSE_CLASS = RackResponse
 
   def self.REQUEST_CLASS=(klass)
     #; [!7uqb4] changes default request class.

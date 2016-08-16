@@ -610,10 +610,10 @@ Oktest.scope do
   end
 
 
-  topic K8::Request do
+  topic K8::RackRequest do
 
     fixture :req do
-      K8::Request.new(new_env("GET", "/123"))
+      K8::RackRequest.new(new_env("GET", "/123"))
     end
 
     fixture :data_dir do
@@ -633,28 +633,28 @@ Oktest.scope do
 
       spec "[!yb9k9] sets @env." do
         env = new_env()
-        req = K8::Request.new(env)
+        req = K8::RackRequest.new(env)
         ok {req.env}.same?(env)
       end
 
       spec "[!yo22o] sets @method as Symbol value." do
-        req1 = K8::Request.new(new_env("GET"))
+        req1 = K8::RackRequest.new(new_env("GET"))
         ok {req1.method} == :GET
-        req2 = K8::Request.new(new_env("POST"))
+        req2 = K8::RackRequest.new(new_env("POST"))
         ok {req2.method} == :POST
       end
 
       spec "[!twgmi] sets @path." do
-        req1 = K8::Request.new(new_env("GET", "/123"))
+        req1 = K8::RackRequest.new(new_env("GET", "/123"))
         ok {req1.path} == "/123"
       end
 
       spec "[!ae8ws] uses SCRIPT_NAME as urlpath when PATH_INFO is not provided." do
         env = new_env("GET", "/123", env: {'SCRIPT_NAME'=>'/index.cgi'})
         env['PATH_INFO'] = ''
-        ok {K8::Request.new(env).path} == "/index.cgi"
+        ok {K8::RackRequest.new(env).path} == "/index.cgi"
         env.delete('PATH_INFO')
-        ok {K8::Request.new(env).path} == "/index.cgi"
+        ok {K8::RackRequest.new(env).path} == "/index.cgi"
       end
 
     end
@@ -663,7 +663,7 @@ Oktest.scope do
     topic '#method()' do
 
       fixture :req do
-        K8::Request.new({"REQUEST_METHOD"=>"POST"})
+        K8::RackRequest.new({"REQUEST_METHOD"=>"POST"})
       end
 
       spec "[!084jo] returns current request method when argument is not specified." do
@@ -686,7 +686,7 @@ Oktest.scope do
         env = new_env("GET", "/",
                       headers: {'Accept-Encoding'=>'gzip,deflate'},
                       env:     {'HTTP_ACCEPT_LANGUAGE'=>'en,ja'})
-        req = K8::Request.new(env)
+        req = K8::RackRequest.new(env)
         ok {req.header('Accept-Encoding')} == 'gzip,deflate'
         ok {req.header('Accept-Language')} == 'en,ja'
       end
@@ -697,7 +697,7 @@ Oktest.scope do
     topic '#request_method' do
 
       spec "[!y8eos] returns env['REQUEST_METHOD'] as string." do
-        req = K8::Request.new(new_env(:POST, "/"))
+        req = K8::RackRequest.new(new_env(:POST, "/"))
         ok {req.request_method} == "POST"
       end
 
@@ -708,9 +708,9 @@ Oktest.scope do
 
       spec "[!95g9o] returns env['CONTENT_TYPE']." do
         ctype = "text/html"
-        req = K8::Request.new(new_env("GET", "/", env: {'CONTENT_TYPE'=>ctype}))
+        req = K8::RackRequest.new(new_env("GET", "/", env: {'CONTENT_TYPE'=>ctype}))
         ok {req.content_type} == ctype
-        req = K8::Request.new(new_env("GET", "/", env: {}))
+        req = K8::RackRequest.new(new_env("GET", "/", env: {}))
         ok {req.content_type} == nil
       end
 
@@ -720,7 +720,7 @@ Oktest.scope do
     topic '#content_length' do
 
       spec "[!0wbek] returns env['CONTENT_LENGHT'] as integer." do
-        req = K8::Request.new(new_env("GET", "/", env: {'CONTENT_LENGTH'=>'0'}))
+        req = K8::RackRequest.new(new_env("GET", "/", env: {'CONTENT_LENGTH'=>'0'}))
         ok {req.content_length} == 0
         req.env.delete('CONTENT_LENGTH')
         ok {req.content_length} == nil
@@ -733,9 +733,9 @@ Oktest.scope do
 
       spec "[!hsgkg] returns true when 'X-Requested-With' header is 'XMLHttpRequest'." do
         env = new_env("GET", "/", headers: {'X-Requested-With'=>'XMLHttpRequest'})
-        ok {K8::Request.new(env).xhr?} == true
+        ok {K8::RackRequest.new(env).xhr?} == true
         env = new_env("GET", "/", headers: {})
-        ok {K8::Request.new(env).xhr?} == false
+        ok {K8::RackRequest.new(env).xhr?} == false
       end
 
     end
@@ -747,20 +747,20 @@ Oktest.scope do
         env = new_env("GET", "/",
                       headers: {'X-Real-IP'=>'192.168.1.23'},
                       env: {'REMOTE_ADDR'=>'192.168.0.1'})
-        ok {K8::Request.new(env).client_ip_addr} == '192.168.1.23'
+        ok {K8::RackRequest.new(env).client_ip_addr} == '192.168.1.23'
       end
 
       spec "[!qdlyl] returns first item of 'X-Forwarded-For' header if provided." do
         env = new_env("GET", "/",
                       headers: {'X-Forwarded-For'=>'192.168.1.1, 192.168.1.2, 192.168.1.3'},
                       env: {'REMOTE_ADDR'=>'192.168.0.1'})
-        ok {K8::Request.new(env).client_ip_addr} == '192.168.1.1'
+        ok {K8::RackRequest.new(env).client_ip_addr} == '192.168.1.1'
       end
 
       spec "[!8nzjh] returns 'REMOTE_ADDR' if neighter 'X-Real-IP' nor 'X-Forwarded-For' provided." do
         env = new_env("GET", "/",
                       env: {'REMOTE_ADDR'=>'192.168.0.1'})
-        ok {K8::Request.new(env).client_ip_addr} == '192.168.0.1'
+        ok {K8::RackRequest.new(env).client_ip_addr} == '192.168.0.1'
       end
 
     end
@@ -770,15 +770,15 @@ Oktest.scope do
 
       spec "[!jytwy] returns 'https' when env['HTTPS'] is 'on'." do
         env = new_env("GET", "/", env: {'HTTPS'=>'on'})
-        ok {K8::Request.new(env).scheme} == 'https'
+        ok {K8::RackRequest.new(env).scheme} == 'https'
       end
 
       spec "[!zg8r2] returns env['rack.url_scheme'] ('http' or 'https')." do
         env = new_env("GET", "/", env: {'HTTPS'=>'off'})
         env['rack.url_scheme'] = 'http'
-        ok {K8::Request.new(env).scheme} == 'http'
+        ok {K8::RackRequest.new(env).scheme} == 'http'
         env['rack.url_scheme'] = 'https'
-        ok {K8::Request.new(env).scheme} == 'https'
+        ok {K8::RackRequest.new(env).scheme} == 'https'
       end
 
     end
@@ -788,13 +788,13 @@ Oktest.scope do
 
       spec "[!6ezqw] parses QUERY_STRING and returns it as Hash/dict object." do
         qstr = "x=1&y=2"
-        req = K8::Request.new(new_env("GET", "/", env: {'QUERY_STRING'=>qstr}))
+        req = K8::RackRequest.new(new_env("GET", "/", env: {'QUERY_STRING'=>qstr}))
         ok {req.params_query()} == {'x'=>'1', 'y'=>'2'}
       end
 
       spec "[!o0ws7] unquotes both keys and values." do
         qstr = "arr%5Bxxx%5D=%3C%3E+%26%3B"
-        req = K8::Request.new(new_env("GET", "/", env: {'QUERY_STRING'=>qstr}))
+        req = K8::RackRequest.new(new_env("GET", "/", env: {'QUERY_STRING'=>qstr}))
         ok {req.params_query()} == {'arr[xxx]'=>'<> &;'}
       end
 
@@ -806,7 +806,7 @@ Oktest.scope do
       spec "[!q88w9] raises 400 error when content length is missing." do
         env = new_env("POST", "/", form: "x=1")
         env['CONTENT_LENGTH'] = nil
-        req = K8::Request.new(env)
+        req = K8::RackRequest.new(env)
         pr = proc { req.params_form }
         ok {pr}.raise?(K8::HttpException, 'Content-Length header expected.')
       end
@@ -814,21 +814,21 @@ Oktest.scope do
       spec "[!gi4qq] raises 400 error when content length is invalid." do
         env = new_env("POST", "/", form: "x=1")
         env['CONTENT_LENGTH'] = "abc"
-        req = K8::Request.new(env)
+        req = K8::RackRequest.new(env)
         pr = proc { req.params_form }
         ok {pr}.raise?(K8::HttpException, 'Content-Length should be an integer.')
       end
 
       spec "[!59ad2] parses form parameters and returns it as Hash/dict object when form requested." do
         form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
-        req = K8::Request.new(new_env("POST", "/", form: form))
+        req = K8::RackRequest.new(new_env("POST", "/", form: form))
         ok {req.params_form} == {'x'=>'1', 'y'=>'2', 'arr[xxx]'=>'<> &;'}
       end
 
       spec "[!puxlr] raises 400 error when content length is too large (> 10MB)." do
         env = new_env("POST", "/", form: "x=1")
         env['CONTENT_LENGTH'] = (10*1024*1024 + 1).to_s
-        req = K8::Request.new(env)
+        req = K8::RackRequest.new(env)
         pr = proc { req.params_form }
         ok {pr}.raise?(K8::HttpException, 'Content-Length is too large.')
       end
@@ -841,7 +841,7 @@ Oktest.scope do
       spec "[!y1jng] parses multipart when multipart form requested." do
         |multipart_env, data_dir|
         env = multipart_env
-        req = K8::Request.new(env)
+        req = K8::RackRequest.new(env)
         form, files = req.params_multipart
         ok {form} == {
           "text1" => "test1",
@@ -874,7 +874,7 @@ Oktest.scope do
         |multipart_env|
         env = multipart_env
         env['CONTENT_LENGTH'] = (100*1024*1024 + 1).to_s
-        req = K8::Request.new(env)
+        req = K8::RackRequest.new(env)
         pr = proc { req.params_multipart }
         ok {pr}.raise?(K8::HttpException, 'Content-Length of multipart is too large.')
       end
@@ -886,7 +886,7 @@ Oktest.scope do
 
       spec "[!ugik5] parses json data and returns it as hash object when json data is sent." do
         data = '{"x":1,"y":2,"arr":["a","b","c"]}'
-        req = K8::Request.new(new_env("POST", "/", json: data))
+        req = K8::RackRequest.new(new_env("POST", "/", json: data))
         ok {req.params_json} == {"x"=>1, "y"=>2, "arr"=>["a", "b", "c"]}
       end
 
@@ -898,21 +898,21 @@ Oktest.scope do
       spec "[!erlc7] parses QUERY_STRING when request method is GET or HEAD." do
         qstr = "a=8&b=9"
         form = "x=1&y=2"
-        req = K8::Request.new(new_env('GET', '/', query: qstr, form: form))
+        req = K8::RackRequest.new(new_env('GET', '/', query: qstr, form: form))
         ok {req.params} == {"a"=>"8", "b"=>"9"}
       end
 
       spec "[!cr0zj] parses JSON when content type is 'application/json'." do
         qstr = "a=8&b=9"
         json = '{"n":123}'
-        req = K8::Request.new(new_env('POST', '/', query: qstr, json: json))
+        req = K8::RackRequest.new(new_env('POST', '/', query: qstr, json: json))
         ok {req.params} == {"n"=>123}
       end
 
       spec "[!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'." do
         qstr = "a=8&b=9"
         form = "x=1&y=2"
-        req = K8::Request.new(new_env('POST', '/', query: qstr, form: form))
+        req = K8::RackRequest.new(new_env('POST', '/', query: qstr, form: form))
         ok {req.params} == {"x"=>"1", "y"=>"2"}
       end
 
@@ -924,7 +924,7 @@ Oktest.scope do
     topic '#cookies' do
 
       spec "[!c9pwr] parses cookie data and returns it as hash object." do
-        req = K8::Request.new(new_env('POST', '/', cookies: "aaa=homhom; bbb=madmad"))
+        req = K8::RackRequest.new(new_env('POST', '/', cookies: "aaa=homhom; bbb=madmad"))
         ok {req.cookies} == {"aaa"=>"homhom", "bbb"=>"madmad"}
       end
 
@@ -935,7 +935,7 @@ Oktest.scope do
 
       spec "[!0jdal] removes uploaded files." do
         |multipart_env|
-        req = K8::Request.new(multipart_env)
+        req = K8::RackRequest.new(multipart_env)
         form, files = req.params_multipart
         ok {files.empty?} == false
         tmpfile1 = files['file1'].tmp_filepath
@@ -954,7 +954,7 @@ Oktest.scope do
   end
 
 
-  topic K8::Response do
+  topic K8::RackResponse do
   end
 
 
@@ -992,15 +992,15 @@ Oktest.scope do
 
     fixture :action do
       env  = new_env("GET", "/books")
-      TestBaseAction.new(K8::Request.new(env), K8::Response.new())
+      TestBaseAction.new(K8::RackRequest.new(env), K8::RackResponse.new())
     end
 
 
     topic '#initialize()' do
 
       spec "[!uotpb] accepts request and response objects." do
-        req    = K8::Request.new(new_env("GET", "/books"))
-        resp   = K8::Response.new()
+        req    = K8::RackRequest.new(new_env("GET", "/books"))
+        resp   = K8::RackResponse.new()
         action = K8::BaseAction.new(req, resp)
         ok {action.instance_variable_get('@req')}.same?(req)
         ok {action.instance_variable_get('@resp')}.same?(resp)
@@ -1114,7 +1114,7 @@ Oktest.scope do
 
     fixture :action_obj do
       env = new_env("GET", "/", env: {'rack.session'=>{}})
-      BooksAction.new(K8::Request.new(env), K8::Response.new())
+      BooksAction.new(K8::RackRequest.new(env), K8::RackResponse.new())
     end
 
 
@@ -1153,8 +1153,8 @@ Oktest.scope do
 
       spec "[!7sfyf] sets session object." do
         d = {'a'=>1}
-        req    = K8::Request.new(new_env("GET", "/books", env: {'rack.session'=>d}))
-        resp   = K8::Response.new()
+        req    = K8::RackRequest.new(new_env("GET", "/books", env: {'rack.session'=>d}))
+        resp   = K8::RackResponse.new()
         action = K8::Action.new(req, resp)
         ok {action.instance_variable_get('@sess')}.same?(d)
         ok {action.sess}.same?(d)
@@ -1185,7 +1185,7 @@ Oktest.scope do
 
       spec "[!d5v0l] handles exception when handler method defined." do
         env = new_env("POST", "/", env: {'rack.session'=>{}})
-        action_obj = TestExceptionAction.new(K8::Request.new(env), K8::Response.new())
+        action_obj = TestExceptionAction.new(K8::RackRequest.new(env), K8::RackResponse.new())
         result = nil
         pr = proc { result = action_obj.handle_action(:do_create, []) }
         ok {pr}.raise?(ZeroDivisionError)
@@ -1457,13 +1457,13 @@ Oktest.scope do
 
       fixture :action_obj do
         env = new_env('GET', '/')
-        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action = K8::Action.new(K8::RackRequest.new(env), K8::RackResponse.new)
       end
 
       spec "[!8chgu] returns false when requested with 'XMLHttpRequest'." do
         headers = {'X-Requested-With'=>'XMLHttpRequest'}
         env = new_env('GET', '/', headers: headers)
-        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action = K8::Action.new(K8::RackRequest.new(env), K8::RackResponse.new)
         action.instance_exec(self) do |_|
           _.ok {csrf_protection_required?} == false
         end
@@ -1472,7 +1472,7 @@ Oktest.scope do
       spec "[!vwrqv] returns true when request method is one of POST, PUT, or DELETE." do
         ['POST', 'PUT', 'DELETE'].each do |meth|
           env = new_env(meth, '/')
-          action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+          action = K8::Action.new(K8::RackRequest.new(env), K8::RackResponse.new)
           action.instance_exec(self) do |_|
             _.ok {csrf_protection_required?} == true
           end
@@ -1482,7 +1482,7 @@ Oktest.scope do
       spec "[!jfhla] returns true when request method is GET or HEAD." do
         ['GET', 'HEAD'].each do |meth|
           env = new_env(meth, '/')
-          action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+          action = K8::Action.new(K8::RackRequest.new(env), K8::RackResponse.new)
           action.instance_exec(self) do |_|
             _.ok {csrf_protection_required?} == false
           end
@@ -1498,7 +1498,7 @@ Oktest.scope do
         headers = {'Cookie'=>"_csrf=abc123"}
         form    = {"_csrf"=>"abc123"}
         env = new_env('POST', '/', form: form, headers: headers)
-        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action = K8::Action.new(K8::RackRequest.new(env), K8::RackResponse.new)
         action.instance_exec(self) do |_|
           pr = proc { csrf_protection() }
           _.ok {pr}.NOT.raise?
@@ -1509,7 +1509,7 @@ Oktest.scope do
         headers = {'Cookie'=>"_csrf=abc123"}
         form    = {"_csrf"=>"abc999"}
         env = new_env('POST', '/', form: form, headers: headers)
-        action = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action = K8::Action.new(K8::RackRequest.new(env), K8::RackResponse.new)
         action.instance_exec(self) do |_|
           pr = proc { csrf_protection() }
           _.ok {pr}.raise?(K8::HttpException, "invalid csrf token")
@@ -1550,7 +1550,7 @@ Oktest.scope do
 
       spec "[!pal33] returns csrf token in request parameter." do
         env = new_env("POST", "/", form: {"_csrf"=>"foobar999"})
-        action_obj = K8::Action.new(K8::Request.new(env), K8::Response.new)
+        action_obj = K8::Action.new(K8::RackRequest.new(env), K8::RackResponse.new)
         action_obj.instance_exec(self) do |_|
           _.ok {csrf_get_param()} == "foobar999"
         end
@@ -2882,7 +2882,7 @@ Oktest.scope do
         |app|
         env = new_env("GET", "/api/books/123")
         app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
+          tuple = handle_request(K8::RackRequest.new(env), K8::RackResponse.new)
           _.ok {tuple}.is_a?(Array)
           status, headers, body = tuple
           _.ok {status}  == 200
@@ -2898,7 +2898,7 @@ Oktest.scope do
         |app|
         env = new_env("HEAD", "/api/books/123")
         app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
+          tuple = handle_request(K8::RackRequest.new(env), K8::RackResponse.new)
           status, headers, body = tuple
           _.ok {body}    == [""]
         end

@@ -982,7 +982,7 @@ module K8
 
     attr_reader :meth
 
-    def method(name=nil)
+    def method(name=nil)    # :nodoc:
       return name ? super : @meth
     end
 
@@ -1352,7 +1352,7 @@ module K8
 
     attr_reader :env, :meth, :path
 
-    def method(name=nil)
+    def method(name=nil)    # :nodoc:
       #; [!084jo] returns current request method when argument is not specified.
       #; [!gwskf] calls Object#method() when argument specified.
       return name ? super : @meth

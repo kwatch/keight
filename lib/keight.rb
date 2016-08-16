@@ -669,6 +669,7 @@ module K8
 
     def handle_action(action_name, urlpath_args)
       @action_name = action_name
+      @action_args = urlpath_args
       ex = nil
       begin
         #; [!5jnx6] calls '#before_action()' before handling request.

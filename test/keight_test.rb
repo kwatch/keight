@@ -1071,11 +1071,11 @@ Oktest.scope do
         #
         ok {infos[:do_index]}.is_a?(K8::ActionInfo)
         ok {infos[:do_index].meth} == :GET
-        ok {infos[:do_index].urlpath} == '/api/books/'
+        ok {infos[:do_index].path} == '/api/books/'
         #
         ok {infos[:do_update]}.is_a?(K8::ActionInfo)
         ok {infos[:do_update].meth} == :PUT
-        ok {infos[:do_update].urlpath(123)} == '/api/books/123'
+        ok {infos[:do_update].path(123)} == '/api/books/123'
       end
 
     end
@@ -1089,11 +1089,11 @@ Oktest.scope do
         #
         ok {cls[:do_create]}.is_a?(K8::ActionInfo)
         ok {cls[:do_create].meth} == :POST
-        ok {cls[:do_create].urlpath} == '/api/books/'
+        ok {cls[:do_create].path} == '/api/books/'
         #
         ok {cls[:do_show]}.is_a?(K8::ActionInfo)
         ok {cls[:do_show].meth} == :GET
-        ok {cls[:do_show].urlpath(123)} == '/api/books/123'
+        ok {cls[:do_show].path(123)} == '/api/books/123'
       end
 
       spec "[!6g2iw] returns nil when not mounted yet." do
@@ -1757,36 +1757,36 @@ Oktest.scope do
       spec "[!btt2g] returns ActionInfoN object when number of urlpath parameter <= 4." do
         info = K8::ActionInfo.create('GET', '/books')
         ok {info}.is_a?(K8::ActionInfo0)
-        ok {info.urlpath} == '/books'
-        ok {->{ info.urlpath('a') }}.raise?(ArgumentError, /^wrong number of arguments \((1 for 0|given 1, expected 0)\)$/)
+        ok {info.path} == '/books'
+        ok {->{ info.path('a') }}.raise?(ArgumentError, /^wrong number of arguments \((1 for 0|given 1, expected 0)\)$/)
         #
         info = K8::ActionInfo.create('GET', '/books/{id}')
         ok {info}.is_a?(K8::ActionInfo1)
-        ok {info.urlpath('a')} == '/books/a'
-        ok {->{ info.urlpath() }}.raise?(ArgumentError, /^wrong number of arguments \((0 for 1|given 0, expected 1)\)$/)
+        ok {info.path('a')} == '/books/a'
+        ok {->{ info.path() }}.raise?(ArgumentError, /^wrong number of arguments \((0 for 1|given 0, expected 1)\)$/)
         #
         info = K8::ActionInfo.create('GET', '/books/{id}/comments/{comment_id}')
         ok {info}.is_a?(K8::ActionInfo2)
-        ok {info.urlpath('a', 'b')} == '/books/a/comments/b'
-        ok {->{info.urlpath('a')}}.raise?(ArgumentError, /^wrong number of arguments \((1 for 2|given 1, expected 2)\)$/)
+        ok {info.path('a', 'b')} == '/books/a/comments/b'
+        ok {->{info.path('a')}}.raise?(ArgumentError, /^wrong number of arguments \((1 for 2|given 1, expected 2)\)$/)
         #
         info = K8::ActionInfo.create('GET', '/books/{id}/{title}/{code}')
         ok {info}.is_a?(K8::ActionInfo3)
-        ok {info.urlpath('a', 'b', 'c')} == '/books/a/b/c'
-        ok {->{info.urlpath(1,2)}}.raise?(ArgumentError, /^wrong number of arguments \((2 for 3|given 2, expected 3)\)$/)
+        ok {info.path('a', 'b', 'c')} == '/books/a/b/c'
+        ok {->{info.path(1,2)}}.raise?(ArgumentError, /^wrong number of arguments \((2 for 3|given 2, expected 3)\)$/)
         #
         info = K8::ActionInfo.create('GET', '/books/{id}/{title}/{code}/{ref}')
         ok {info}.is_a?(K8::ActionInfo4)
-        ok {info.urlpath('a', 'b', 'c', 'd')} == '/books/a/b/c/d'
-        ok {->{info.urlpath}}.raise?(ArgumentError, /^wrong number of arguments \((0 for 4|given 0, expected 4)\)$/)
+        ok {info.path('a', 'b', 'c', 'd')} == '/books/a/b/c/d'
+        ok {->{info.path}}.raise?(ArgumentError, /^wrong number of arguments \((0 for 4|given 0, expected 4)\)$/)
       end
 
       spec "[!x5yx2] returns ActionInfo object when number of urlpath parameter > 4." do
         info = K8::ActionInfo.create('GET', '/books/{id}/{title}/{code}/{ref}/{x}')
         ok {info}.is_a?(K8::ActionInfo)
-        ok {info.urlpath('a', 'b', 'c', 'd', 'e')} == "/books/a/b/c/d/e"
+        ok {info.path('a', 'b', 'c', 'd', 'e')} == "/books/a/b/c/d/e"
         #
-        ok {->{info.urlpath('a','b','c')}}.raise?(ArgumentError, "too few arguments")
+        ok {->{info.path('a','b','c')}}.raise?(ArgumentError, "too few arguments")
       end
 
     end
@@ -2112,10 +2112,10 @@ Oktest.scope do
         #
         ok {Ex_6xwhq[:do_create]} != nil
         ok {Ex_6xwhq[:do_create].meth} == :POST
-        ok {Ex_6xwhq[:do_create].urlpath} == '/test/example4'
+        ok {Ex_6xwhq[:do_create].path} == '/test/example4'
         ok {Ex_6xwhq[:do_update]} != nil
         ok {Ex_6xwhq[:do_update].meth} == :PUT
-        ok {Ex_6xwhq[:do_update].urlpath(123)} == '/test/example4/123'
+        ok {Ex_6xwhq[:do_update].path(123)} == '/test/example4/123'
       end
 
       spec "[!wd2eb] accepts subclass of Action class." do

@@ -637,11 +637,11 @@ Oktest.scope do
         ok {req.env}.same?(env)
       end
 
-      spec "[!yo22o] sets @method as Symbol value." do
+      spec "[!yo22o] sets @meth as Symbol value." do
         req1 = K8::RackRequest.new(new_env("GET"))
-        ok {req1.method} == :GET
+        ok {req1.meth} == :GET
         req2 = K8::RackRequest.new(new_env("POST"))
-        ok {req2.method} == :POST
+        ok {req2.meth} == :POST
       end
 
       spec "[!twgmi] sets @path." do

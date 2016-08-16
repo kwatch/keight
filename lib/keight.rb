@@ -886,7 +886,7 @@ module K8
       return false if @req.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
       #; [!vwrqv] returns true when request method is one of POST, PUT, or DELETE.
       #; [!jfhla] returns true when request method is GET or HEAD.
-      req_meth = @req.method
+      req_meth = @req.meth
       return req_meth == :POST || req_meth == :PUT || req_meth == :DELETE
     end
 
@@ -1341,8 +1341,8 @@ module K8
     def initialize(env)
       #; [!yb9k9] sets @env.
       @env = env
-      #; [!yo22o] sets @method as Symbol value.
-      @method = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
+      #; [!yo22o] sets @meth as Symbol value.
+      @meth = HTTP_REQUEST_METHODS[env['REQUEST_METHOD']]  or
         raise HTTPException.new(400, "#{env['REQUEST_METHOD'].inspect}: unknown request method.")
       #; [!twgmi] sets @path.
       @path = (x = env['PATH_INFO'])
@@ -1350,12 +1350,12 @@ module K8
       @path = env['SCRIPT_NAME'] if x.nil? || x.empty?
     end
 
-    attr_reader :env, :method, :path
+    attr_reader :env, :meth, :path
 
     def method(name=nil)
       #; [!084jo] returns current request method when argument is not specified.
       #; [!gwskf] calls Object#method() when argument specified.
-      return name ? super : @method
+      return name ? super : @meth
     end
 
     def header(name)
@@ -1369,14 +1369,14 @@ module K8
     end
 
     ##--
-    #def get?         ; @method == :GET           ; end
-    #def post?        ; @method == :POST          ; end
-    #def put?         ; @method == :PUT           ; end
-    #def delete?      ; @method == :DELETE        ; end
-    #def head?        ; @method == :HEAD          ; end
-    #def patch?       ; @method == :PATCH         ; end
-    #def options?     ; @method == :OPTIONS       ; end
-    #def trace?       ; @method == :TRACE         ; end
+    #def get?         ; @meth == :GET           ; end
+    #def post?        ; @meth == :POST          ; end
+    #def put?         ; @meth == :PUT           ; end
+    #def delete?      ; @meth == :DELETE        ; end
+    #def head?        ; @meth == :HEAD          ; end
+    #def patch?       ; @meth == :PATCH         ; end
+    #def options?     ; @meth == :OPTIONS       ; end
+    #def trace?       ; @meth == :TRACE         ; end
     ##++
 
     def script_name  ; @env['SCRIPT_NAME' ] || ''; end   # may be empty
@@ -1523,7 +1523,7 @@ module K8
       #; [!cr0zj] parses JSON when content type is 'application/json'.
       #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
       #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
-      if @method == :GET || @method == :HEAD
+      if @meth == :GET || @meth == :HEAD
         return params_query()
       end
       case @env['CONTENT_TYPE']

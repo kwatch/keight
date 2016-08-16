@@ -667,14 +667,15 @@ module K8
 
     attr_reader :req, :resp, :sess
 
-    def handle_action(action_method, urlpath_args)
-      @current_action = action_method
+    def handle_action(action_name, urlpath_args)
+      @action_name = action_name
+      @action_args = urlpath_args
       ex = nil
       begin
         #; [!5jnx6] calls '#before_action()' before handling request.
         before_action()
         #; [!ddgx3] invokes action method with urlpath params.
-        content = invoke_action(action_method, urlpath_args)
+        content = invoke_action(action_name, urlpath_args)
         #; [!aqa4e] returns content.
         return handle_content(content)
       rescue Exception => ex
@@ -694,8 +695,8 @@ module K8
     def after_action(ex)
     end
 
-    def invoke_action(action_method, urlpath_args)
-      return self.__send__(action_method, *urlpath_args)
+    def invoke_action(action_name, urlpath_args)
+      return self.__send__(action_name, *urlpath_args)
     end
 
     def handle_content(content)
@@ -708,7 +709,7 @@ module K8
     ##   mapping '/{id}', :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
     ##
     def self.mapping(urlpath_pattern, action_methods={})
-      action_methods.each do |req_meth, action_method|
+      action_methods.each do |req_meth, action_name|
         HTTP_REQUEST_METHODS[req_meth.to_s]  or
           raise ArgumentError.new("#{req_meth.inspect}: unknown request method.")
         req_meth.is_a?(Symbol)  or
@@ -777,7 +778,7 @@ module K8
       end
     end
 
-    def invoke_action(action_method, urlpath_args)
+    def invoke_action(action_name, urlpath_args)
       begin
         return super
       #; [!d5v0l] handles exception when handler method defined.
@@ -1775,8 +1776,8 @@ END
       s = ""
       each_mapping do |full_urlpath_pat, action_class, action_methods|
         arr = req_methods.collect {|req_meth|
-          action_method = action_methods[req_meth]
-          action_method ? "#{req_meth}: #{action_method}" : nil
+          action_name = action_methods[req_meth]
+          action_name ? "#{req_meth}: #{action_name}" : nil
         }.compact()
         s << "- urlpath: #{full_urlpath_pat}\n"
         s << "  class:   #{action_class}\n"

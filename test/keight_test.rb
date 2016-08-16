@@ -2266,7 +2266,7 @@ Oktest.scope do
     end
 
 
-    topic '#lookup()' do
+    topic '#find()' do
 
       fixture :proc1 do
         proc {|x| x.to_i }
@@ -2287,35 +2287,35 @@ Oktest.scope do
 
       spec "[!jyxlm] returns action class, action methods and urlpath param args." do
         |mapping|
-        tuple = mapping.lookup('/api/books/123')
+        tuple = mapping.find('/api/books/123')
         ok {tuple} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, [123]]
-        tuple = mapping.lookup('/api/books/123/comments/999')
+        tuple = mapping.find('/api/books/123/comments/999')
         ok {tuple} == [BookCommentsAction, {:GET=>:do_comment}, [123, 999]]
       end
 
       spec "[!j34yh] finds from fixed urlpaths at first." do
         |mapping|
         mapping.instance_exec(self) do |_|
-          _.ok {lookup('/books')} == nil
+          _.ok {find('/books')} == nil
           tuple = @fixed_endpoints['/api/books/']
           _.ok {tuple} != nil
           @fixed_endpoints['/books'] = tuple
           expected = [BooksAction, {:GET=>:do_index, :POST=>:do_create}, []]
-          _.ok {lookup('/books')} != nil
-          _.ok {lookup('/books')} == expected
-          _.ok {lookup('/api/books/')} == expected
+          _.ok {find('/books')} != nil
+          _.ok {find('/books')} == expected
+          _.ok {find('/api/books/')} == expected
         end
       end
 
       spec "[!95q61] finds from variable urlpath patterns when not found in fixed ones." do
         |mapping|
-        ok {mapping.lookup('/api/books/123')} == \
+        ok {mapping.find('/api/books/123')} == \
           [
             BooksAction,
             {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
             [123],
           ]
-        ok {mapping.lookup('/api/books/123/comments/999')} == \
+        ok {mapping.find('/api/books/123/comments/999')} == \
           [
             BookCommentsAction,
             {:GET=>:do_comment},
@@ -2325,20 +2325,20 @@ Oktest.scope do
 
       spec "[!sos5i] returns nil when request path not matched to urlpath patterns." do
         |mapping|
-        ok {mapping.lookup('/api/booking')} == nil
+        ok {mapping.find('/api/booking')} == nil
       end
 
       spec "[!1k1k5] converts urlpath param values by converter procs." do
         |mapping|
-        tuple = mapping.lookup('/api/books/123')
+        tuple = mapping.find('/api/books/123')
         ok {tuple[-1]} == [123]   # id
-        tuple = mapping.lookup('/api/books/123/comments/999')
+        tuple = mapping.find('/api/books/123/comments/999')
         ok {tuple[-1]} == [123, 999]  # book_id, comment_id
       end
 
       spec "[!uqwr7] stores result into cache if cache is enabled." do
         |mapping|
-        tuple = mapping.lookup('/api/books/111')
+        tuple = mapping.find('/api/books/111')
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_lru_cache} == {'/api/books/111' => tuple}
         end
@@ -2346,11 +2346,11 @@ Oktest.scope do
 
       spec "[!3ps5g] deletes item from cache when cache size over limit." do
         |mapping|
-        mapping.lookup('/api/books/1')
-        mapping.lookup('/api/books/2')
-        mapping.lookup('/api/books/3')
-        mapping.lookup('/api/books/4')
-        mapping.lookup('/api/books/5')
+        mapping.find('/api/books/1')
+        mapping.find('/api/books/2')
+        mapping.find('/api/books/3')
+        mapping.find('/api/books/4')
+        mapping.find('/api/books/5')
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_lru_cache.length} == 3
         end
@@ -2359,18 +2359,18 @@ Oktest.scope do
       spec "[!uqwr7] uses LRU as cache algorithm." do
         |mapping|
         mapping.instance_exec(self) do |_|
-          t1 = lookup('/api/books/1')
-          t2 = lookup('/api/books/2')
-          t3 = lookup('/api/books/3')
+          t1 = find('/api/books/1')
+          t2 = find('/api/books/2')
+          t3 = find('/api/books/3')
           _.ok {@urlpath_lru_cache.values} == [t1, t2, t3]
-          t4 = lookup('/api/books/4')
+          t4 = find('/api/books/4')
           _.ok {@urlpath_lru_cache.values} == [t2, t3, t4]
-          t5 = lookup('/api/books/5')
+          t5 = find('/api/books/5')
           _.ok {@urlpath_lru_cache.values} == [t3, t4, t5]
           #
-          lookup('/api/books/4')
+          find('/api/books/4')
           _.ok {@urlpath_lru_cache.values} == [t3, t5, t4]
-          lookup('/api/books/3')
+          find('/api/books/3')
           _.ok {@urlpath_lru_cache.values} == [t5, t4, t3]
         end
       end
@@ -2645,14 +2645,83 @@ Oktest.scope do
     end
 
 
-    topic '#lookup()' do
+    topic '#find()' do
 
       spec "[!o0rnr] returns action class, action methods, urlpath names and values." do
         |app|
-        ret = app.lookup('/api/books/')
+        ret = app.find('/api/books/')
         ok {ret} == [BooksAction, {:GET=>:do_index, :POST=>:do_create}, []]
-        ret = app.lookup('/api/books/123')
+        ret = app.find('/api/books/123')
         ok {ret} == [BooksAction, {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete}, [123]]
+      end
+
+    end
+
+
+    topic '#lookup()' do
+
+      spec "[!7476i] uses '_method' value of query string as request method when 'POST' method." do
+        |app|
+        tuple = app.lookup(:POST, "/api/books/123", "_method=DELETE")
+        ok {tuple} == [BooksAction, :do_delete, [123]]  # found :do_delete
+      end
+
+      spec "[!c0job] redirects only when request method is GET or HEAD." do
+        |app|
+        ## not redirect on :POST
+        pr3 = proc { app.lookup(:POST, "/api/books", "") }
+        ok {pr3}.raise?(K8::HttpException)
+        ex3 = pr3.exception
+        ok {ex3.status_code} == 404
+      end
+
+      spec "[!u1qfv] raises 301 when urlpath not found but found with tailing '/'." do
+        |app|
+        pr = proc { app.lookup(:GET, "/api/books", "") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 301
+        ok {ex.response_headers} == {"Location"=>"/api/books/"}
+      end
+
+      spec "[!kbff3] raises 301 when urlpath not found but found without tailing '/'." do
+        |app|
+        pr = proc { app.lookup(:GET, "/api/books/123/", "") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 301
+        ok {ex.response_headers} == {"Location"=>"/api/books/123"}
+      end
+
+      spec "[!cgxx4] adds query string to 'Location' header when redirecting." do
+        |app|
+        pr = proc { app.lookup(:GET, "/api/books", "x=1&y=2") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 301
+        ok {ex.response_headers} == {"Location"=>"/api/books/?x=1&y=2"}
+      end
+
+      spec "[!hdy1f] raises HTTP 404 when urlpath not found." do
+        |app|
+        pr = proc { app.lookup(:GET, "/api/book/comments", "") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 404
+      end
+
+      spec "[!0znwr] uses 'GET' method to find action when request method is 'HEAD'." do
+        |app|
+        tuple = app.lookup(:HEAD, "/api/books/123")
+        ok {tuple} == [BooksAction, :do_show, [123]]
+      end
+
+      spec "[!bfpav] raises HTTP 405 when urlpath found but request method not allowed." do
+        |app|
+        pr = proc { app.lookup(:POST, "/api/books/123", "") }
+        ok {pr}.raise?(K8::HttpException)
+        ex = pr.exception
+        ok {ex.status_code} == 405
       end
 
     end
@@ -2687,7 +2756,7 @@ Oktest.scope do
         status, headers, body = app.call(env)
         ok {status} == 301
         ok {headers['Location']} == "/api/books/"
-        ok {body} == []
+        ok {body} == ["<div>\n<h2>301 Moved Permanently</h2>\n<p></p>\n</div>\n"]
       end
 
       spec "[!02dow] returns 301 when urlpath not found but found without tailing '/'." do
@@ -2696,7 +2765,7 @@ Oktest.scope do
         status, headers, body = app.call(env)
         ok {status} == 301
         ok {headers['Location']} == "/api/books/123"
-        ok {body} == []
+        ok {body} == ["<div>\n<h2>301 Moved Permanently</h2>\n<p></p>\n</div>\n"]
       end
 
       spec "[!2a9c9] adds query string to 'Location' header." do
@@ -2725,6 +2794,85 @@ Oktest.scope do
         ok {headers['Location']} == nil
       end
 
+      spec "[!l6kmc] uses 'GET' method to find action when request method is 'HEAD'." do
+        |app|
+        env = new_env("HEAD", "/api/books/123")
+        status, headers, body = app.call(env)
+        ok {status}  == 200
+        ok {body}    == [""]
+        ok {headers} == {
+          "Content-Length" => "18",
+          "Content-Type"   => "text/html; charset=utf-8",
+        }
+      end
+
+      spec "[!4vmd3] uses '_method' value of query string as request method when 'POST' method." do
+        |app|
+        env = new_env("POST", "/api/books/123", query: {"_method"=>"DELETE"})
+        status, headers, body = app.call(env)
+        ok {status}  == 200
+        ok {body}    == ["<delete:123(Fixnum)>"]  # do_delete() caled
+      end
+
+      spec "[!vdllr] clears request and response if possible." do
+        |app|
+        reqclass  = K8::REQUEST_CLASS
+        respclass = K8::RESPONSE_CLASS
+        K8.module_eval do
+          remove_const :REQUEST_CLASS
+          remove_const :RESPONSE_CLASS
+        end
+        $req_clear = $resp_clear = false
+        K8::REQUEST_CLASS = Class.new(reqclass) do
+          def clear; $req_clear = true; end
+        end
+        K8::RESPONSE_CLASS = Class.new(respclass) do
+          def clear; $resp_clear = true; end
+        end
+        at_end do
+          K8.REQUEST_CLASS = reqclass
+          K8.RESPONSE_CLASS = respclass
+          $req_clear  = nil
+          $resp_clear = nil
+        end
+        #
+        env = new_env("GET", "/")
+        ok {$req_clear}  == false
+        ok {$resp_clear} == false
+        app.call(env)
+        _ = self
+        K8::REQUEST_CLASS.class_eval do
+          _.ok {$req_clear} == true
+        end
+        K8::RESPONSE_CLASS.class_eval do
+          _.ok {$resp_clear} == true
+        end
+      end
+
+      spec "[!rz13i] returns HTTP 404 when urlpath not found." do
+        |app|
+        env = new_env("GET", "/api/book/comments")
+        status, headers, body = app.call(env)
+        ok {status} == 404
+        ok {headers} == {
+          "Content-Length" => "44",
+          "Content-Type"   => "text/html;charset=utf-8",
+        }
+        ok {body} == ["<div>\n<h2>404 Not Found</h2>\n<p></p>\n</div>\n"]
+      end
+
+      spec "[!rv3cf] returns HTTP 405 when urlpath found but request method not allowed." do
+        |app|
+        env = new_env("POST", "/api/books/123")
+        status, headers, body = app.call(env)
+        ok {status} == 405
+        ok {headers} == {
+          "Content-Length" => "53",
+          "Content-Type"   => "text/html;charset=utf-8",
+        }
+        ok {body} == ["<div>\n<h2>405 Method Not Allowed</h2>\n<p></p>\n</div>\n"]
+      end
+
     end
 
 
@@ -2746,85 +2894,13 @@ Oktest.scope do
         end
       end
 
-      spec "[!l6kmc] uses 'GET' method to find action when request method is 'HEAD'." do
-        |app|
-        env = new_env("HEAD", "/api/books/123")
-        app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
-          status, headers, body = tuple
-          _.ok {status}  == 200
-          _.ok {body}    == [""]
-          _.ok {headers} == {
-            "Content-Length" => "18",
-            "Content-Type"   => "text/html; charset=utf-8",
-          }
-        end
-      end
-
-      spec "[!4vmd3] uses '_method' value of query string as request method when 'POST' method." do
-        |app|
-        env = new_env("POST", "/api/books/123", query: {"_method"=>"DELETE"})
-        app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
-          status, headers, body = tuple
-          _.ok {status}  == 200
-          _.ok {body}    == ["<delete:123(Fixnum)>"]  # do_delete() caled
-        end
-      end
-
-      spec "[!vdllr] clears request and response if possible." do
-        |app|
-        req  = K8::Request.new(new_env("GET", "/"))
-        resp = K8::Response.new()
-        req_clear = false
-        (class << req; self; end).__send__(:define_method, :clear) { req_clear = true }
-        resp_clear = false
-        (class << resp; self; end).__send__(:define_method, :clear) { resp_clear = true }
-        #
-        app.instance_exec(self) do |_|
-          tuple = handle_request(req, resp)
-          _.ok {req_clear}  == true
-          _.ok {resp_clear} == true
-        end
-      end
-
       spec "[!9wp9z] returns empty body when request method is HEAD." do
         |app|
         env = new_env("HEAD", "/api/books/123")
         app.instance_exec(self) do |_|
           tuple = handle_request(K8::Request.new(env), K8::Response.new)
           status, headers, body = tuple
-          _.ok {body} == [""]
-        end
-      end
-
-      spec "[!rz13i] returns HTTP 404 when urlpath not found." do
-        |app|
-        env = new_env("GET", "/api/book/comments")
-        app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
-          status, headers, body = tuple
-          _.ok {status}  == 404
-          _.ok {body}    == ["<div>\n<h2>404 Not Found</h2>\n<p></p>\n</div>\n"]
-          _.ok {headers} == {
-            "Content-Length" => "44",
-            "Content-Type"   => "text/html;charset=utf-8",
-          }
-        end
-      end
-
-      spec "[!rv3cf] returns HTTP 405 when urlpath found but request method not allowed." do
-        |app|
-        env = new_env("POST", "/api/books/123")
-        app.instance_exec(self) do |_|
-          tuple = handle_request(K8::Request.new(env), K8::Response.new)
-          status, headers, body = tuple
-          _.ok {status}  == 405
-          _.ok {body}    == ["<div>\n<h2>405 Method Not Allowed</h2>\n<p></p>\n</div>\n"]
-          _.ok {headers} == {
-            "Content-Length" => "53",
-            "Content-Type"   => "text/html;charset=utf-8",
-          }
+          _.ok {body}    == [""]
         end
       end
 

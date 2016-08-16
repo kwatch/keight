@@ -976,14 +976,14 @@ module K8
   class ActionInfo
 
     def initialize(method, urlpath_format)
-      @method = method
+      @meth = method
       @urlpath_format = urlpath_format   # ex: '/books/%s/comments/%s'
     end
 
-    attr_reader :method
+    attr_reader :meth
 
     def method(name=nil)
-      return name ? super : @method
+      return name ? super : @meth
     end
 
     def urlpath(*args)
@@ -993,10 +993,10 @@ module K8
     def form_action_attr(*args)
       #; [!qyhkm] returns '/api/books/123' when method is POST.
       #; [!kogyx] returns '/api/books/123?_method=PUT' when method is not POST.
-      if @method == 'POST'
+      if @meth == 'POST'
         return urlpath(*args)
       else
-        return "#{urlpath(*args)}?_method=#{@method}"
+        return "#{urlpath(*args)}?_method=#{@meth}"
       end
     end
 

@@ -1189,9 +1189,7 @@ module K8
     end
 
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.
-    #URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*))?(?::(.*?))?\}/
-    #URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*))?(?::(.*?(?:\{.*?\}.*?)*))?\}/
-    URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*))?(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+    URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*)(?:<(.*?)>)?)?\}/
 
     ## ex: '/books/{id}', true  ->  ['/books/(\d+)', [['id', 'int', proc{|x| x.to_i}]]]
     def compile_urlpath(urlpath_pat, enable_capture=false)

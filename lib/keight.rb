@@ -1103,9 +1103,8 @@ module K8
 
   class ActionMapping
 
-    def initialize(urlpath_mapping, default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0,
+    def initialize(urlpath_mapping, urlpath_cache_size: 0,
                                     enable_urlpath_param_range: true)
-      @default_patterns   = default_patterns || DefaultPatterns.new
       #; [!34o67] keyword arg 'enable_urlpath_param_range' controls to generate range object or not.
       @enable_urlpath_param_range = enable_urlpath_param_range
       #; [!buj0d] prepares LRU cache if cache size specified.
@@ -1658,8 +1657,7 @@ module K8
                                        enable_urlpath_param_range: true)
       #; [!vkp65] mounts urlpath mappings.
       @mapping = ActionMapping.new(urlpath_mapping,
-                                   default_patterns:    default_patterns,
-                                   urlpath_cache_size:  urlpath_cache_size,
+                                   urlpath_cache_size: urlpath_cache_size,
                                    enable_urlpath_param_range: enable_urlpath_param_range)
     end
 

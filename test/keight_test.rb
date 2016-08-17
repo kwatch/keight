@@ -1981,7 +1981,7 @@ Oktest.scope do
                 ['/books', BooksAction],
                 ['/books/{book_id}', BookCommentsAction],
             ]],
-        ], default_patterns: dp)
+        ])
       end
 
       spec "[!6f3vl] compiles urlpath mapping." do
@@ -2280,7 +2280,7 @@ Oktest.scope do
                 ['/books', BooksAction],
                 ['/books/{book_id}', BookCommentsAction],
             ]],
-        ], default_patterns: dp, urlpath_cache_size: 3)
+        ], urlpath_cache_size: 3)
       end
 
       spec "[!jyxlm] returns action class, action methods and urlpath param args." do
@@ -2400,7 +2400,7 @@ Oktest.scope do
 
       spec "[!awfgs] returns regexp string, param names, and converter procs." do
         |default_patterns, proc1|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           #
           actual = compile_urlpath('/books/{id}')
@@ -2416,7 +2416,7 @@ Oktest.scope do
 
       spec "[!bi7gr] captures urlpath params when 2nd argument is truthy." do
         |default_patterns, proc1|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/{id}', true)
           _.ok {actual} == ['/books/(\d+)', ['id'], [proc1]]
@@ -2431,7 +2431,7 @@ Oktest.scope do
 
       spec "[!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'" do
         |default_patterns|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           _.ok {compile_urlpath('/item/{key:<x|y>}', true)}  == ['/item/(x|y)', ['key'], [nil]]
           _.ok {compile_urlpath('/item/{key:<x|y>}', false)} == ['/item/(?:x|y)', ['key'], [nil]]
@@ -2442,7 +2442,7 @@ Oktest.scope do
 
       spec "[!iln54] param names and conveter procs are nil when no urlpath params." do
         |default_patterns|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/new')
           _.ok {actual} == ['/books/new', nil, nil]
@@ -2451,7 +2451,7 @@ Oktest.scope do
 
       spec "[!9ofdd] supports urlpath param type, for example '{id:int}'." do
         |default_patterns, proc1, proc_date, proc_str|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/{id:int}')
           _.ok {actual} == ['/books/\d+', ['id'], [proc1]]
@@ -2470,7 +2470,7 @@ Oktest.scope do
 
       spec "[!lhtiz] skips empty param name." do
         |default_patterns, proc1|
-        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/api/{:<\d+>}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
           actual = compile_urlpath('/api/{:<\d+>}/books/{id}')
@@ -2480,7 +2480,7 @@ Oktest.scope do
 
       spec "[!66zas] skips param name starting with '_'." do
         |default_patterns, proc1|
-        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/api/{_ver:<\d+>}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
           actual = compile_urlpath('/api/{_ver:<\d+>}/books/{id}')
@@ -2490,7 +2490,7 @@ Oktest.scope do
 
       spec "[!92jcn] '{' and '}' are available in urlpath param pattern." do
         |default_patterns, proc_date|
-        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/blog/{date:<\d{4}-\d{2}-\d{2}>}')
           _.ok {actual} == ['/blog/\d{4}-\d{2}-\d{2}', ['date'], [proc_date]]
         end

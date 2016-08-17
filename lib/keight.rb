@@ -644,6 +644,10 @@ module K8
   end
 
 
+  class ActionMappingError < BaseError
+  end
+
+
   class ContentTypeRequiredError < BaseError
   end
 
@@ -1196,8 +1200,8 @@ module K8
       procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])
       #
       rexp_str = urlpath_pat.gsub(URLPATH_PARAM_REXP) {
-        pname, pat, proc_ = $1, $2, nil
-        pat, proc_ = @default_patterns.lookup(pname) if pat.nil?
+        pname, ptype, pat  = $1, $2, $3
+        ptype, pat, proc_ = resolve_param_type(pname, ptype, pat, urlpath_pat)
         #; [!lhtiz] skips empty param name.
         #; [!66zas] skips param name starting with '_'.
         skip = pname.empty? || pname.start_with?('_')
@@ -1218,6 +1222,38 @@ module K8
 
     def has_urlpath_param?(urlpath)
       return urlpath.include?('{')
+    end
+
+    _to_date = proc {|s|
+      begin
+        yr, mo, dy = s.split('-')
+        Date.new(yr.to_i, mo.to_i, dy.to_i)
+      rescue
+        raise HttpException.new(404)
+      end
+    }
+    URLPATH_PARAM_TYPES = [
+      # ptype , pname regexp    , urlpath pattern      , converter
+      ['int'  , /(?:^|_)id\z/   , '\d+'                , proc {|s| s.to_i }],
+      ['date' , /(?:^|_)date\z/ , '\d\d\d\d-\d\d-\d\d' , _to_date          ],
+      ['str'  , nil             , '[^/]+'              , nil               ],
+    ]
+    _to_date = nil
+
+    def resolve_param_type(pname, ptype, pattern, urlpath)
+      tuple = nil
+      if ! ptype || ptype.empty?
+        tuple = URLPATH_PARAM_TYPES.find {|t| pname =~ t[1] }
+        ptype = tuple ? tuple[0] : 'str'
+      end
+      tuple ||= URLPATH_PARAM_TYPES.find {|t| t[0] == ptype }  or
+        raise ActionMappingError.new("'#{urlpath}': unknown param type '#{ptype}'.")
+      converter = nil
+      if ! pattern || pattern.empty?
+        pattern   = tuple[2]
+        converter = tuple[3]   # ex: '123' -> 123, '2000-01-01' -> Date.new(2000, 1, 1)
+      end
+      return ptype, pattern, converter
     end
 
     ## range object to retrieve urlpath parameter value faster than Regexp matching

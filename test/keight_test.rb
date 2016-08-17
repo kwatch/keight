@@ -1964,11 +1964,11 @@ Oktest.scope do
     topic '#build()' do
 
       fixture :proc1 do
-        proc {|x| x.to_i }
+        K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
       end
 
       fixture :proc2 do
-        proc {|x| x.to_i }
+        K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
       end
 
       fixture :mapping do
@@ -2119,8 +2119,7 @@ Oktest.scope do
       end
 
       spec "[!wd2eb] accepts subclass of Action class." do
-        _, proc1 = K8::DEFAULT_PATTERNS.lookup('id')
-        _, proc2 = K8::DEFAULT_PATTERNS.lookup('book_id')
+        proc1 = proc2 = K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
         mapping = K8::ActionMapping.new([
             ['/api/books', BooksAction],
             ['/api/books/{book_id}', BookCommentsAction],
@@ -2195,8 +2194,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename; Dir.rmdir dirname }
         #
-        _, proc1 = K8::DEFAULT_PATTERNS.lookup('id')
-        _, proc2 = K8::DEFAULT_PATTERNS.lookup('book_id')
+        proc1 = proc2 = K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
         mapping = K8::ActionMapping.new([
             ['/api/example', './test_l2kz5/sample:Ex_l2kz5::Example_l2kz5'],
         ])
@@ -2381,7 +2379,7 @@ Oktest.scope do
     topic '#compile_urlpath()' do
 
       fixture :proc1 do
-        proc {|x| x.to_i }
+        K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
       end
 
       fixture :default_patterns do

@@ -1185,19 +1185,19 @@ module K8
     end
 
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.
-    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?))?\}/
-    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
-    URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+    #URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*))?(?::(.*?))?\}/
+    #URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*))?(?::(.*?(?:\{.*?\}.*?)*))?\}/
+    URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*))?(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
 
-    ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
+    ## ex: '/books/{id}', true  ->  ['/books/(\d+)', [['id', 'int', proc{|x| x.to_i}]]]
     def compile_urlpath(urlpath_pat, enable_capture=false)
       #; [!iln54] param names and conveter procs are nil when no urlpath params.
       pnames = nil   # urlpath parameter names  (ex: ['id'])
       procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])
       #
       rexp_str = urlpath_pat.gsub(URLPATH_PARAM_REXP) {
-        pname, s, proc_ = $1, $2, nil
-        s, proc_ = @default_patterns.lookup(pname) if s.nil?
+        pname, pat, proc_ = $1, $2, nil
+        pat, proc_ = @default_patterns.lookup(pname) if pat.nil?
         #; [!lhtiz] skips empty param name.
         #; [!66zas] skips param name starting with '_'.
         skip = pname.empty? || pname.start_with?('_')
@@ -1206,11 +1206,11 @@ module K8
         #; [!bi7gr] captures urlpath params when 2nd argument is truthy.
         #; [!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'
         if enable_capture && ! skip
-          s = "(#{s})"
-        elsif s =~ /\|/
-          s = "(?:#{s})"
+          pat = "(#{pat})"
+        elsif pat =~ /\|/
+          pat = "(?:#{pat})"
         end
-        s
+        pat
       }
       #; [!awfgs] returns regexp string, param names, and converter procs.
       return rexp_str, pnames, procs   # ex: '/books/(\d+)', ['id'], [proc{|x| x.to_i}]}]

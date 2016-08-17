@@ -1140,6 +1140,10 @@ module K8
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.
     URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*)(?:<(.*?)>)?)?\}/
 
+    def has_urlpath_param?(urlpath)
+      return urlpath.include?('{')
+    end
+
     ## ex: '/books/{id}', true  ->  ['/books/(\d+)', [['id', 'int', proc{|x| x.to_i}]]]
     def compile_urlpath(urlpath_pat, enable_capture=false)
       #; [!iln54] param names and conveter procs are nil when no urlpath params.
@@ -1166,10 +1170,6 @@ module K8
       }
       #; [!awfgs] returns regexp string, param names, and converter procs.
       return rexp_str, pnames, procs   # ex: '/books/(\d+)', ['id'], [proc{|x| x.to_i}]}]
-    end
-
-    def has_urlpath_param?(urlpath)
-      return urlpath.include?('{')
     end
 
     _to_date = proc {|s|

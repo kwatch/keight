@@ -1051,56 +1051,6 @@ module K8
   ActionInfo::SUBCLASSES << ActionInfo0 << ActionInfo1 << ActionInfo2 << ActionInfo3 << ActionInfo4
 
 
-  class DefaultPatterns
-
-    def initialize
-      @patterns = []
-    end
-
-    def register(urlpath_param_name, default_pattern='[^/]*?', &converter)
-      #; [!yfsom] registers urlpath param name, default pattern and converter block.
-      @patterns << [urlpath_param_name, default_pattern, converter]
-      self
-    end
-
-    def unregister(urlpath_param_name)
-      #; [!3gplv] deletes matched record.
-      @patterns.delete_if {|tuple| tuple[0] == urlpath_param_name }
-      self
-    end
-
-    def lookup(urlpath_param_name)
-      #; [!dvbqx] returns default pattern string and converter proc when matched.
-      #; [!6hblo] returns '[^/]+?' and nil as default pattern and converter proc when nothing matched.
-      for str_or_rexp, default_pat, converter in @patterns
-        return default_pat, converter if str_or_rexp === urlpath_param_name
-      end
-      return '[^/]+?', nil
-    end
-
-  end
-
-
-  DEFAULT_PATTERNS = proc {
-    x = DefaultPatterns.new
-    #; [!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/.
-    x.register('id',    '\d+') {|val| val.to_i }
-    x.register(/_id\z/, '\d+') {|val| val.to_i }
-    #; [!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'.
-    x.register('ext',   '(?:\.\w+)?')
-    #; [!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/.
-    to_date = proc {|val|
-      #; [!wg9vl] raises 404 error when invalid date (such as 2012-02-30).
-      yr, mo, dy = val.split(/-/).map(&:to_i)
-      Date.new(yr, mo, dy)  rescue
-        raise HttpException.new(404, "#{val}: invalid date.")
-    }
-    x.register('date',    '\d\d\d\d-\d\d-\d\d', &to_date)
-    x.register(/_date\z/, '\d\d\d\d-\d\d-\d\d', &to_date)
-    x
-  }.call()
-
-
   class ActionMapping
 
     def initialize(urlpath_mapping, urlpath_cache_size: 0,

@@ -1810,108 +1810,6 @@ Oktest.scope do
   end
 
 
-  topic K8::DefaultPatterns do
-
-
-    topic '#register()' do
-
-      spec "[!yfsom] registers urlpath param name, default pattern and converter block." do
-        K8::DefaultPatterns.new.instance_exec(self) do |_|
-          _.ok {@patterns.length} == 0
-          register(/_id\z/, '\d+') {|x| x.to_i }
-          _.ok {@patterns.length} == 1
-          _.ok {@patterns[0][0]} == /_id\z/
-          _.ok {@patterns[0][1]} == '\d+'
-          _.ok {@patterns[0][2]}.is_a?(Proc)
-          _.ok {@patterns[0][2].call("123")} == 123
-        end
-      end
-
-    end
-
-
-    topic '#unregister()' do
-
-      spec "[!3gplv] deletes matched record." do
-        K8::DefaultPatterns.new.instance_exec(self) do |_|
-          register("id",    '\d+') {|x| x.to_i }
-          register(/_id\z/, '\d+') {|x| x.to_i }
-          _.ok {@patterns.length} == 2
-          unregister(/_id\z/)
-          _.ok {@patterns.length} == 1
-          _.ok {@patterns[0][0]} == "id"
-        end
-      end
-
-    end
-
-
-    topic '#lookup()' do
-
-      spec "[!dvbqx] returns default pattern string and converter proc when matched." do
-        K8::DefaultPatterns.new.instance_exec(self) do |_|
-          register("id",    '\d+') {|x| x.to_i }
-          register(/_id\z/, '\d+') {|x| x.to_i }
-          _.ok {lookup("id")}.is_a?(Array).length(2)
-          _.ok {lookup("id")[0]} == '\d+'
-          _.ok {lookup("id")[1].call("123")} == 123
-          _.ok {lookup("book_id")[0]} == '\d+'
-          _.ok {lookup("book_id")[1]}.is_a?(Proc)
-          _.ok {lookup("book_id")[1].call("123")} == 123
-        end
-      end
-
-      spec "[!6hblo] returns '[^/]*?' and nil as default pattern and converter proc when nothing matched." do
-        K8::DefaultPatterns.new.instance_exec(self) do |_|
-          register("id",    '\d+') {|x| x.to_i }
-          register(/_id\z/, '\d+') {|x| x.to_i }
-          _.ok {lookup("code")}.is_a?(Array).length(2)
-          _.ok {lookup("code")[0]} == '[^/]+?'
-          _.ok {lookup("code")[1]} == nil
-        end
-      end
-
-    end
-
-  end
-
-
-  topic K8::DEFAULT_PATTERNS do
-
-    spec "[!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/." do
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('id')
-      ok {pat} == '\d+'
-      ok {proc_.call("123")} == 123
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('book_id')
-      ok {pat} == '\d+'
-      ok {proc_.call("123")} == 123
-    end
-
-    spec "[!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'." do
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('ext')
-      ok {pat} == '(?:\.\w+)?'
-      ok {proc_} == nil
-    end
-
-    spec "[!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/." do
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('date')
-      ok {pat} == '\d\d\d\d-\d\d-\d\d'
-      ok {proc_.call("2014-12-24")} == Date.new(2014, 12, 24)
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('birth_date')
-      ok {pat} == '\d\d\d\d-\d\d-\d\d'
-      ok {proc_.call("2015-02-14")} == Date.new(2015, 2, 14)
-    end
-
-    spec "[!wg9vl] raises 404 error when invalid date (such as 2012-02-30)." do
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('date')
-      pr = proc { proc_.call('2012-02-30') }
-      ok {pr}.raise?(K8::HttpException, "2012-02-30: invalid date.")
-      ok {pr.exception.status_code} == 404
-    end
-
-  end
-
-
   topic K8::ActionMapping do
 
 
@@ -1973,9 +1871,6 @@ Oktest.scope do
 
       fixture :mapping do
         |proc1, proc2|
-        dp = K8::DefaultPatterns.new
-        dp.register('id',    '\d+', &proc1)
-        dp.register(/_id\z/, '\d+', &proc2)
         K8::ActionMapping.new([
             ['/api', [
                 ['/books', BooksAction],
@@ -2272,9 +2167,6 @@ Oktest.scope do
 
       fixture :mapping do
         |proc1|
-        dp = K8::DefaultPatterns.new
-        dp.register('id',   '\d+', &proc1)
-        dp.register(/_id$/, '\d+', &proc1)
         K8::ActionMapping.new([
             ['/api', [
                 ['/books', BooksAction],
@@ -2390,16 +2282,8 @@ Oktest.scope do
         K8::ActionMapping::URLPATH_PARAM_TYPES[2][3]  # for 'str' type
       end
 
-      fixture :default_patterns do
-        |proc1|
-        x = K8::DefaultPatterns.new
-        x.register('id',   '\d+', &proc1)
-        x.register(/_id$/, '\d+', &proc1)
-        x
-      end
-
       spec "[!awfgs] returns regexp string, param names, and converter procs." do
-        |default_patterns, proc1|
+        |proc1|
         mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           #
@@ -2415,7 +2299,7 @@ Oktest.scope do
       end
 
       spec "[!bi7gr] captures urlpath params when 2nd argument is truthy." do
-        |default_patterns, proc1|
+        |proc1|
         mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/{id}', true)
@@ -2430,7 +2314,6 @@ Oktest.scope do
       end
 
       spec "[!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'" do
-        |default_patterns|
         mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           _.ok {compile_urlpath('/item/{key:<x|y>}', true)}  == ['/item/(x|y)', ['key'], [nil]]
@@ -2441,7 +2324,6 @@ Oktest.scope do
       end
 
       spec "[!iln54] param names and conveter procs are nil when no urlpath params." do
-        |default_patterns|
         mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/new')
@@ -2450,7 +2332,7 @@ Oktest.scope do
       end
 
       spec "[!9ofdd] supports urlpath param type, for example '{id:int}'." do
-        |default_patterns, proc1, proc_date, proc_str|
+        |proc1, proc_date, proc_str|
         mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/{id:int}')
@@ -2469,7 +2351,7 @@ Oktest.scope do
       end
 
       spec "[!lhtiz] skips empty param name." do
-        |default_patterns, proc1|
+        |proc1|
         K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/api/{:<\d+>}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
@@ -2479,7 +2361,7 @@ Oktest.scope do
       end
 
       spec "[!66zas] skips param name starting with '_'." do
-        |default_patterns, proc1|
+        |proc1|
         K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/api/{_ver:<\d+>}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
@@ -2489,7 +2371,7 @@ Oktest.scope do
       end
 
       spec "[!92jcn] '{' and '}' are available in urlpath param pattern." do
-        |default_patterns, proc_date|
+        |proc_date|
         K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/blog/{date:<\d{4}-\d{2}-\d{2}>}')
           _.ok {actual} == ['/blog/\d{4}-\d{2}-\d{2}', ['date'], [proc_date]]

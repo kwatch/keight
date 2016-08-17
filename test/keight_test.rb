@@ -2410,7 +2410,7 @@ Oktest.scope do
           _.ok {actual} == ['/books/\d+/comments/\d+', ['book_id', 'comment_id'], [proc1, proc1]]
           #
           actual = compile_urlpath('/books/{id:<[0-9]+>}')
-          _.ok {actual} == ['/books/[0-9]+', ['id'], [nil]]
+          _.ok {actual} == ['/books/[0-9]+', ['id'], [proc1]]
         end
       end
 
@@ -2425,7 +2425,7 @@ Oktest.scope do
           _.ok {actual} == ['/books/(\d+)/comments/(\d+)', ['book_id', 'comment_id'], [proc1, proc1]]
           #
           actual = compile_urlpath('/books/{id:<[0-9]+>}', true)
-          _.ok {actual} == ['/books/([0-9]+)', ['id'], [nil]]
+          _.ok {actual} == ['/books/([0-9]+)', ['id'], [proc1]]
         end
       end
 
@@ -2489,10 +2489,10 @@ Oktest.scope do
       end
 
       spec "[!92jcn] '{' and '}' are available in urlpath param pattern." do
-        |default_patterns, proc1|
+        |default_patterns, proc_date|
         K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
           actual = compile_urlpath('/blog/{date:<\d{4}-\d{2}-\d{2}>}')
-          _.ok {actual} == ['/blog/\d{4}-\d{2}-\d{2}', ['date'], [nil]]
+          _.ok {actual} == ['/blog/\d{4}-\d{2}-\d{2}', ['date'], [proc_date]]
         end
       end
 

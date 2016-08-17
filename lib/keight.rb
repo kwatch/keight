@@ -1247,11 +1247,8 @@ module K8
       end
       tuple ||= URLPATH_PARAM_TYPES.find {|t| t[0] == ptype }  or
         raise ActionMappingError.new("'#{urlpath}': unknown param type '#{ptype}'.")
-      converter = nil
-      if ! pattern || pattern.empty?
-        pattern   = tuple[2]
-        converter = tuple[3]   # ex: '123' -> 123, '2000-01-01' -> Date.new(2000, 1, 1)
-      end
+      pattern   = tuple[2] if ! pattern || pattern.empty?
+      converter = tuple[3]   # ex: '123' -> 123, '2000-01-01' -> Date.new(2000, 1, 1)
       return ptype, pattern, converter
     end
 

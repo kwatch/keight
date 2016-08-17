@@ -1200,6 +1200,7 @@ module K8
       procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])
       #
       rexp_str = urlpath_pat.gsub(URLPATH_PARAM_REXP) {
+        #; [!9ofdd] supports urlpath param type, for example '{id:int}'.
         pname, ptype, pat  = $1, $2, $3
         ptype, pat, proc_ = resolve_param_type(pname, ptype, pat, urlpath_pat)
         #; [!lhtiz] skips empty param name.

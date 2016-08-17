@@ -2379,7 +2379,15 @@ Oktest.scope do
     topic '#compile_urlpath()' do
 
       fixture :proc1 do
-        K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
+        K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]  # for 'int' type
+      end
+
+      fixture :proc_date do
+        K8::ActionMapping::URLPATH_PARAM_TYPES[1][3]  # for 'date' type
+      end
+
+      fixture :proc_str do
+        K8::ActionMapping::URLPATH_PARAM_TYPES[2][3]  # for 'str' type
       end
 
       fixture :default_patterns do
@@ -2438,6 +2446,25 @@ Oktest.scope do
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/new')
           _.ok {actual} == ['/books/new', nil, nil]
+        end
+      end
+
+      spec "[!9ofdd] supports urlpath param type, for example '{id:int}'." do
+        |default_patterns, proc1, proc_date, proc_str|
+        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping.instance_exec(self) do |_|
+          actual = compile_urlpath('/books/{id:int}')
+          _.ok {actual} == ['/books/\d+', ['id'], [proc1]]
+          actual = compile_urlpath('/books/{book_id:int}')
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc1]]
+          actual = compile_urlpath('/books/{code:int}')
+          _.ok {actual} == ['/books/\d+', ['code'], [proc1]]
+          #
+          actual = compile_urlpath('/diary/{today:date}')
+          _.ok {actual} == ['/diary/\d\d\d\d-\d\d-\d\d', ['today'], [proc_date]]
+          #
+          actual = compile_urlpath('/books/{id:str}')
+          _.ok {actual} == ['/books/[^/]+', ['id'], [proc_str]]
         end
       end
 

@@ -1653,7 +1653,7 @@ module K8
 
   class RackApplication
 
-    def initialize(urlpath_mapping=[], default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0,
+    def initialize(urlpath_mapping=[], urlpath_cache_size: 0,
                                        enable_urlpath_param_range: true)
       #; [!vkp65] mounts urlpath mappings.
       @mapping = ActionMapping.new(urlpath_mapping,

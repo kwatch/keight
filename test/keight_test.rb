@@ -2398,6 +2398,14 @@ Oktest.scope do
         end
       end
 
+      spec "[!3diea] '{id:<\d+>}' is ok but '{id<\d+>}' raises error." do
+        |proc1|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          pr = proc { compile_urlpath('/books/{book_id<\d+>}') }
+          _.ok {pr}.raise?(K8::ActionMappingError)
+        end
+      end
+
     end
 
 

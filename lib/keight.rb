@@ -1140,7 +1140,7 @@ module K8
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.
     #; [!do1zi] param type is optional (ex: '{id}' or '{id:<\d+>}').
     #; [!my6as] param pattern is optional (ex: '{id}' or '{id:int}').
-    URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*)(?:<(.*?)>)?)?\}/
+    URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*))?(?:<(.*?)>)?\}/
 
     def has_urlpath_param?(urlpath)
       return urlpath.include?('{')
@@ -1153,8 +1153,11 @@ module K8
       procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])
       #
       rexp_str = urlpath_pat.gsub(URLPATH_PARAM_REXP) {
-        #; [!9ofdd] supports urlpath param type, for example '{id:int}'.
+        #; [!3diea] '{id:<\d+>}' is ok but '{id<\d+>}' raises error.
         pname, ptype, pat  = $1, $2, $3
+        if ! ptype && pat   # when ':ptype' is missing but '<pat>' exists
+          raise ActionMappingError.new("'#{urlpath_pat}': missing ':' between param name and pattern (ex: '{id:<\\d+>}' is OK but '{id<\\d+>}' is not).")
+        end
         ptype, pat, proc_ = resolve_param_type(pname, ptype, pat, urlpath_pat)
         #; [!lhtiz] skips empty param name.
         #; [!66zas] skips param name starting with '_'.

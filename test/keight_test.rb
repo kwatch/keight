@@ -2270,7 +2270,7 @@ Oktest.scope do
 
     topic '#compile_urlpath()' do
 
-      fixture :proc1 do
+      fixture :proc_int do
         K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]  # for 'int' type
       end
 
@@ -2283,33 +2283,33 @@ Oktest.scope do
       end
 
       spec "[!awfgs] returns regexp string, param names, and converter procs." do
-        |proc1|
+        |proc_int|
         mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           #
           actual = compile_urlpath('/books/{id}')
-          _.ok {actual} == ['/books/\d+', ['id'], [proc1]]
+          _.ok {actual} == ['/books/\d+', ['id'], [proc_int]]
           #
           actual = compile_urlpath('/books/{book_id}/comments/{comment_id}')
-          _.ok {actual} == ['/books/\d+/comments/\d+', ['book_id', 'comment_id'], [proc1, proc1]]
+          _.ok {actual} == ['/books/\d+/comments/\d+', ['book_id', 'comment_id'], [proc_int, proc_int]]
           #
           actual = compile_urlpath('/books/{id:<[0-9]+>}')
-          _.ok {actual} == ['/books/[0-9]+', ['id'], [proc1]]
+          _.ok {actual} == ['/books/[0-9]+', ['id'], [proc_int]]
         end
       end
 
       spec "[!bi7gr] captures urlpath params when 2nd argument is truthy." do
-        |proc1|
+        |proc_int|
         mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/{id}', true)
-          _.ok {actual} == ['/books/(\d+)', ['id'], [proc1]]
+          _.ok {actual} == ['/books/(\d+)', ['id'], [proc_int]]
           #
           actual = compile_urlpath('/books/{book_id}/comments/{comment_id}', true)
-          _.ok {actual} == ['/books/(\d+)/comments/(\d+)', ['book_id', 'comment_id'], [proc1, proc1]]
+          _.ok {actual} == ['/books/(\d+)/comments/(\d+)', ['book_id', 'comment_id'], [proc_int, proc_int]]
           #
           actual = compile_urlpath('/books/{id:<[0-9]+>}', true)
-          _.ok {actual} == ['/books/([0-9]+)', ['id'], [proc1]]
+          _.ok {actual} == ['/books/([0-9]+)', ['id'], [proc_int]]
         end
       end
 
@@ -2332,15 +2332,15 @@ Oktest.scope do
       end
 
       spec "[!9ofdd] supports urlpath param type, for example '{id:int}'." do
-        |proc1, proc_date, proc_str|
+        |proc_int, proc_date, proc_str|
         mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/{id:int}')
-          _.ok {actual} == ['/books/\d+', ['id'], [proc1]]
+          _.ok {actual} == ['/books/\d+', ['id'], [proc_int]]
           actual = compile_urlpath('/books/{book_id:int}')
-          _.ok {actual} == ['/books/\d+', ['book_id'], [proc1]]
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc_int]]
           actual = compile_urlpath('/books/{code:int}')
-          _.ok {actual} == ['/books/\d+', ['code'], [proc1]]
+          _.ok {actual} == ['/books/\d+', ['code'], [proc_int]]
           #
           actual = compile_urlpath('/diary/{today:date}')
           _.ok {actual} == ['/diary/\d\d\d\d-\d\d-\d\d', ['today'], [proc_date]]
@@ -2351,22 +2351,22 @@ Oktest.scope do
       end
 
       spec "[!lhtiz] skips empty param name." do
-        |proc1|
+        |proc_int|
         K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/api/{:<\d+>}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
           actual = compile_urlpath('/api/{:<\d+>}/books/{id}')
-          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc1]]
+          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc_int]]
         end
       end
 
       spec "[!66zas] skips param name starting with '_'." do
-        |proc1|
+        |proc_int|
         K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/api/{_ver:<\d+>}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
           actual = compile_urlpath('/api/{_ver:<\d+>}/books/{id}')
-          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc1]]
+          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc_int]]
         end
       end
 
@@ -2379,27 +2379,27 @@ Oktest.scope do
       end
 
       spec "[!do1zi] param type is optional (ex: '{id}' or '{id:<\d+>}')." do
-        |proc1|
+        |proc_int|
         K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/books/{book_id}')
-          _.ok {actual} == ['/books/\d+', ['book_id'], [proc1]]
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc_int]]
           actual = compile_urlpath('/books/{xxx:<\d\d\d>}')
           _.ok {actual} == ['/books/\d\d\d', ['xxx'], [nil]]
         end
       end
 
       spec "[!my6as] param pattern is optional (ex: '{id}' or '{id:int}')." do
-        |proc1|
+        |proc_int|
         K8::ActionMapping.new([]).instance_exec(self) do |_|
           actual = compile_urlpath('/books/{book_id}')
-          _.ok {actual} == ['/books/\d+', ['book_id'], [proc1]]
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc_int]]
           actual = compile_urlpath('/books/{xxx:int}')
-          _.ok {actual} == ['/books/\d+', ['xxx'], [proc1]]
+          _.ok {actual} == ['/books/\d+', ['xxx'], [proc_int]]
         end
       end
 
       spec "[!3diea] '{id:<\d+>}' is ok but '{id<\d+>}' raises error." do
-        |proc1|
+        |proc_int|
         K8::ActionMapping.new([]).instance_exec(self) do |_|
           pr = proc { compile_urlpath('/books/{book_id<\d+>}') }
           _.ok {pr}.raise?(K8::ActionMappingError)

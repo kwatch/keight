@@ -1138,6 +1138,8 @@ module K8
     end
 
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.
+    #; [!do1zi] param type is optional (ex: '{id}' or '{id:<\d+>}').
+    #; [!my6as] param pattern is optional (ex: '{id}' or '{id:int}').
     URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*)(?:<(.*?)>)?)?\}/
 
     def has_urlpath_param?(urlpath)

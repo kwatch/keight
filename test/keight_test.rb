@@ -2378,6 +2378,26 @@ Oktest.scope do
         end
       end
 
+      spec "[!do1zi] param type is optional (ex: '{id}' or '{id:<\d+>}')." do
+        |proc1|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          actual = compile_urlpath('/books/{book_id}')
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc1]]
+          actual = compile_urlpath('/books/{xxx:<\d\d\d>}')
+          _.ok {actual} == ['/books/\d\d\d', ['xxx'], [nil]]
+        end
+      end
+
+      spec "[!my6as] param pattern is optional (ex: '{id}' or '{id:int}')." do
+        |proc1|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          actual = compile_urlpath('/books/{book_id}')
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc1]]
+          actual = compile_urlpath('/books/{xxx:int}')
+          _.ok {actual} == ['/books/\d+', ['xxx'], [proc1]]
+        end
+      end
+
     end
 
 

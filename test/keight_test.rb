@@ -1810,108 +1810,6 @@ Oktest.scope do
   end
 
 
-  topic K8::DefaultPatterns do
-
-
-    topic '#register()' do
-
-      spec "[!yfsom] registers urlpath param name, default pattern and converter block." do
-        K8::DefaultPatterns.new.instance_exec(self) do |_|
-          _.ok {@patterns.length} == 0
-          register(/_id\z/, '\d+') {|x| x.to_i }
-          _.ok {@patterns.length} == 1
-          _.ok {@patterns[0][0]} == /_id\z/
-          _.ok {@patterns[0][1]} == '\d+'
-          _.ok {@patterns[0][2]}.is_a?(Proc)
-          _.ok {@patterns[0][2].call("123")} == 123
-        end
-      end
-
-    end
-
-
-    topic '#unregister()' do
-
-      spec "[!3gplv] deletes matched record." do
-        K8::DefaultPatterns.new.instance_exec(self) do |_|
-          register("id",    '\d+') {|x| x.to_i }
-          register(/_id\z/, '\d+') {|x| x.to_i }
-          _.ok {@patterns.length} == 2
-          unregister(/_id\z/)
-          _.ok {@patterns.length} == 1
-          _.ok {@patterns[0][0]} == "id"
-        end
-      end
-
-    end
-
-
-    topic '#lookup()' do
-
-      spec "[!dvbqx] returns default pattern string and converter proc when matched." do
-        K8::DefaultPatterns.new.instance_exec(self) do |_|
-          register("id",    '\d+') {|x| x.to_i }
-          register(/_id\z/, '\d+') {|x| x.to_i }
-          _.ok {lookup("id")}.is_a?(Array).length(2)
-          _.ok {lookup("id")[0]} == '\d+'
-          _.ok {lookup("id")[1].call("123")} == 123
-          _.ok {lookup("book_id")[0]} == '\d+'
-          _.ok {lookup("book_id")[1]}.is_a?(Proc)
-          _.ok {lookup("book_id")[1].call("123")} == 123
-        end
-      end
-
-      spec "[!6hblo] returns '[^/]*?' and nil as default pattern and converter proc when nothing matched." do
-        K8::DefaultPatterns.new.instance_exec(self) do |_|
-          register("id",    '\d+') {|x| x.to_i }
-          register(/_id\z/, '\d+') {|x| x.to_i }
-          _.ok {lookup("code")}.is_a?(Array).length(2)
-          _.ok {lookup("code")[0]} == '[^/]+?'
-          _.ok {lookup("code")[1]} == nil
-        end
-      end
-
-    end
-
-  end
-
-
-  topic K8::DEFAULT_PATTERNS do
-
-    spec "[!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/." do
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('id')
-      ok {pat} == '\d+'
-      ok {proc_.call("123")} == 123
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('book_id')
-      ok {pat} == '\d+'
-      ok {proc_.call("123")} == 123
-    end
-
-    spec "[!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'." do
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('ext')
-      ok {pat} == '(?:\.\w+)?'
-      ok {proc_} == nil
-    end
-
-    spec "[!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/." do
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('date')
-      ok {pat} == '\d\d\d\d-\d\d-\d\d'
-      ok {proc_.call("2014-12-24")} == Date.new(2014, 12, 24)
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('birth_date')
-      ok {pat} == '\d\d\d\d-\d\d-\d\d'
-      ok {proc_.call("2015-02-14")} == Date.new(2015, 2, 14)
-    end
-
-    spec "[!wg9vl] raises 404 error when invalid date (such as 2012-02-30)." do
-      pat, proc_ = K8::DEFAULT_PATTERNS.lookup('date')
-      pr = proc { proc_.call('2012-02-30') }
-      ok {pr}.raise?(K8::HttpException, "2012-02-30: invalid date.")
-      ok {pr.exception.status_code} == 404
-    end
-
-  end
-
-
   topic K8::ActionMapping do
 
 
@@ -1963,25 +1861,17 @@ Oktest.scope do
 
     topic '#build()' do
 
-      fixture :proc1 do
-        proc {|x| x.to_i }
-      end
-
-      fixture :proc2 do
-        proc {|x| x.to_i }
+      fixture :proc_int do
+        K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
       end
 
       fixture :mapping do
-        |proc1, proc2|
-        dp = K8::DefaultPatterns.new
-        dp.register('id',    '\d+', &proc1)
-        dp.register(/_id\z/, '\d+', &proc2)
         K8::ActionMapping.new([
             ['/api', [
                 ['/books', BooksAction],
                 ['/books/{book_id}', BookCommentsAction],
             ]],
-        ], default_patterns: dp)
+        ])
       end
 
       spec "[!6f3vl] compiles urlpath mapping." do
@@ -2007,7 +1897,7 @@ Oktest.scope do
       end
 
       spec "[!w45ad] can compile nested array." do
-        |mapping, proc1, proc2|
+        |mapping, proc_int|
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_rexp} == Regexp.compile('
             \A  /api
@@ -2022,25 +1912,25 @@ Oktest.scope do
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
               /\A\/api\/books\/(\d+)\z/,
-              ["id"], [proc1], (11..-1),
+              ["id"], [proc_int], (11..-1),
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
               /\A\/api\/books\/(\d+)\/edit\z/,
-              ["id"], [proc1], (11..-6),
+              ["id"], [proc_int], (11..-6),
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
               /\A\/api\/books\/(\d+)\/comments\z/,
-              ["book_id"], [proc2], (11..-10),
+              ["book_id"], [proc_int], (11..-10),
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
               /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
-              ["book_id", "comment_id"], [proc2, proc2], nil,
+              ["book_id", "comment_id"], [proc_int, proc_int], nil,
             ],
           ]
           _.ok {@fixed_endpoints} == {
@@ -2051,32 +1941,32 @@ Oktest.scope do
       end
 
       spec "[!z2iax] classifies urlpath contains any parameter as variable one." do
-        |mapping, proc1, proc2|
+        |mapping, proc_int|
         mapping.instance_exec(self) do |_|
           _.ok {@variable_endpoints} == [
             ["/api/books/{id}",
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
               /\A\/api\/books\/(\d+)\z/,
-              ["id"], [proc1], (11..-1),
+              ["id"], [proc_int], (11..-1),
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
               /\A\/api\/books\/(\d+)\/edit\z/,
-              ["id"], [proc1], (11..-6),
+              ["id"], [proc_int], (11..-6),
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
               /\A\/api\/books\/(\d+)\/comments\z/,
-              ["book_id"], [proc2], (11..-10),
+              ["book_id"], [proc_int], (11..-10),
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
               /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
-              ["book_id", "comment_id"], [proc2, proc2], nil,
+              ["book_id", "comment_id"], [proc_int, proc_int], nil,
             ],
           ]
         end
@@ -2119,8 +2009,7 @@ Oktest.scope do
       end
 
       spec "[!wd2eb] accepts subclass of Action class." do
-        _, proc1 = K8::DEFAULT_PATTERNS.lookup('id')
-        _, proc2 = K8::DEFAULT_PATTERNS.lookup('book_id')
+        proc_int = K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
         mapping = K8::ActionMapping.new([
             ['/api/books', BooksAction],
             ['/api/books/{book_id}', BookCommentsAction],
@@ -2142,25 +2031,25 @@ Oktest.scope do
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
               /\A\/api\/books\/(\d+)\z/,
-              ["id"], [proc1], (11..-1),
+              ["id"], [proc_int], (11..-1),
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
               /\A\/api\/books\/(\d+)\/edit\z/,
-              ["id"], [proc1], (11..-6),
+              ["id"], [proc_int], (11..-6),
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
               /\A\/api\/books\/(\d+)\/comments\z/,
-              ["book_id"], [proc2], (11..-10),
+              ["book_id"], [proc_int], (11..-10),
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
               /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
-              ["book_id", "comment_id"], [proc2, proc2], nil,
+              ["book_id", "comment_id"], [proc_int, proc_int], nil,
             ],
           ]
         end
@@ -2195,8 +2084,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename; Dir.rmdir dirname }
         #
-        _, proc1 = K8::DEFAULT_PATTERNS.lookup('id')
-        _, proc2 = K8::DEFAULT_PATTERNS.lookup('book_id')
+        proc_int = K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
         mapping = K8::ActionMapping.new([
             ['/api/example', './test_l2kz5/sample:Ex_l2kz5::Example_l2kz5'],
         ])
@@ -2205,7 +2093,7 @@ Oktest.scope do
             "/api/example"=>["/api/example", Ex_l2kz5::Example_l2kz5, {:GET=>:do_index}, []],
           }
           _.ok {@variable_endpoints} == [
-            ["/api/example/{id}", Ex_l2kz5::Example_l2kz5, {:GET=>:do_show}, /\A\/api\/example\/(\d+)\z/, ["id"], [proc1], (13..-1)],
+            ["/api/example/{id}", Ex_l2kz5::Example_l2kz5, {:GET=>:do_show}, /\A\/api\/example\/(\d+)\z/, ["id"], [proc_int], (13..-1)],
           ]
         end
       end
@@ -2268,21 +2156,13 @@ Oktest.scope do
 
     topic '#find()' do
 
-      fixture :proc1 do
-        proc {|x| x.to_i }
-      end
-
       fixture :mapping do
-        |proc1|
-        dp = K8::DefaultPatterns.new
-        dp.register('id',   '\d+', &proc1)
-        dp.register(/_id$/, '\d+', &proc1)
         K8::ActionMapping.new([
             ['/api', [
                 ['/books', BooksAction],
                 ['/books/{book_id}', BookCommentsAction],
             ]],
-        ], default_patterns: dp, urlpath_cache_size: 3)
+        ], urlpath_cache_size: 3)
       end
 
       spec "[!jyxlm] returns action class, action methods and urlpath param args." do
@@ -2380,94 +2260,139 @@ Oktest.scope do
 
     topic '#compile_urlpath()' do
 
-      fixture :proc1 do
-        proc {|x| x.to_i }
+      fixture :proc_int do
+        K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]  # for 'int' type
       end
 
-      fixture :default_patterns do
-        |proc1|
-        x = K8::DefaultPatterns.new
-        x.register('id',   '\d+', &proc1)
-        x.register(/_id$/, '\d+', &proc1)
-        x
+      fixture :proc_date do
+        K8::ActionMapping::URLPATH_PARAM_TYPES[1][3]  # for 'date' type
+      end
+
+      fixture :proc_str do
+        K8::ActionMapping::URLPATH_PARAM_TYPES[2][3]  # for 'str' type
       end
 
       spec "[!awfgs] returns regexp string, param names, and converter procs." do
-        |default_patterns, proc1|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        |proc_int|
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           #
           actual = compile_urlpath('/books/{id}')
-          _.ok {actual} == ['/books/\d+', ['id'], [proc1]]
+          _.ok {actual} == ['/books/\d+', ['id'], [proc_int]]
           #
           actual = compile_urlpath('/books/{book_id}/comments/{comment_id}')
-          _.ok {actual} == ['/books/\d+/comments/\d+', ['book_id', 'comment_id'], [proc1, proc1]]
+          _.ok {actual} == ['/books/\d+/comments/\d+', ['book_id', 'comment_id'], [proc_int, proc_int]]
           #
-          actual = compile_urlpath('/books/{id:[0-9]+}')
-          _.ok {actual} == ['/books/[0-9]+', ['id'], [nil]]
+          actual = compile_urlpath('/books/{id:<[0-9]+>}')
+          _.ok {actual} == ['/books/[0-9]+', ['id'], [proc_int]]
         end
       end
 
       spec "[!bi7gr] captures urlpath params when 2nd argument is truthy." do
-        |default_patterns, proc1|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        |proc_int|
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/{id}', true)
-          _.ok {actual} == ['/books/(\d+)', ['id'], [proc1]]
+          _.ok {actual} == ['/books/(\d+)', ['id'], [proc_int]]
           #
           actual = compile_urlpath('/books/{book_id}/comments/{comment_id}', true)
-          _.ok {actual} == ['/books/(\d+)/comments/(\d+)', ['book_id', 'comment_id'], [proc1, proc1]]
+          _.ok {actual} == ['/books/(\d+)/comments/(\d+)', ['book_id', 'comment_id'], [proc_int, proc_int]]
           #
-          actual = compile_urlpath('/books/{id:[0-9]+}', true)
-          _.ok {actual} == ['/books/([0-9]+)', ['id'], [nil]]
+          actual = compile_urlpath('/books/{id:<[0-9]+>}', true)
+          _.ok {actual} == ['/books/([0-9]+)', ['id'], [proc_int]]
         end
       end
 
       spec "[!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'" do
-        |default_patterns|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
-          _.ok {compile_urlpath('/item/{key:x|y}', true)}  == ['/item/(x|y)', ['key'], [nil]]
-          _.ok {compile_urlpath('/item/{key:x|y}', false)} == ['/item/(?:x|y)', ['key'], [nil]]
-          _.ok {compile_urlpath('/item/{:x|y}',    true)}  == ['/item/(?:x|y)', [], []]
-          _.ok {compile_urlpath('/item/{:x|y}',    false)} == ['/item/(?:x|y)', [], []]
+          _.ok {compile_urlpath('/item/{key:<x|y>}', true)}  == ['/item/(x|y)', ['key'], [nil]]
+          _.ok {compile_urlpath('/item/{key:<x|y>}', false)} == ['/item/(?:x|y)', ['key'], [nil]]
+          _.ok {compile_urlpath('/item/{:<x|y>}',    true)}  == ['/item/(?:x|y)', [], []]
+          _.ok {compile_urlpath('/item/{:<x|y>}',    false)} == ['/item/(?:x|y)', [], []]
         end
       end
 
       spec "[!iln54] param names and conveter procs are nil when no urlpath params." do
-        |default_patterns|
-        mapping = K8::ActionMapping.new([], default_patterns: default_patterns)
+        mapping = K8::ActionMapping.new([])
         mapping.instance_exec(self) do |_|
           actual = compile_urlpath('/books/new')
           _.ok {actual} == ['/books/new', nil, nil]
         end
       end
 
+      spec "[!9ofdd] supports urlpath param type, for example '{id:int}'." do
+        |proc_int, proc_date, proc_str|
+        mapping = K8::ActionMapping.new([])
+        mapping.instance_exec(self) do |_|
+          actual = compile_urlpath('/books/{id:int}')
+          _.ok {actual} == ['/books/\d+', ['id'], [proc_int]]
+          actual = compile_urlpath('/books/{book_id:int}')
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc_int]]
+          actual = compile_urlpath('/books/{code:int}')
+          _.ok {actual} == ['/books/\d+', ['code'], [proc_int]]
+          #
+          actual = compile_urlpath('/diary/{today:date}')
+          _.ok {actual} == ['/diary/\d\d\d\d-\d\d-\d\d', ['today'], [proc_date]]
+          #
+          actual = compile_urlpath('/books/{id:str}')
+          _.ok {actual} == ['/books/[^/]+', ['id'], [proc_str]]
+        end
+      end
+
       spec "[!lhtiz] skips empty param name." do
-        |default_patterns, proc1|
-        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
-          actual = compile_urlpath('/api/{:\d+}/books')
+        |proc_int|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          actual = compile_urlpath('/api/{:<\d+>}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
-          actual = compile_urlpath('/api/{:\d+}/books/{id}')
-          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc1]]
+          actual = compile_urlpath('/api/{:<\d+>}/books/{id}')
+          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc_int]]
         end
       end
 
       spec "[!66zas] skips param name starting with '_'." do
-        |default_patterns, proc1|
-        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
-          actual = compile_urlpath('/api/{_ver:\d+}/books')
+        |proc_int|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          actual = compile_urlpath('/api/{_ver:<\d+>}/books')
           _.ok {actual} == ['/api/\d+/books', [], []]
-          actual = compile_urlpath('/api/{_ver:\d+}/books/{id}')
-          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc1]]
+          actual = compile_urlpath('/api/{_ver:<\d+>}/books/{id}')
+          _.ok {actual} == ['/api/\d+/books/\d+', ['id'], [proc_int]]
         end
       end
 
       spec "[!92jcn] '{' and '}' are available in urlpath param pattern." do
-        |default_patterns, proc1|
-        K8::ActionMapping.new([], default_patterns: default_patterns).instance_exec(self) do |_|
-          actual = compile_urlpath('/blog/{date:\d{4}-\d{2}-\d{2}}')
-          _.ok {actual} == ['/blog/\d{4}-\d{2}-\d{2}', ['date'], [nil]]
+        |proc_date|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          actual = compile_urlpath('/blog/{date:<\d{4}-\d{2}-\d{2}>}')
+          _.ok {actual} == ['/blog/\d{4}-\d{2}-\d{2}', ['date'], [proc_date]]
+        end
+      end
+
+      spec "[!do1zi] param type is optional (ex: '{id}' or '{id:<\d+>}')." do
+        |proc_int|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          actual = compile_urlpath('/books/{book_id}')
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc_int]]
+          actual = compile_urlpath('/books/{xxx:<\d\d\d>}')
+          _.ok {actual} == ['/books/\d\d\d', ['xxx'], [nil]]
+        end
+      end
+
+      spec "[!my6as] param pattern is optional (ex: '{id}' or '{id:int}')." do
+        |proc_int|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          actual = compile_urlpath('/books/{book_id}')
+          _.ok {actual} == ['/books/\d+', ['book_id'], [proc_int]]
+          actual = compile_urlpath('/books/{xxx:int}')
+          _.ok {actual} == ['/books/\d+', ['xxx'], [proc_int]]
+        end
+      end
+
+      spec "[!3diea] '{id:<\d+>}' is ok but '{id<\d+>}' raises error." do
+        |proc_int|
+        K8::ActionMapping.new([]).instance_exec(self) do |_|
+          pr = proc { compile_urlpath('/books/{book_id<\d+>}') }
+          _.ok {pr}.raise?(K8::ActionMappingError)
         end
       end
 

@@ -644,6 +644,10 @@ module K8
   end
 
 
+  class ActionMappingError < BaseError
+  end
+
+
   class ContentTypeRequiredError < BaseError
   end
 
@@ -1047,61 +1051,10 @@ module K8
   ActionInfo::SUBCLASSES << ActionInfo0 << ActionInfo1 << ActionInfo2 << ActionInfo3 << ActionInfo4
 
 
-  class DefaultPatterns
-
-    def initialize
-      @patterns = []
-    end
-
-    def register(urlpath_param_name, default_pattern='[^/]*?', &converter)
-      #; [!yfsom] registers urlpath param name, default pattern and converter block.
-      @patterns << [urlpath_param_name, default_pattern, converter]
-      self
-    end
-
-    def unregister(urlpath_param_name)
-      #; [!3gplv] deletes matched record.
-      @patterns.delete_if {|tuple| tuple[0] == urlpath_param_name }
-      self
-    end
-
-    def lookup(urlpath_param_name)
-      #; [!dvbqx] returns default pattern string and converter proc when matched.
-      #; [!6hblo] returns '[^/]+?' and nil as default pattern and converter proc when nothing matched.
-      for str_or_rexp, default_pat, converter in @patterns
-        return default_pat, converter if str_or_rexp === urlpath_param_name
-      end
-      return '[^/]+?', nil
-    end
-
-  end
-
-
-  DEFAULT_PATTERNS = proc {
-    x = DefaultPatterns.new
-    #; [!i51id] registers '\d+' as default pattern of param 'id' or /_id\z/.
-    x.register('id',    '\d+') {|val| val.to_i }
-    x.register(/_id\z/, '\d+') {|val| val.to_i }
-    #; [!2g08b] registers '(?:\.\w+)?' as default pattern of param 'ext'.
-    x.register('ext',   '(?:\.\w+)?')
-    #; [!8x5mp] registers '\d\d\d\d-\d\d-\d\d' as default pattern of param 'date' or /_date\z/.
-    to_date = proc {|val|
-      #; [!wg9vl] raises 404 error when invalid date (such as 2012-02-30).
-      yr, mo, dy = val.split(/-/).map(&:to_i)
-      Date.new(yr, mo, dy)  rescue
-        raise HttpException.new(404, "#{val}: invalid date.")
-    }
-    x.register('date',    '\d\d\d\d-\d\d-\d\d', &to_date)
-    x.register(/_date\z/, '\d\d\d\d-\d\d-\d\d', &to_date)
-    x
-  }.call()
-
-
   class ActionMapping
 
-    def initialize(urlpath_mapping, default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0,
+    def initialize(urlpath_mapping, urlpath_cache_size: 0,
                                     enable_urlpath_param_range: true)
-      @default_patterns   = default_patterns || DefaultPatterns.new
       #; [!34o67] keyword arg 'enable_urlpath_param_range' controls to generate range object or not.
       @enable_urlpath_param_range = enable_urlpath_param_range
       #; [!buj0d] prepares LRU cache if cache size specified.
@@ -1185,19 +1138,27 @@ module K8
     end
 
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.
-    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?))?\}/
-    #URLPATH_PARAM_REXP = /\{(\w*)(?::(.*?(?:\{.*?\}.*?)*))?\}/
-    URLPATH_PARAM_REXP = /\{(\w*)(?::([^{}]*?(?:\{[^{}]*?\}[^{}]*?)*))?\}/
+    #; [!do1zi] param type is optional (ex: '{id}' or '{id:<\d+>}').
+    #; [!my6as] param pattern is optional (ex: '{id}' or '{id:int}').
+    URLPATH_PARAM_REXP = /\{(\w*)(?::(\w*))?(?:<(.*?)>)?\}/
 
-    ## ex: '/books/{id}', true  ->  ['/books/(\d+)', ['id'], [proc{|x| x.to_i}]]
+    def has_urlpath_param?(urlpath)
+      return urlpath.include?('{')
+    end
+
+    ## ex: '/books/{id}', true  ->  ['/books/(\d+)', [['id', 'int', proc{|x| x.to_i}]]]
     def compile_urlpath(urlpath_pat, enable_capture=false)
       #; [!iln54] param names and conveter procs are nil when no urlpath params.
       pnames = nil   # urlpath parameter names  (ex: ['id'])
       procs  = nil   # proc objects to convert parameter value (ex: [proc{|x| x.to_i}])
       #
       rexp_str = urlpath_pat.gsub(URLPATH_PARAM_REXP) {
-        pname, s, proc_ = $1, $2, nil
-        s, proc_ = @default_patterns.lookup(pname) if s.nil?
+        #; [!3diea] '{id:<\d+>}' is ok but '{id<\d+>}' raises error.
+        pname, ptype, pat  = $1, $2, $3
+        if ! ptype && pat   # when ':ptype' is missing but '<pat>' exists
+          raise ActionMappingError.new("'#{urlpath_pat}': missing ':' between param name and pattern (ex: '{id:<\\d+>}' is OK but '{id<\\d+>}' is not).")
+        end
+        ptype, pat, proc_ = resolve_param_type(pname, ptype, pat, urlpath_pat)
         #; [!lhtiz] skips empty param name.
         #; [!66zas] skips param name starting with '_'.
         skip = pname.empty? || pname.start_with?('_')
@@ -1206,18 +1167,43 @@ module K8
         #; [!bi7gr] captures urlpath params when 2nd argument is truthy.
         #; [!mprbx] ex: '/{id:x|y}' -> '/(x|y)', '/{:x|y}' -> '/(?:x|y)'
         if enable_capture && ! skip
-          s = "(#{s})"
-        elsif s =~ /\|/
-          s = "(?:#{s})"
+          pat = "(#{pat})"
+        elsif pat =~ /\|/
+          pat = "(?:#{pat})"
         end
-        s
+        pat
       }
       #; [!awfgs] returns regexp string, param names, and converter procs.
       return rexp_str, pnames, procs   # ex: '/books/(\d+)', ['id'], [proc{|x| x.to_i}]}]
     end
 
-    def has_urlpath_param?(urlpath)
-      return urlpath.include?('{')
+    _to_date = proc {|s|
+      begin
+        yr, mo, dy = s.split('-')
+        Date.new(yr.to_i, mo.to_i, dy.to_i)
+      rescue
+        raise HttpException.new(404)
+      end
+    }
+    URLPATH_PARAM_TYPES = [
+      # ptype , pname regexp    , urlpath pattern      , converter
+      ['int'  , /(?:^|_)id\z/   , '\d+'                , proc {|s| s.to_i }],
+      ['date' , /(?:^|_)date\z/ , '\d\d\d\d-\d\d-\d\d' , _to_date          ],
+      ['str'  , nil             , '[^/]+'              , nil               ],
+    ]
+    _to_date = nil
+
+    def resolve_param_type(pname, ptype, pattern, urlpath)
+      tuple = nil
+      if ! ptype || ptype.empty?
+        tuple = URLPATH_PARAM_TYPES.find {|t| pname =~ t[1] }
+        ptype = tuple ? tuple[0] : 'str'
+      end
+      tuple ||= URLPATH_PARAM_TYPES.find {|t| t[0] == ptype }  or
+        raise ActionMappingError.new("'#{urlpath}': unknown param type '#{ptype}'.")
+      pattern   = tuple[2] if ! pattern || pattern.empty?
+      converter = tuple[3]   # ex: '123' -> 123, '2000-01-01' -> Date.new(2000, 1, 1)
+      return ptype, pattern, converter
     end
 
     ## range object to retrieve urlpath parameter value faster than Regexp matching
@@ -1622,12 +1608,11 @@ module K8
 
   class RackApplication
 
-    def initialize(urlpath_mapping=[], default_patterns: DEFAULT_PATTERNS, urlpath_cache_size: 0,
+    def initialize(urlpath_mapping=[], urlpath_cache_size: 0,
                                        enable_urlpath_param_range: true)
       #; [!vkp65] mounts urlpath mappings.
       @mapping = ActionMapping.new(urlpath_mapping,
-                                   default_patterns:    default_patterns,
-                                   urlpath_cache_size:  urlpath_cache_size,
+                                   urlpath_cache_size: urlpath_cache_size,
                                    enable_urlpath_param_range: enable_urlpath_param_range)
     end
 

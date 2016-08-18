@@ -1861,16 +1861,11 @@ Oktest.scope do
 
     topic '#build()' do
 
-      fixture :proc1 do
-        K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
-      end
-
-      fixture :proc2 do
+      fixture :proc_int do
         K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
       end
 
       fixture :mapping do
-        |proc1, proc2|
         K8::ActionMapping.new([
             ['/api', [
                 ['/books', BooksAction],
@@ -1902,7 +1897,7 @@ Oktest.scope do
       end
 
       spec "[!w45ad] can compile nested array." do
-        |mapping, proc1, proc2|
+        |mapping, proc_int|
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_rexp} == Regexp.compile('
             \A  /api
@@ -1917,25 +1912,25 @@ Oktest.scope do
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
               /\A\/api\/books\/(\d+)\z/,
-              ["id"], [proc1], (11..-1),
+              ["id"], [proc_int], (11..-1),
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
               /\A\/api\/books\/(\d+)\/edit\z/,
-              ["id"], [proc1], (11..-6),
+              ["id"], [proc_int], (11..-6),
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
               /\A\/api\/books\/(\d+)\/comments\z/,
-              ["book_id"], [proc2], (11..-10),
+              ["book_id"], [proc_int], (11..-10),
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
               /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
-              ["book_id", "comment_id"], [proc2, proc2], nil,
+              ["book_id", "comment_id"], [proc_int, proc_int], nil,
             ],
           ]
           _.ok {@fixed_endpoints} == {
@@ -1946,32 +1941,32 @@ Oktest.scope do
       end
 
       spec "[!z2iax] classifies urlpath contains any parameter as variable one." do
-        |mapping, proc1, proc2|
+        |mapping, proc_int|
         mapping.instance_exec(self) do |_|
           _.ok {@variable_endpoints} == [
             ["/api/books/{id}",
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
               /\A\/api\/books\/(\d+)\z/,
-              ["id"], [proc1], (11..-1),
+              ["id"], [proc_int], (11..-1),
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
               /\A\/api\/books\/(\d+)\/edit\z/,
-              ["id"], [proc1], (11..-6),
+              ["id"], [proc_int], (11..-6),
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
               /\A\/api\/books\/(\d+)\/comments\z/,
-              ["book_id"], [proc2], (11..-10),
+              ["book_id"], [proc_int], (11..-10),
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
               /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
-              ["book_id", "comment_id"], [proc2, proc2], nil,
+              ["book_id", "comment_id"], [proc_int, proc_int], nil,
             ],
           ]
         end
@@ -2014,7 +2009,7 @@ Oktest.scope do
       end
 
       spec "[!wd2eb] accepts subclass of Action class." do
-        proc1 = proc2 = K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
+        proc_int = K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
         mapping = K8::ActionMapping.new([
             ['/api/books', BooksAction],
             ['/api/books/{book_id}', BookCommentsAction],
@@ -2036,25 +2031,25 @@ Oktest.scope do
               BooksAction,
               {:GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete},
               /\A\/api\/books\/(\d+)\z/,
-              ["id"], [proc1], (11..-1),
+              ["id"], [proc_int], (11..-1),
             ],
             ["/api/books/{id}/edit",
               BooksAction,
               {:GET=>:do_edit},
               /\A\/api\/books\/(\d+)\/edit\z/,
-              ["id"], [proc1], (11..-6),
+              ["id"], [proc_int], (11..-6),
             ],
             ["/api/books/{book_id}/comments",
               BookCommentsAction,
               {:GET=>:do_comments},
               /\A\/api\/books\/(\d+)\/comments\z/,
-              ["book_id"], [proc2], (11..-10),
+              ["book_id"], [proc_int], (11..-10),
             ],
             ["/api/books/{book_id}/comments/{comment_id}",
               BookCommentsAction,
               {:GET=>:do_comment},
               /\A\/api\/books\/(\d+)\/comments\/(\d+)\z/,
-              ["book_id", "comment_id"], [proc2, proc2], nil,
+              ["book_id", "comment_id"], [proc_int, proc_int], nil,
             ],
           ]
         end
@@ -2089,7 +2084,7 @@ Oktest.scope do
         File.open(filename, 'w') {|f| f << content }
         at_end { File.unlink filename; Dir.rmdir dirname }
         #
-        proc1 = proc2 = K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
+        proc_int = K8::ActionMapping::URLPATH_PARAM_TYPES[0][3]
         mapping = K8::ActionMapping.new([
             ['/api/example', './test_l2kz5/sample:Ex_l2kz5::Example_l2kz5'],
         ])
@@ -2098,7 +2093,7 @@ Oktest.scope do
             "/api/example"=>["/api/example", Ex_l2kz5::Example_l2kz5, {:GET=>:do_index}, []],
           }
           _.ok {@variable_endpoints} == [
-            ["/api/example/{id}", Ex_l2kz5::Example_l2kz5, {:GET=>:do_show}, /\A\/api\/example\/(\d+)\z/, ["id"], [proc1], (13..-1)],
+            ["/api/example/{id}", Ex_l2kz5::Example_l2kz5, {:GET=>:do_show}, /\A\/api\/example\/(\d+)\z/, ["id"], [proc_int], (13..-1)],
           ]
         end
       end
@@ -2161,12 +2156,7 @@ Oktest.scope do
 
     topic '#find()' do
 
-      fixture :proc1 do
-        proc {|x| x.to_i }
-      end
-
       fixture :mapping do
-        |proc1|
         K8::ActionMapping.new([
             ['/api', [
                 ['/books', BooksAction],

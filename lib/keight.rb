@@ -1067,6 +1067,8 @@ module K8
       @urlpath_rexp       = build(urlpath_mapping)
     end
 
+    attr_reader :urlpath_rexp
+
     private
 
     def build(urlpath_mapping)

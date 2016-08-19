@@ -1119,7 +1119,17 @@ module K8
             end
             yield full_urlpath, action_class, action_methods
           end
-          rexp_str = build_rexp_str(buf2)
+          #; [!abj34] ex: (?:/\d+(\z)|/\d+/edit(\z)) -> /d+(?:(\z)|/edit(\z))
+          if buf2.empty?
+            rexp_str = nil
+          elsif buf2.length == 1
+            rexp_str = buf2[0]
+          else
+            prefixes = URLPATH_PARAM_PREFIXES  # ex: ['/\d+', '/[^/]+']
+            prefix   = prefixes.find {|s| buf2.all? {|x| x.start_with?(s) } }
+            buf2     = buf2.map {|x| x[prefix.length..-1] } if prefix
+            rexp_str = "#{prefix}(?:#{buf2.join('|')})"
+          end
         end
         #; [!bcgc9] skips classes which have only fixed urlpaths.
         buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str
@@ -1192,6 +1202,7 @@ module K8
       ['str'  , nil             , '[^/]+'              , nil               ],
     ]
     _to_date = nil
+    URLPATH_PARAM_PREFIXES = URLPATH_PARAM_TYPES.collect {|t| "/#{t[2]}" }
 
     def resolve_param_type(pname, ptype, pattern, urlpath)
       tuple = nil

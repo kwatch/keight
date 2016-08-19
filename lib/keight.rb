@@ -1120,13 +1120,8 @@ module K8
             yield full_urlpath, action_class, action_methods
           end
           #; [!abj34] ex: (?:/\d+(\z)|/\d+/edit(\z)) -> /d+(?:(\z)|/edit(\z))
-          if buf2.empty?
-            rexp_str = nil
-          elsif buf2.length == 1
-            rexp_str = buf2[0]
-          else
-            rexp_str = union_urlpaths(buf2)
-          end
+          n = buf2.length
+          rexp_str = (n == 0 ? nil : n == 1 ? buf2[0] : union_urlpaths(buf2))
         end
         buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str
       end

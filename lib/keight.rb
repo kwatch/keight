@@ -1131,20 +1131,12 @@ module K8
             rexp_str = "#{prefix}(?:#{buf2.join('|')})"
           end
         end
-        #; [!bcgc9] skips classes which have only fixed urlpaths.
         buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str
       end
-      #
-      return build_rexp_str(buf)
-    end
-
-    ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
-    def build_rexp_str(buf)
       #; [!169ad] removes unnecessary grouping.
       n = buf.length
-      return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"
-    ensure
-      buf.clear()   # for GC
+      rexp_string = (n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})")
+      return rexp_string   # ex: '/books/\d+(?:(\z)|/edit(\z))'
     end
 
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.

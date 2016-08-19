@@ -1119,7 +1119,6 @@ module K8
             end
             yield full_urlpath, action_class, action_methods
           end
-          #; [!abj34] ex: (?:/\d+(\z)|/\d+/edit(\z)) -> /d+(?:(\z)|/edit(\z))
           n = buf2.length
           rexp_str = (n == 0 ? nil : n == 1 ? buf2[0] : union_urlpaths(buf2))
         end
@@ -1132,6 +1131,7 @@ module K8
     end
 
     def union_urlpaths(upaths)
+      #; [!abj34] ex: (?:/\d+(\z)|/\d+/edit(\z)) -> /d+(?:(\z)|/edit(\z))
       prefixes = URLPATH_PARAM_PREFIXES  # ex: ['/\d+', '/[^/]+']
       prefix   = prefixes.find {|s| upaths.all? {|x| x.start_with?(s) } }
       upaths   = upaths.map {|x| x[prefix.length..-1] } if prefix

@@ -1125,10 +1125,7 @@ module K8
           elsif buf2.length == 1
             rexp_str = buf2[0]
           else
-            prefixes = URLPATH_PARAM_PREFIXES  # ex: ['/\d+', '/[^/]+']
-            prefix   = prefixes.find {|s| buf2.all? {|x| x.start_with?(s) } }
-            buf2     = buf2.map {|x| x[prefix.length..-1] } if prefix
-            rexp_str = "#{prefix}(?:#{buf2.join('|')})"
+            rexp_str = union_urlpaths(buf2)
           end
         end
         buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str
@@ -1137,6 +1134,13 @@ module K8
       n = buf.length
       rexp_string = (n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})")
       return rexp_string   # ex: '/books/\d+(?:(\z)|/edit(\z))'
+    end
+
+    def union_urlpaths(upaths)
+      prefixes = URLPATH_PARAM_PREFIXES  # ex: ['/\d+', '/[^/]+']
+      prefix   = prefixes.find {|s| upaths.all? {|x| x.start_with?(s) } }
+      upaths   = upaths.map {|x| x[prefix.length..-1] } if prefix
+      return "#{prefix}(?:#{upaths.join('|')})"
     end
 
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.

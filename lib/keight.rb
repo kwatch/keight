@@ -1119,22 +1119,23 @@ module K8
             end
             yield full_urlpath, action_class, action_methods
           end
-          rexp_str = build_rexp_str(buf2)
+          n = buf2.length
+          rexp_str = (n == 0 ? nil : n == 1 ? buf2[0] : union_urlpaths(buf2))
         end
-        #; [!bcgc9] skips classes which have only fixed urlpaths.
         buf << "#{compile_urlpath(urlpath)[0]}#{rexp_str}" if rexp_str
       end
-      #
-      return build_rexp_str(buf)
-    end
-
-    ## ex: '/books', ['/\d+', '/\d+/edit']  ->  '/books(?:/\d+|/\d+/edit)'
-    def build_rexp_str(buf)
       #; [!169ad] removes unnecessary grouping.
       n = buf.length
-      return n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})"
-    ensure
-      buf.clear()   # for GC
+      rexp_string = (n == 0 ? nil : n == 1 ? buf[0] : "(?:#{buf.join('|')})")
+      return rexp_string   # ex: '/books/\d+(?:(\z)|/edit(\z))'
+    end
+
+    def union_urlpaths(upaths)
+      #; [!abj34] ex: (?:/\d+(\z)|/\d+/edit(\z)) -> /d+(?:(\z)|/edit(\z))
+      prefixes = URLPATH_PARAM_PREFIXES  # ex: ['/\d+', '/[^/]+']
+      prefix   = prefixes.find {|s| upaths.all? {|x| x.start_with?(s) } }
+      upaths   = upaths.map {|x| x[prefix.length..-1] } if prefix
+      return "#{prefix}(?:#{upaths.join('|')})"
     end
 
     #; [!92jcn] '{' and '}' are available in urlpath param pattern.
@@ -1192,6 +1193,7 @@ module K8
       ['str'  , nil             , '[^/]+'              , nil               ],
     ]
     _to_date = nil
+    URLPATH_PARAM_PREFIXES = URLPATH_PARAM_TYPES.collect {|t| "/#{t[2]}" }
 
     def resolve_param_type(pname, ptype, pattern, urlpath)
       tuple = nil

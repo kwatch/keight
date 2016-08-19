@@ -1834,7 +1834,7 @@ Oktest.scope do
             ['/api/books', BooksAction],
         ])
         mapping.instance_exec(self) do |_|
-          _.ok {@urlpath_rexp} == %r'\A/api/books(?:/\d+(\z)|/\d+/edit(\z))\z'
+          _.ok {@urlpath_rexp} == %r'\A/api/books/\d+(?:(\z)|/edit(\z))\z'
           _.ok {@fixed_endpoints.keys} == ['/api/books/', '/api/books/new']
           _.ok {@variable_endpoints.map{|x| x[0]}} == ['/api/books/{id}', '/api/books/{id}/edit']
         end
@@ -1881,7 +1881,7 @@ Oktest.scope do
           _.ok {@urlpath_rexp} == Regexp.compile('
                  \A/api
                     (?: /books
-                          (?: /\d+(\z) | /\d+/edit(\z) )
+                          /\d+ (?: (\z) | /edit(\z) )
                      |  /books/\d+
                           (?: /comments(\z) | /comments/\d+(\z) )
                     )
@@ -1902,7 +1902,7 @@ Oktest.scope do
           _.ok {@urlpath_rexp} == Regexp.compile('
             \A  /api
                     (?: /books
-                            (?: /\d+(\z) | /\d+/edit(\z) )
+                            /\d+ (?: (\z) | /edit(\z) )
                      |  /books/\d+
                             (?: /comments(\z) | /comments/\d+(\z) )
                     )
@@ -2017,7 +2017,7 @@ Oktest.scope do
         mapping.instance_exec(self) do |_|
           _.ok {@urlpath_rexp} == Regexp.compile('
             \A  (?: /api/books
-                       (?: /\d+(\z) | /\d+/edit(\z) )
+                       /\d+ (?: (\z) | /edit(\z) )
                  |  /api/books/\d+
                        (?: /comments(\z) | /comments/\d+(\z) )
                 )
@@ -2125,7 +2125,7 @@ Oktest.scope do
           _.ok {@urlpath_rexp} == Regexp.compile('
               \A  /api
                       (?:  /books
-                               (?:/\d+(\z)|/\d+/edit(\z))
+                               /\d+(?:(\z)|/edit(\z))
                       |    /books/\d+
                                (?:/comments(\z)|/comments/\d+(\z))
                       )
@@ -2148,6 +2148,35 @@ Oktest.scope do
         mapping.instance_exec(self) do |_|
           #_.ok {@urlpath_rexp} == %r'\A(?:/api(?:/test(?:/\d+(\z))))\z'
           _.ok {@urlpath_rexp} == %r'\A/api/test/\d+(\z)\z'
+        end
+      end
+
+      spec "[!abj34] ex: (?:/\d+(\z)|/\d+/edit(\z)) -> /d+(?:(\z)|/edit(\z))" do
+        klass = Class.new(K8::Action) do
+          mapping '/'             , :GET=>:do_index
+          mapping '/{id}'         , :GET=>:do_show
+          mapping '/{id}/edit'    , :GET=>:do_edit
+          mapping '/{id}/comments', :GET=>:do_comments
+          def do_index; end
+          def do_show(id); end
+          def do_edit(id); end
+          def do_comments(id); end
+        end
+        mapping = K8::ActionMapping.new([
+            ['/api', [
+                ['/books', BooksAction],
+                ['/samples', klass],
+            ]],
+        ])
+        mapping.instance_exec(self) do |_|
+          _.ok {@urlpath_rexp} == Regexp.compile('
+              \A  /api
+                      (?:  /books
+                               /\d+(?:(\z)|/edit(\z))
+                      |    /samples
+                               /\d+(?:(\z)|/edit(\z)|/comments(\z))
+                      )
+              \z'.gsub(/\s+/, ''))
         end
       end
 

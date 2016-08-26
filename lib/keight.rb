@@ -1538,8 +1538,8 @@ module K8
 
     def clear
       #; [!0jdal] removes uploaded files.
-      d = nil
-      d.each {|_, uploaded| uploaded.clean() } if (d = @params_file)
+      d = @params_file
+      d.each {|_, uploaded| uploaded.clean() } if d
     end
 
   end

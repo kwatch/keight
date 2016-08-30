@@ -521,7 +521,7 @@ Oktest.scope do
           ok {serr.closed?} == true
         end
 
-        spec "[!0ebq5] calls callback specified to initializer with error object." do
+        spec "[!0ebq5] calls callback specified at initializer with error object." do
           arg = false
           sc = K8::Util::ShellCommand.new("echo abcdef") {|x| arg = x }
           ok {arg} == false

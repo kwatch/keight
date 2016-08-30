@@ -572,7 +572,7 @@ module K8
           #; [!2wll8] closes stdout and stderr, even if error raised.
           sout.close()
           serr.close()
-          #; [!0ebq5] calls callback specified to initializer with error object.
+          #; [!0ebq5] calls callback specified at initializer with error object.
           @teardown.yield(ex) if @teardown
         end
         #; [!ln8we] returns self.

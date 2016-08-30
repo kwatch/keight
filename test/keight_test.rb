@@ -390,10 +390,10 @@ Oktest.scope do
         end
 
         spec "[!9seos] invokes shell command." do |sc|
-          ok {sc.pid} == nil
+          ok {sc.process_id} == nil
           sc.start()
-          ok {sc.pid} != nil
-          ok {sc.pid}.is_a?(Fixnum)
+          ok {sc.process_id} != nil
+          ok {sc.process_id}.is_a?(Fixnum)
         end
 
         spec "[!d766y] writes input string if provided to initializer." do |sc|

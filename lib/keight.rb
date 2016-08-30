@@ -501,20 +501,20 @@ module K8
         @input      = input    # ex: "select * from table1"
         @chunk_size = chunk_size || CHUNK_SIZE
         @callback   = callback
-        @pid        = nil      # process id
+        @process_id = nil
         @tuple      = nil
       end
 
-      attr_reader :command, :input, :pid
+      attr_reader :command, :input, :process_id
 
       def start
         #; [!66uck] not allowed to start more than once.
-        @pid.nil?  or    # TODO: close sout and serr
+        @process_id.nil?  or    # TODO: close sout and serr
           raise ShellCommandError.new("Already started (comand: #{@command.inspect})")
         #; [!9seos] invokes shell command.
         require 'open3' unless defined?(Open3)
         sin, sout, serr, waiter = Open3.popen3(@command)
-        @pid = waiter.pid
+        @process_id = waiter.pid
         size = @chunk_size
         begin
           #; [!d766y] writes input string if provided to initializer.
@@ -545,7 +545,7 @@ module K8
 
       def each
         #; [!ssgmm] '#start()' should be called before '#each()'.
-        @pid  or
+        @process_id  or
           raise ShellCommandError.new("Not started yet (command: #{@command.inspect}).")
         #; [!vpmbw] yields each chunk data.
         sout, serr, waiter, chunk = @tuple

@@ -1442,7 +1442,7 @@ module K8
     end
     alias query params_query
 
-    def params_form
+    def params_form(max_content_length=nil)
       #; [!iultp] returns same value when called more than once.
       d = @params_form
       return d if d
@@ -1450,7 +1450,7 @@ module K8
       self.content_type == 'application/x-www-form-urlencoded'  or
         raise HttpException.new(400, "expected form data, but Content-Type header is #{self.content_type.inspect}.")
       #; [!puxlr] raises 400 error when content length is too large (> 10MB).
-      clen = get_content_length(MAX_FORM_SIZE)
+      clen = get_content_length(max_content_length || MAX_FORM_SIZE)
       #; [!59ad2] parses form parameters and returns it as Hash object.
       payload = get_input_stream().read(clen)
       d = @params_form = Util.parse_query_string(payload)
@@ -1458,7 +1458,7 @@ module K8
     end
     alias form params_form
 
-    def params_multipart
+    def params_multipart(max_content_length=nil)
       #; [!gbdxu] returns same values when called more than once.
       d1 = @params_form
       d2 = @params_file
@@ -1470,7 +1470,7 @@ module K8
       boundary = $1  or
         raise HttpException.new(400, 'bounday attribute of multipart required.')
       #; [!mtx6t] raises error when content length of multipart is too large (> 100MB).
-      clen = get_content_length(MAX_MULTIPART_SIZE)
+      clen = get_content_length(max_content_length || MAX_MULTIPART_SIZE)
       #; [!y1jng] parses multipart when multipart data posted.
       d1, d2 = Util.parse_multipart(get_input_stream(), boundary, clen, nil, nil)
       @params_form = d1; @params_file = d2
@@ -1478,7 +1478,7 @@ module K8
     end
     alias multipart params_multipart
 
-    def params_json
+    def params_json(max_content_length=nil)
       #; [!5kwij] returns same value when called more than once.
       d = @params_json
       return d if d
@@ -1486,7 +1486,7 @@ module K8
       self.content_type =~ /\Aapplication\/json\b/  or
         raise HttpException.new(400, "expected JSON data, but Content-Type header is #{self.content_type.inspect}.")
       #; [!on107] raises error when content length of JSON is too large (> 10MB).
-      clen = get_content_length(MAX_JSON_SIZE)
+      clen = get_content_length(max_content_length || MAX_JSON_SIZE)
       #; [!ugik5] parses json data and returns it as hash object when json data is sent.
       payload = get_input_stream().read(clen)
       d = @params_json = JSON.parse(payload)

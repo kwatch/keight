@@ -2623,12 +2623,9 @@ Oktest.scope do
 
       spec "[!7uqb4] changes default request class." do
         original = K8::RackApplication::REQUEST_CLASS
-        begin
-          K8::RackApplication.REQUEST_CLASS = Array
-          ok {K8::RackApplication::REQUEST_CLASS} == Array
-        ensure
-          K8::RackApplication.REQUEST_CLASS = original
-        end
+        at_end { K8::RackApplication.REQUEST_CLASS = original }
+        K8::RackApplication.REQUEST_CLASS = Array
+        ok {K8::RackApplication::REQUEST_CLASS} == Array
       end
 
     end
@@ -2638,12 +2635,9 @@ Oktest.scope do
 
       spec "[!c1bd0] changes default response class." do
         original = K8::RackApplication::RESPONSE_CLASS
-        begin
-          K8::RackApplication.RESPONSE_CLASS = Hash
-          ok {K8::RackApplication::RESPONSE_CLASS} == Hash
-        ensure
-          K8::RackApplication.RESPONSE_CLASS = original
-        end
+        at_end { K8::RackApplication.RESPONSE_CLASS = original }
+        K8::RackApplication.RESPONSE_CLASS = Hash
+        ok {K8::RackApplication::RESPONSE_CLASS} == Hash
       end
 
     end

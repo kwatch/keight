@@ -390,10 +390,10 @@ Oktest.scope do
         end
 
         spec "[!9seos] invokes shell command." do |sc|
-          ok {sc.pid} == nil
+          ok {sc.process_id} == nil
           sc.start()
-          ok {sc.pid} != nil
-          ok {sc.pid}.is_a?(Fixnum)
+          ok {sc.process_id} != nil
+          ok {sc.process_id}.is_a?(Fixnum)
         end
 
         spec "[!d766y] writes input string if provided to initializer." do |sc|
@@ -521,7 +521,7 @@ Oktest.scope do
           ok {serr.closed?} == true
         end
 
-        spec "[!0ebq5] calls callback specified to initializer with error object." do
+        spec "[!0ebq5] calls callback specified at initializer with error object." do
           arg = false
           sc = K8::Util::ShellCommand.new("echo abcdef") {|x| arg = x }
           ok {arg} == false

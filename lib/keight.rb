@@ -474,21 +474,27 @@ module K8
     ## Example:
     ##
     ##     def do_download_csv()
+    ##       ## for example, run SQL and generate CSV file (for postgresql)
     ##       sql = "select * from table1"
-    ##       cmd = "psql -AF',' dbname | iconv -f UTF-8 -t CP932 -c | gzip"
-    ##       shell_command = K8::Util::ShellCommand.new(cmd, input: sql)
+    ##       cmd = "psql -AF',' -U dbuser dbname | iconv -f UTF-8 -t CP932 -c | gzip"
+    ##       shell_command = K8::Util::ShellCommand.new(cmd, input: sql) do
+    ##         ## callback after sending response body
+    ##         File.unlink(tempfile) if File.exist?(templfile)  # for example
+    ##       end
     ##       begin
     ##         return shell_command.start() do
+    ##           ## callback before sending response body
     ##           @resp.headers['Content-Type']        = "text/csv;charset=Shift_JIS"
-    ##           @resp.headers['Content-Disposition'] = 'attachment;filename="file1.tsv"'
+    ##           @resp.headers['Content-Disposition'] = 'attachment;filename="file.csv"'
     ##           @resp.headers['Content-Encoding']    = "gzip"
     ##         end
     ##       rescue K8::Util::ShellCommandError => ex
+    ##         logger = @req.env['rack.logger']
+    ##         logger.error(ex.message) if logger
     ##         @resp.status = 500
     ##         @resp.headers['Content-Type'] = "text/plain;charset=UTF-8"
     ##         return ex.message
     ##       end
-    ##       command.start
     ##     end
     ##
     class ShellCommand
@@ -501,20 +507,20 @@ module K8
         @input      = input    # ex: "select * from table1"
         @chunk_size = chunk_size || CHUNK_SIZE
         @teardown   = teardown
-        @pid        = nil      # process id
+        @process_id = nil
         @tuple      = nil
       end
 
-      attr_reader :command, :input, :pid
+      attr_reader :command, :input, :process_id
 
       def start
         #; [!66uck] not allowed to start more than once.
-        @pid.nil?  or    # TODO: close sout and serr
+        @process_id.nil?  or    # TODO: close sout and serr
           raise ShellCommandError.new("Already started (comand: #{@command.inspect})")
         #; [!9seos] invokes shell command.
-        require 'open3' unless defined?(Open3)
-        sin, sout, serr, waiter = Open3.popen3(@command)
-        @pid = waiter.pid
+        require 'open3' unless defined?(::Open3)
+        sin, sout, serr, waiter = ::Open3.popen3(@command)
+        @process_id = waiter.pid
         size = @chunk_size
         begin
           #; [!d766y] writes input string if provided to initializer.
@@ -545,7 +551,7 @@ module K8
 
       def each
         #; [!ssgmm] '#start()' should be called before '#each()'.
-        @pid  or
+        @process_id  or
           raise ShellCommandError.new("Not started yet (command: #{@command.inspect}).")
         #; [!vpmbw] yields each chunk data.
         sout, serr, waiter, chunk = @tuple
@@ -566,7 +572,7 @@ module K8
           #; [!2wll8] closes stdout and stderr, even if error raised.
           sout.close()
           serr.close()
-          #; [!0ebq5] calls callback specified to initializer with error object.
+          #; [!0ebq5] calls callback specified at initializer with error object.
           @teardown.yield(ex) if @teardown
         end
         #; [!ln8we] returns self.

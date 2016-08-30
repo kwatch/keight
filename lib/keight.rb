@@ -495,12 +495,12 @@ module K8
 
       CHUNK_SIZE = 8 * 1024
 
-      def initialize(command, input: nil, chunk_size: nil, &teardown)
+      def initialize(command, input: nil, chunk_size: nil, &callback)
         #; [!j95pi] takes shell command and input string.
         @command    = command  # ex: "psql -AF',' dbname | gzip"
         @input      = input    # ex: "select * from table1"
         @chunk_size = chunk_size || CHUNK_SIZE
-        @teardown   = teardown
+        @callback   = callback
         @pid        = nil      # process id
         @tuple      = nil
       end
@@ -567,7 +567,7 @@ module K8
           sout.close()
           serr.close()
           #; [!0ebq5] calls callback specified to initializer with error object.
-          @teardown.yield(ex) if @teardown
+          @callback.yield(ex) if @callback
         end
         #; [!ln8we] returns self.
         self

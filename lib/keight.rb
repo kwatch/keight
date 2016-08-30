@@ -474,9 +474,9 @@ module K8
     ## Example:
     ##
     ##     def do_download_csv()
-    ##       ## for example, run SQL and generate CSV file
+    ##       ## for example, run SQL and generate CSV file (for postgresql)
     ##       sql = "select * from table1"
-    ##       cmd = "psql -AF',' dbname | iconv -f UTF-8 -t CP932 -c | gzip"
+    ##       cmd = "psql -AF',' -U dbuser dbname | iconv -f UTF-8 -t CP932 -c | gzip"
     ##       shell_command = K8::Util::ShellCommand.new(cmd, input: sql) do
     ##         ## callback after sending response body
     ##         File.unlink(tempfile) if File.exist?(templfile)  # for example
@@ -485,7 +485,7 @@ module K8
     ##         return shell_command.start() do
     ##           ## callback before sending response body
     ##           @resp.headers['Content-Type']        = "text/csv;charset=Shift_JIS"
-    ##           @resp.headers['Content-Disposition'] = 'attachment;filename="file1.tsv"'
+    ##           @resp.headers['Content-Disposition'] = 'attachment;filename="file.csv"'
     ##           @resp.headers['Content-Encoding']    = "gzip"
     ##         end
     ##       rescue K8::Util::ShellCommandError => ex
@@ -518,8 +518,8 @@ module K8
         @process_id.nil?  or    # TODO: close sout and serr
           raise ShellCommandError.new("Already started (comand: #{@command.inspect})")
         #; [!9seos] invokes shell command.
-        require 'open3' unless defined?(Open3)
-        sin, sout, serr, waiter = Open3.popen3(@command)
+        require 'open3' unless defined?(::Open3)
+        sin, sout, serr, waiter = ::Open3.popen3(@command)
         @process_id = waiter.pid
         size = @chunk_size
         begin

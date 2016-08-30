@@ -1006,7 +1006,13 @@ Oktest.scope do
         ok {req.params} == {"x"=>"1", "y"=>"2"}
       end
 
-      spec "[!4rmn9] parses multipart when content type is 'multipart/form-data'."
+      spec "[!z5w4k] raises error when content type is 'multipart/form-data' (because params_multipart() returns two values)." do
+        env = new_env('POST', '/', form: "x=1")
+        env['CONTENT_TYPE'] = "multipart/form-data"
+        req = K8::RackRequest.new(env)
+        pr = proc { req.params }
+        ok {pr}.raise?(K8::PayloadParseError, "don't use `@req.params' for multipart data; use `@req.params_multipart' instead.")
+      end
 
     end
 

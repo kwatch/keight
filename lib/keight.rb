@@ -660,6 +660,10 @@ module K8
   end
 
 
+  class PayloadParseError < BaseError
+  end
+
+
   ## Equivarent to BaseController or AbstractRequestHandler in other framework.
   class BaseAction
 
@@ -1515,19 +1519,20 @@ module K8
       #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
       #; [!cr0zj] parses JSON when content type is 'application/json'.
       #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
-      #; [!4rmn9] parses multipart when content type is 'multipart/form-data'.
+      #; [!z5w4k] raises error when content type is 'multipart/form-data' (because params_multipart() returns two values).
       if @meth == :GET || @meth == :HEAD
-        return params_query()
+        return params_query()       # hash object
       end
       case @env['CONTENT_TYPE']
       when /\Aapplication\/json\b/
-        return params_json()
+        return params_json()        # hash object
       when /\Aapplication\/x-www-form-urlencoded\b/
-        return params_form()
+        return params_form()        # hash object
       when /\Amultipart\/form-data\b/
-        return params_multipart()
+        #return params_multipart()  # array of hash objects
+        raise PayloadParseError.new("don't use `@req.params' for multipart data; use `@req.params_multipart' instead.")
       else
-        return {}
+        return {}                   # hash object
       end
     end
 

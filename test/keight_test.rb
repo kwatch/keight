@@ -798,31 +798,31 @@ Oktest.scope do
         ok {req.params_query()} == {'arr[xxx]'=>'<> &;'}
       end
 
+      spec "[!2fhrk] returns same value when called more than once." do
+        req = K8::RackRequest.new(new_env("GET", "/", query: "x=1&y=2"))
+        val1st = req.params_query()
+        val2nd = req.params_query()
+        ok {val2nd}.same?(val1st)
+      end
+
     end
 
 
     topic '#params_form' do
 
-      spec "[!q88w9] raises 400 error when content length is missing." do
-        env = new_env("POST", "/", form: "x=1")
-        env['CONTENT_LENGTH'] = nil
-        req = K8::RackRequest.new(env)
-        pr = proc { req.params_form }
-        ok {pr}.raise?(K8::HttpException, 'Content-Length header expected.')
+      spec "[!iultp] returns same value when called more than once." do
+        req = K8::RackRequest.new(new_env("POST", "/", form: "x=1"))
+        val1st = req.params_form
+        val2nd = req.params_form
+        ok {val2nd}.same?(val1st)
       end
 
-      spec "[!gi4qq] raises 400 error when content length is invalid." do
-        env = new_env("POST", "/", form: "x=1")
-        env['CONTENT_LENGTH'] = "abc"
+      spec "[!uq46o] raises 400 error when payload is not form data." do
+        |multipart_env|
+        env = multipart_env
         req = K8::RackRequest.new(env)
         pr = proc { req.params_form }
-        ok {pr}.raise?(K8::HttpException, 'Content-Length should be an integer.')
-      end
-
-      spec "[!59ad2] parses form parameters and returns it as Hash/dict object when form requested." do
-        form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
-        req = K8::RackRequest.new(new_env("POST", "/", form: form))
-        ok {req.params_form} == {'x'=>'1', 'y'=>'2', 'arr[xxx]'=>'<> &;'}
+        ok {pr}.raise?(K8::HttpException, /^expected form data, but Content-Type header is "multipart\/form-data;boundary=.*".$/)
       end
 
       spec "[!puxlr] raises 400 error when content length is too large (> 10MB)." do
@@ -830,7 +830,13 @@ Oktest.scope do
         env['CONTENT_LENGTH'] = (10*1024*1024 + 1).to_s
         req = K8::RackRequest.new(env)
         pr = proc { req.params_form }
-        ok {pr}.raise?(K8::HttpException, 'Content-Length is too large.')
+        ok {pr}.raise?(K8::HttpException, 'Content-Length is too large (max: 10485760, actual: 10485761).')
+      end
+
+      spec "[!59ad2] parses form parameters and returns it as Hash/dict object." do
+        form = "x=1&y=2&arr%5Bxxx%5D=%3C%3E+%26%3B"
+        req = K8::RackRequest.new(new_env("POST", "/", form: form))
+        ok {req.params_form} == {'x'=>'1', 'y'=>'2', 'arr[xxx]'=>'<> &;'}
       end
 
     end
@@ -838,7 +844,41 @@ Oktest.scope do
 
     topic '#params_multipart' do
 
-      spec "[!y1jng] parses multipart when multipart form requested." do
+      spec "[!gbdxu] returns same values when called more than once." do
+        |multipart_env|
+        req = K8::RackRequest.new(multipart_env)
+        d1, d2 = req.params_multipart
+        d3, d4 = req.params_multipart
+        ok {d3}.same?(d1)
+        ok {d4}.same?(d2)
+      end
+
+      spec "[!ho5ii] raises 400 error when not multipart data." do
+        env = new_env("POST", "/", form: "x=1")
+        req = K8::RackRequest.new(env)
+        pr = proc { req.params_multipart }
+        ok {pr}.raise?(K8::HttpException, 'expected multipart data, but Content-Type header is "application/x-www-form-urlencoded".')
+      end
+
+      spec "[!davzs] raises 400 error when boundary is missing." do
+        |multipart_env, data_dir|
+        env = multipart_env
+        env['CONTENT_TYPE'] = env['CONTENT_TYPE'].split(';').first
+        req = K8::RackRequest.new(env)
+        pr = proc { req.params_multipart }
+        ok {pr}.raise?(K8::HttpException, 'bounday attribute of multipart required.')
+      end
+
+      spec "[!mtx6t] raises 400 error when content length of multipart is too large (> 100MB)." do
+        |multipart_env|
+        env = multipart_env
+        env['CONTENT_LENGTH'] = (100*1024*1024 + 1).to_s
+        req = K8::RackRequest.new(env)
+        pr = proc { req.params_multipart }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length is too large (max: 104857600, actual: 104857601).')
+      end
+
+      spec "[!y1jng] parses multipart when multipart data posted." do
         |multipart_env, data_dir|
         env = multipart_env
         req = K8::RackRequest.new(env)
@@ -870,24 +910,74 @@ Oktest.scope do
 
       end
 
-      spec "[!mtx6t] raises 400 error when content length of multipart is too large (> 100MB)." do
-        |multipart_env|
-        env = multipart_env
-        env['CONTENT_LENGTH'] = (100*1024*1024 + 1).to_s
-        req = K8::RackRequest.new(env)
-        pr = proc { req.params_multipart }
-        ok {pr}.raise?(K8::HttpException, 'Content-Length of multipart is too large.')
-      end
-
     end
 
 
     topic '#params_json' do
 
+      spec "[!5kwij] returns same value when called more than once." do
+        req = K8::RackRequest.new(new_env("POST", "/", json: {"x"=>1}))
+        val1st = req.params_json
+        val2nd = req.params_json
+        ok {val2nd}.same?(val1st)
+      end
+
+      spec "[!qjgfz] raises 400 error when not JSON data." do
+        req = K8::RackRequest.new(new_env("POST", "/", form: "x=1"))
+        pr = proc { req.params_json }
+        ok {pr}.raise?(K8::HttpException, "expected JSON data, but Content-Type header is \"application/x-www-form-urlencoded\".")
+      end
+
+      spec "[!on107] raises error when content length of JSON is too large (> 10MB)." do
+        env = new_env("POST", "/", json: {"x"=>1})
+        env['CONTENT_LENGTH'] = (10*1024*1024 + 1).to_s
+        req = K8::RackRequest.new(env)
+        pr = proc { req.params_json }
+        ok {pr}.raise?(K8::HttpException, 'Content-Length is too large (max: 10485760, actual: 10485761).')
+      end
+
       spec "[!ugik5] parses json data and returns it as hash object when json data is sent." do
         data = '{"x":1,"y":2,"arr":["a","b","c"]}'
         req = K8::RackRequest.new(new_env("POST", "/", json: data))
         ok {req.params_json} == {"x"=>1, "y"=>2, "arr"=>["a", "b", "c"]}
+      end
+
+    end
+
+
+    topic '#get_content_length()' do
+
+      spec "[!q88w9] raises 400 error when content length is missing." do
+        env = new_env("POST", "/", form: "x=1")
+        env['CONTENT_LENGTH'] = nil
+        req = K8::RackRequest.new(env)
+        req.instance_exec(self) do |_|
+          pr = proc { get_content_length(100) }
+          _.ok {pr}.raise?(K8::HttpException, 'Content-Length header expected.')
+        end
+      end
+
+      spec "[!ls6ir] raises error when content length is too large." do
+        env = new_env("POST", "/", form: "x=1")
+        env['CONTENT_LENGTH'] = '101'
+        req = K8::RackRequest.new(env)
+        req.instance_exec(self) do |_|
+          pr = proc { get_content_length(100) }
+          _.ok {pr}.raise?(K8::HttpException, 'Content-Length is too large (max: 100, actual: 101).')
+        end
+      end
+
+    end
+
+
+    topic '#get_input_stream()' do
+
+      spec "[!2buc6] returns input stream." do
+        env = new_env("POST", "/", form: "x=1")
+        req = K8::RackRequest.new(env)
+        req.instance_exec(self) do |_|
+          _.ok { get_input_stream() }.same?(req.env['rack.input'])
+        end
       end
 
     end
@@ -916,7 +1006,13 @@ Oktest.scope do
         ok {req.params} == {"x"=>"1", "y"=>"2"}
       end
 
-      spec "[!4rmn9] parses multipart when content type is 'multipart/form-data'."
+      spec "[!z5w4k] raises error when content type is 'multipart/form-data' (because params_multipart() returns two values)." do
+        env = new_env('POST', '/', form: "x=1")
+        env['CONTENT_TYPE'] = "multipart/form-data"
+        req = K8::RackRequest.new(env)
+        pr = proc { req.params }
+        ok {pr}.raise?(K8::PayloadParseError, "don't use `@req.params' for multipart data; use `@req.params_multipart' instead.")
+      end
 
     end
 

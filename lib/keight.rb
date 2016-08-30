@@ -474,21 +474,27 @@ module K8
     ## Example:
     ##
     ##     def do_download_csv()
+    ##       ## for example, run SQL and generate CSV file
     ##       sql = "select * from table1"
     ##       cmd = "psql -AF',' dbname | iconv -f UTF-8 -t CP932 -c | gzip"
-    ##       shell_command = K8::Util::ShellCommand.new(cmd, input: sql)
+    ##       shell_command = K8::Util::ShellCommand.new(cmd, input: sql) do
+    ##         ## callback after sending response body
+    ##         File.unlink(tempfile) if File.exist?(templfile)  # for example
+    ##       end
     ##       begin
     ##         return shell_command.start() do
+    ##           ## callback before sending response body
     ##           @resp.headers['Content-Type']        = "text/csv;charset=Shift_JIS"
     ##           @resp.headers['Content-Disposition'] = 'attachment;filename="file1.tsv"'
     ##           @resp.headers['Content-Encoding']    = "gzip"
     ##         end
     ##       rescue K8::Util::ShellCommandError => ex
+    ##         logger = @req.env['rack.logger']
+    ##         logger.error(ex.message) if logger
     ##         @resp.status = 500
     ##         @resp.headers['Content-Type'] = "text/plain;charset=UTF-8"
     ##         return ex.message
     ##       end
-    ##       command.start
     ##     end
     ##
     class ShellCommand

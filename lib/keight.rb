@@ -1600,23 +1600,22 @@ module K8
   end
 
 
-  REQUEST_CLASS  = RackRequest
-  RESPONSE_CLASS = RackResponse
-
-  def self.REQUEST_CLASS=(klass)
-    #; [!7uqb4] changes default request class.
-    remove_const :REQUEST_CLASS
-    const_set :REQUEST_CLASS, klass
-  end
-
-  def self.RESPONSE_CLASS=(klass)
-    #; [!c1bd0] changes default response class.
-    remove_const :RESPONSE_CLASS
-    const_set :RESPONSE_CLASS, klass
-  end
-
-
   class RackApplication
+
+    REQUEST_CLASS  = RackRequest
+    RESPONSE_CLASS = RackResponse
+
+    def self.REQUEST_CLASS=(klass)
+      #; [!7uqb4] changes default request class.
+      remove_const :REQUEST_CLASS
+      const_set :REQUEST_CLASS, klass
+    end
+
+    def self.RESPONSE_CLASS=(klass)
+      #; [!c1bd0] changes default response class.
+      remove_const :RESPONSE_CLASS
+      const_set :RESPONSE_CLASS, klass
+    end
 
     def initialize(urlpath_mapping=[], urlpath_cache_size: 0,
                                        enable_urlpath_param_range: true)

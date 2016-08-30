@@ -1054,36 +1054,6 @@ Oktest.scope do
   end
 
 
-  topic 'K8::REQUEST_CLASS=' do
-
-    spec "[!7uqb4] changes default request class." do
-      original = K8::REQUEST_CLASS
-      begin
-        K8.REQUEST_CLASS = Array
-        ok {K8::REQUEST_CLASS} == Array
-      ensure
-        K8.REQUEST_CLASS = original
-      end
-    end
-
-  end
-
-
-  topic 'K8::RESPONSE_CLASS=' do
-
-    spec "[!c1bd0] changes default response class." do
-      original = K8::RESPONSE_CLASS
-      begin
-        K8.RESPONSE_CLASS = Hash
-        ok {K8::RESPONSE_CLASS} == Hash
-      ensure
-        K8.RESPONSE_CLASS = original
-      end
-    end
-
-  end
-
-
   topic K8::BaseAction do
 
     fixture :action do
@@ -2649,6 +2619,36 @@ Oktest.scope do
     end
 
 
+    topic 'K8::REQUEST_CLASS=' do
+
+      spec "[!7uqb4] changes default request class." do
+        original = K8::RackApplication::REQUEST_CLASS
+        begin
+          K8::RackApplication.REQUEST_CLASS = Array
+          ok {K8::RackApplication::REQUEST_CLASS} == Array
+        ensure
+          K8::RackApplication.REQUEST_CLASS = original
+        end
+      end
+
+    end
+
+
+    topic 'K8::RESPONSE_CLASS=' do
+
+      spec "[!c1bd0] changes default response class." do
+        original = K8::RackApplication::RESPONSE_CLASS
+        begin
+          K8::RackApplication.RESPONSE_CLASS = Hash
+          ok {K8::RackApplication::RESPONSE_CLASS} == Hash
+        ensure
+          K8::RackApplication.RESPONSE_CLASS = original
+        end
+      end
+
+    end
+
+
     topic '#initialize()' do
 
       spec "[!vkp65] mounts urlpath mappings." do
@@ -2861,22 +2861,22 @@ Oktest.scope do
 
       spec "[!vdllr] clears request and response if possible." do
         |app|
-        reqclass  = K8::REQUEST_CLASS
-        respclass = K8::RESPONSE_CLASS
-        K8.module_eval do
+        reqclass  = K8::RackApplication::REQUEST_CLASS
+        respclass = K8::RackApplication::RESPONSE_CLASS
+        K8::RackApplication.module_eval do
           remove_const :REQUEST_CLASS
           remove_const :RESPONSE_CLASS
         end
         $req_clear = $resp_clear = false
-        K8::REQUEST_CLASS = Class.new(reqclass) do
+        K8::RackApplication::REQUEST_CLASS = Class.new(reqclass) do
           def clear; $req_clear = true; end
         end
-        K8::RESPONSE_CLASS = Class.new(respclass) do
+        K8::RackApplication::RESPONSE_CLASS = Class.new(respclass) do
           def clear; $resp_clear = true; end
         end
         at_end do
-          K8.REQUEST_CLASS = reqclass
-          K8.RESPONSE_CLASS = respclass
+          K8::RackApplication.REQUEST_CLASS = reqclass
+          K8::RackApplication.RESPONSE_CLASS = respclass
           $req_clear  = nil
           $resp_clear = nil
         end
@@ -2886,10 +2886,10 @@ Oktest.scope do
         ok {$resp_clear} == false
         app.call(env)
         _ = self
-        K8::REQUEST_CLASS.class_eval do
+        K8::RackApplication::REQUEST_CLASS.class_eval do
           _.ok {$req_clear} == true
         end
-        K8::RESPONSE_CLASS.class_eval do
+        K8::RackApplication::RESPONSE_CLASS.class_eval do
           _.ok {$resp_clear} == true
         end
       end

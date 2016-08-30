@@ -1430,86 +1430,86 @@ module K8
     def rack_hijack?      ; @env['rack.hijack?']      ; end  # ex: true or false
     def rack_hijack_io    ; @env['rack.hijack_io']    ; end  # ex: socket object
 
+    MAX_FORM_SIZE      =  10*1024*1024
+    MAX_JSON_SIZE      =  10*1024*1024
+    MAX_MULTIPART_SIZE = 100*1024*1024
+
     def params_query
       #; [!6ezqw] parses QUERY_STRING and returns it as Hash/dict object.
       #; [!o0ws7] unquotes both keys and values.
+      #; [!2fhrk] returns same value when called more than once.
       return @params_query ||= Util.parse_query_string(@env['QUERY_STRING'] || "")
     end
     alias query params_query
 
-    MAX_POST_SIZE      =  10*1024*1024
-    MAX_MULTIPART_SIZE = 100*1024*1024
-
     def params_form
+      #; [!iultp] returns same value when called more than once.
       d = @params_form
       return d if d
-      #
-      d = @params_form = _parse_post_data(:form)
+      #; [!uq46o] raises 400 error when payload is not form data.
+      self.content_type == 'application/x-www-form-urlencoded'  or
+        raise HttpException.new(400, "expected form data, but Content-Type header is #{self.content_type.inspect}.")
+      #; [!puxlr] raises 400 error when content length is too large (> 10MB).
+      clen = get_content_length(MAX_FORM_SIZE)
+      #; [!59ad2] parses form parameters and returns it as Hash object.
+      payload = get_input_stream().read(clen)
+      d = @params_form = Util.parse_query_string(payload)
       return d
     end
     alias form params_form
 
     def params_multipart
+      #; [!gbdxu] returns same values when called more than once.
       d1 = @params_form
       d2 = @params_file
       return d1, d2 if d1 && d2
-      d1, d2 = _parse_post_data(:multipart)
+      #; [!ho5ii] raises 400 error when not multipart data.
+      self.content_type =~ /\Amultipart\/form-data(?:;\s*boundary=(.+))?/  or
+        raise HttpException.new(400, "expected multipart data, but Content-Type header is #{self.content_type.inspect}.")
+      #; [!davzs] raises 400 error when boundary is missing.
+      boundary = $1  or
+        raise HttpException.new(400, 'bounday attribute of multipart required.')
+      #; [!mtx6t] raises error when content length of multipart is too large (> 100MB).
+      clen = get_content_length(MAX_MULTIPART_SIZE)
+      #; [!y1jng] parses multipart when multipart data posted.
+      d1, d2 = Util.parse_multipart(get_input_stream(), boundary, clen, nil, nil)
       @params_form = d1; @params_file = d2
       return d1, d2
     end
     alias multipart params_multipart
 
     def params_json
+      #; [!5kwij] returns same value when called more than once.
       d = @params_json
       return d if d
-      d = @params_json = _parse_post_data(:json)
+      #; [!qjgfz] raises 400 error when not JSON data.
+      self.content_type =~ /\Aapplication\/json\b/  or
+        raise HttpException.new(400, "expected JSON data, but Content-Type header is #{self.content_type.inspect}.")
+      #; [!on107] raises error when content length of JSON is too large (> 10MB).
+      clen = get_content_length(MAX_JSON_SIZE)
+      #; [!ugik5] parses json data and returns it as hash object when json data is sent.
+      payload = get_input_stream().read(clen)
+      d = @params_json = JSON.parse(payload)
       return d
     end
     alias json params_json
 
-    def _parse_post_data(kind)
+    def get_content_length(max_size)
       #; [!q88w9] raises error when content length is missing.
-      cont_len = @env['CONTENT_LENGTH']  or
+      clen = self.content_length  or
         raise HttpException.new(400, 'Content-Length header expected.')
-      #; [!gi4qq] raises error when content length is invalid.
-      cont_len =~ /\A\d+\z/  or
-        raise HttpException.new(400, 'Content-Length should be an integer.')
-      #
-      len = cont_len.to_i
-      case @env['CONTENT_TYPE']
-      #; [!59ad2] parses form parameters and returns it as Hash object when form requested.
-      when 'application/x-www-form-urlencoded'
-        kind == :form  or
-          raise HttpException.new(400, 'unexpected form data (expected multipart).')
-        #; [!puxlr] raises 400 error when content length is too large (> 10MB).
-        len <= MAX_POST_SIZE  or
-          raise HttpException.new(400, 'Content-Length is too large.')
-        qstr = @env['rack.input'].read(len)
-        d = Util.parse_query_string(qstr)
-        return d
-      #; [!y1jng] parses multipart when multipart form requested.
-      when /\Amultipart\/form-data(?:;\s*boundary=(.*))?/
-        kind == :multipart  or
-          raise HttpException.new(400, 'unexpected multipart data.')
-        boundary = $1  or
-          raise HttpException.new(400, 'bounday attribute of multipart required.')
-        #; [!mtx6t] raises error when content length of multipart is too large (> 100MB).
-        len <= MAX_MULTIPART_SIZE  or
-          raise HttpException.new(400, 'Content-Length of multipart is too large.')
-        d1, d2 = Util.parse_multipart(@env['rack.input'], boundary, len, nil, nil)
-        return d1, d2
-      #; [!ugik5] parses json data and returns it as hash object when json data is sent.
-      when /\Aapplication\/json\b/
-        kind == :json  or
-          raise HttpException.new(400, 'unexpected JSON data.')
-        json_str = @env['rack.input'].read(10*1024*1024)   # TODO
-        d = JSON.parse(json_str)
-      #; [!p9ybb] raises error when not a form data.
-      else
-        raise HttpException.new(400, 'POST data expected, but not.')
-      end
+      #; [!ls6ir] raises error when content length is too large.
+      clen <= max_size  or
+        raise HttpException.new(400, "Content-Length is too large (max: #{max_size}, actual: #{clen}).")
+      return clen
     end
-    private :_parse_post_data
+    private :get_content_length
+
+    def get_input_stream
+      #; [!2buc6] returns input stream.
+      return @env['rack.input']
+    end
+    protected :get_input_stream
 
     def params
       #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
@@ -1540,6 +1540,7 @@ module K8
       #; [!0jdal] removes uploaded files.
       d = @params_file
       d.each {|_, uploaded| uploaded.clean() } if d
+      self
     end
 
   end

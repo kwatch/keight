@@ -401,9 +401,9 @@ module K8
     def _cdnjs_find(library)
       url = "https://cdnjs.com/libraries/#{library}"
       rexp = %r'<option value="(.*?)".*?>\1</option>'
-      versions = open(url) {|f|
-        f.collect {|s| $1 if s =~ rexp }.compact()
-      }.sort_by {|verstr| _normalized_version(verstr) }
+      html = open(url) {|f| f.read }
+      versions = html.scan(rexp).collect {|m| m.first } \
+                     .sort_by {|verstr| _normalized_version(verstr) }
       if versions.empty?
         $stderr.puts "#{library}: no such library (GET #{url})."
         return 1

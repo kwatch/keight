@@ -5,13 +5,14 @@ Changes
 Release 0.2.0 (2016-01-06)
 --------------------------
 
-* [change] `K8::RackApplication#mount()` is removed.
+* [change] `K8::RackApplication#mount()` is removed.  
   Use `K8::RackApplication.new([...])` instead.
 
-* [change] `k8rb init` is renamed to `k8rb project`.
+* [change] `k8rb init` is renamed to `k8rb project`.  
+  ex:
 
-    $ k8rb project myapp1
-    $ cd myapp1
+      $ k8rb project myapp1
+      $ cd myapp1
 
 * [enhance] Auto redirection support.
   For example, `GET /books` is defined and `GET /books/` is requested,
@@ -19,25 +20,28 @@ Release 0.2.0 (2016-01-06)
 
 * [enhance] Performance improved for variable urlpath.
 
-* [enhance] Implement urlpath helpers.
+* [enhance] Implement urlpath helpers.  
+  ex:
 
-    p BookAPI[:do_update].method          #=> :PUT
-    p BookAPI[:do_update].urlpath(123)    #=> '/api/books/123'
-    p BookAPI[:do_update].form_action_attr(123)  #=> '/api/books/123?_method=PUT'
+      p BookAPI[:do_update].method          #=> :PUT
+      p BookAPI[:do_update].urlpath(123)    #=> '/api/books/123'
+      p BookAPI[:do_update].form_action_attr(123)  #=> '/api/books/123?_method=PUT'
 
 * [change] `k8rb mapping` now prints output in text format, not YAML format.
 
-* [enhance] `k8rb mapping` supports `--format=FORMAT` option.
+* [enhance] `k8rb mapping` supports `--format=FORMAT` option.  
+  ex:
 
-    $ k8rb mapping --format=text   # or yaml/json/javascript/jquery/angular
+      $ k8rb mapping --format=text   # or yaml/json/javascript/jquery/angular
 
 * [enhance] `k8rb` command supports `cdnjs` action which download JavaScript
-  libraries from cdnjs.com.
+  libraries from cdnjs.com.  
+  ex:
 
-    $ k8rb cdnjs                   # list library
-    $ k8rb cdnjs 'jquery*'         # search library
-    $ k8rb cdnjs jquery            # list versions
-    $ k8rb cdnjs jquery 2.1.4      # download library
+      $ k8rb cdnjs                   # list library
+      $ k8rb cdnjs 'jquery*'         # search library
+      $ k8rb cdnjs jquery            # list versions
+      $ k8rb cdnjs jquery 2.1.4      # download library
 
 * [change] `k8rb init` command downloads jquery and modernizr from cdnjs.com.
 
@@ -46,8 +50,8 @@ Release 0.2.0 (2016-01-06)
 
 * [bugfix] Document fixed.
 
-* [internal] Remove `K8::ActionClassMapping`, 'K8::ActionRouter' and
-  'K8::ActionFinder' classes.
+* [internal] Remove `K8::ActionClassMapping`, `K8::ActionRouter` and
+  `K8::ActionFinder` classes.
 
 * [internal] Define new class `K8::ActionMapping` instead of remove classes.
 

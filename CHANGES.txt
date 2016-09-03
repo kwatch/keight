@@ -1,6 +1,129 @@
 Changes
 =======
 
+Release 0.3.0 (2016-??-??)
+--------------------------
+
+### Enhancements
+
+* URL path parameter format cat accept parameter type (`int`, `str`, `date`).  
+  ex: `/api/books/{id:int}`, `/blog/{entry_date:date}`
+
+* `K8::Util::TemporaryFile` class added. It allows you to crete temporary
+   file which will be removed *after* sending response body.  
+  See document of `K8::Util::TemporaryFile` for details.
+
+* `K8::Util::ShellCommand` class added. It allows you to send command output
+  as response body. For example, execute SQL, convert into CSV, and send it
+  as response.  
+  See document of `K8::Util::ShellCommand` for details.
+
+* `@action_args` is available in `K8::Action` class.  
+  `@action_args` represents URL path parameter arguments.  
+  For example, `@action_args == [123]` when urlpath pattern is `/books/{id}`
+  and request path is `/books/123`.
+
+* `@req.params_form()`, `@req.params_multipart()` and `@req.params_json()`
+  now take max content length.  
+  ex:
+
+      strs = @req.params_form(10*1024*104)  # max: 10MB
+      strs = @req.params_form               # same as above
+
+      strs, files = @req.params_multipart(100*1024*1024)  # max: 100MB
+      strs, files = @req.params_multipart                 # same as above
+
+      hash = @req.params_json(10*1024*104)  # max: 10MB
+      hash = @req.params_json               # same as above
+
+* Add `K8::ActionMapping#urlpath_rexp`.
+  You can confirm regexp of action mapping by that attribute.  
+  ex:
+
+      ## what regexp is used for request routing?
+      mappings = [
+        ['/api', [
+          ['/books',    BooksAction],
+          ['/authors',  AuthorsAction],
+        ]
+      ]
+      p K8::ActionMapping.new(mapping).urlpath_rexp
+
+* New HTTP response status codes are added.  
+  #
+
+      103 Checkpoint                           # Unofficial
+      306 Switch Proxy                         # -
+      308 Permanent Redirect                   # RFC 7538
+      421 Misdirected Request                  # RFC 7540
+      428 Precondition Required                # RFC 6585
+      429 Too Many Requests                    # RFC 6585
+      431 Request Header Fields Too Large      # RFC 6585
+      444 No Response                          # nginx
+      451 Unavailable For Legal Reasons        # -
+      495 SSL Certificate Error                # nginx
+      496 SSL Certificate Required             # nginx
+      497 HTTP Request Sent to HTTPS Port      # nginx
+      499 Client Closed Request                # nginx
+      509 Bandwidth Limit Exceeded             # Apache Web Server/cPanel
+      511 Network Authentication Required      # RFC 6585
+      520 Unknown Error                        # CloudFlare
+      521 Web Server Is Down                   # CloudFlare
+      522 Connection Timed Out                 # CloudFlare
+      523 Origin Is Unreachable                # CloudFlare
+      524 A Timeout Occurred"                  # CloudFlare
+      525 SSL Handshake Failed                 # CloudFlare
+      526 Invalid SSL Certificate              # CloudFlare
+
+
+### Imcomppatible changes
+
+* URL path parameter format is changed.  
+  (old) `/books/{id:\d+}`  
+  (new) `/books/{id:int}` or `/books/{id:int<\d+>}`  
+  See document for details.
+
+* Rename `@req.method` to `@req.meth`.  
+  `@req.method` is also available, but not recommended. Use `@req.meth`.
+
+* Rename `K8::BaseAction[]#method` to `K8::BaseAction[]#meth`.  
+  ex:
+
+      p BooksAction[:do_show].meth     #=> :GET
+      p BooksAction[:do_update].meth   #=> :PUT
+      p BooksAction[:do_delete].meth   #=> :DELETE
+
+* Rename `K8::BaseAction[]#urlpath()` to `BooksAction[]#path()`.  
+  ex:
+
+      p BooksAction[:do_show].path(123)     #=> "/api/books/123"
+      p BooksAction[:do_update].path(123)   #=> "/api/books/123"
+      p BooksAction[:do_delete].path(123)   #=> "/api/books/123"
+
+* Rename `@current_action` to `@action_name` in `K8::Action` class.
+  It represents current action name, such as `:do_index` or `:do_show`.
+
+* `@req.params` now raises `K8::PayloadParseError` when request format is multipart.
+  Use `@req.params_multipart` instead for multipart request.
+
+* Rename `K8::Request` class to `K8::RackRequest`.
+
+* Rename `K8::Response` class to `K8::RackResponse`.
+
+* Rename `K8::REQUEST_CLASS` to `K8::RackApplication::REQUEST_CLASS`.
+* Rename `K8::RESPONSE_CLASS` to `K8::RackApplication::RESPONSE_CLASS`.
+* Move `K8::ActionMapping#lookup()` to `K8::RackApplication` class.
+* Remove 'K8::DefaultPatterns' class.
+* Remove 'K8::DEFAULT_PATTERNS' object.
+
+
+### Changes
+
+* Rewrite `K8::ActionMapping` class entirely.
+* Remove `K8::ActionMethodMapping` class.
+* Rewrite `K8::RackRequest#params_form`, `#params_multipart` and `#params_json`.
+* Move session initialization code from `K8::BaseAction` to `K8::Action`.
+
 
 Release 0.2.0 (2016-01-06)
 --------------------------

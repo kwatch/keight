@@ -418,18 +418,19 @@ module K8
       File.directory?(basedir)  or
         raise OptionError.new("#{basedir}: not a directory.")
       url = "https://cdnjs.com/libraries/#{library}/#{version}"
-      rexp = %r">https://cdnjs\.cloudflare\.com/ajax/libs/#{library}/#{Regexp.escape(version)}/([-.\w]+(?:\&\#x2F;[-.\w]+)*)<"
       filenames = open(url) {|f|
-        f.collect {|s| $1.gsub(/\&\#x2F;/, '/') if s =~ rexp }.compact()
-      }
+        rexp = %r`class=['"]library-url['"]>([^<]+)<`
+        html = f.read()
+        html.scan(rexp).collect {|m| m.first.gsub(/\&\#x2F;/, '/') }
+      }   # ex: ["jquery/2.2.4/jquery.js", "jquery/2.2.4/jquery.min.js"]
       if filenames.empty?
         $stderr.puts "#{library} #{version}: no files (GET #{url})."
         return 1
       end
       baseurl = "https://cdnjs.cloudflare.com/ajax/libs"
       filenames.each do |filename|
-        fileurl  = "#{baseurl}/#{library}/#{version}/#{filename}"
-        filepath = "#{basedir}/#{library}/#{version}/#{filename}"
+        fileurl  = "#{baseurl}/#{filename}"
+        filepath = "#{basedir}/#{filename}"
         FileUtils.mkdir_p(File.dirname(filepath))
         print filepath, ' '
         content = open(fileurl) {|f| f.read }

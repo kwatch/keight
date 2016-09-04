@@ -399,11 +399,12 @@ module K8
     end
 
     def _cdnjs_find(library)
-      url = "https://cdnjs.com/libraries/#{library}"
-      rexp = %r'<option value="(.*?)".*?>\1</option>'
-      versions = open(url) {|f|
-        f.collect {|s| $1 if s =~ rexp }.compact()
-      }.sort_by {|verstr| _normalized_version(verstr) }
+      url = "https://api.cdnjs.com/libraries/#{library}"
+      json_str  = open(url) {|f| f.read }
+      json_dict = JSON.parse(json_str)
+      versions  = (json_dict["assets"] || []) \
+                    .collect {|d| d["version"] } \
+                    .sort_by {|verstr| _normalized_version(verstr) }
       if versions.empty?
         $stderr.puts "#{library}: no such library (GET #{url})."
         return 1
@@ -417,12 +418,12 @@ module K8
         raise OptionError.new("#{basedir}: directory not exist.")
       File.directory?(basedir)  or
         raise OptionError.new("#{basedir}: not a directory.")
-      url = "https://cdnjs.com/libraries/#{library}/#{version}"
-      rexp = %r">https://cdnjs\.cloudflare\.com/ajax/libs/#{library}/#{Regexp.escape(version)}/([-.\w]+(?:\&\#x2F;[-.\w]+)*)<"
-      filenames = open(url) {|f|
-        f.collect {|s| $1.gsub(/\&\#x2F;/, '/') if s =~ rexp }.compact()
-      }
-      if filenames.empty?
+      url = "https://api.cdnjs.com/libraries/#{library}"
+      json_str  = open(url) {|f| f.read() }
+      json_dict = JSON.parse(json_str)
+      asset     = json_dict["assets"].find {|d| d["version"] == version } || {}
+      filenames = asset["files"]  # ex: ["jquery.js", "jquery.min.js"]
+      if filenames.nil? || filenames.empty?
         $stderr.puts "#{library} #{version}: no files (GET #{url})."
         return 1
       end

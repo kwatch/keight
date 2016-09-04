@@ -1790,35 +1790,4 @@ END
   end
 
 
-  class SecretValue < Object
-
-    def initialize(name=nil)
-      #; [!fbwnh] takes environment variable name.
-      @name = name
-    end
-
-    attr_reader :name
-
-    def value
-      #; [!gg06v] returns environment variable value.
-      return @name ? ENV[@name] : nil
-    end
-
-    def to_s
-      #; [!7ymqq] returns '<SECRET>' string when name not eixst.
-      #; [!x6edf] returns 'ENV[<name>]' string when name exists.
-      return @name ? "ENV['#{@name}']" : "<SECRET>"
-    end
-
-    #; [!j27ji] 'inspect()' is alias of 'to_s()'.
-    alias inspect to_s
-
-    def [](name)
-      #; [!jjqmn] creates new instance object with name.
-      self.class.new(name)
-    end
-
-  end
-
-
 end

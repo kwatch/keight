@@ -399,11 +399,12 @@ module K8
     end
 
     def _cdnjs_find(library)
-      url = "https://cdnjs.com/libraries/#{library}"
-      rexp = %r'<option value="(.*?)".*?>\1</option>'
-      html = open(url) {|f| f.read }
-      versions = html.scan(rexp).collect {|m| m.first } \
-                     .sort_by {|verstr| _normalized_version(verstr) }
+      url = "https://api.cdnjs.com/libraries/#{library}"
+      json_str  = open(url) {|f| f.read }
+      json_dict = JSON.parse(json_str)
+      versions  = (json_dict["assets"] || []) \
+                    .collect {|d| d["version"] } \
+                    .sort_by {|verstr| _normalized_version(verstr) }
       if versions.empty?
         $stderr.puts "#{library}: no such library (GET #{url})."
         return 1
@@ -417,20 +418,19 @@ module K8
         raise OptionError.new("#{basedir}: directory not exist.")
       File.directory?(basedir)  or
         raise OptionError.new("#{basedir}: not a directory.")
-      url = "https://cdnjs.com/libraries/#{library}/#{version}"
-      filenames = open(url) {|f|
-        rexp = %r`class=['"]library-url['"]>([^<]+)<`
-        html = f.read()
-        html.scan(rexp).collect {|m| m.first.gsub(/\&\#x2F;/, '/') }
-      }   # ex: ["jquery/2.2.4/jquery.js", "jquery/2.2.4/jquery.min.js"]
-      if filenames.empty?
+      url = "https://api.cdnjs.com/libraries/#{library}"
+      json_str  = open(url) {|f| f.read() }
+      json_dict = JSON.parse(json_str)
+      asset     = json_dict["assets"].find {|d| d["version"] == version } || {}
+      filenames = asset["files"]  # ex: ["jquery.js", "jquery.min.js"]
+      if filenames.nil? || filenames.empty?
         $stderr.puts "#{library} #{version}: no files (GET #{url})."
         return 1
       end
       baseurl = "https://cdnjs.cloudflare.com/ajax/libs"
       filenames.each do |filename|
-        fileurl  = "#{baseurl}/#{filename}"
-        filepath = "#{basedir}/#{filename}"
+        fileurl  = "#{baseurl}/#{library}/#{version}/#{filename}"
+        filepath = "#{basedir}/#{library}/#{version}/#{filename}"
         FileUtils.mkdir_p(File.dirname(filepath))
         print filepath, ' '
         content = open(fileurl) {|f| f.read }

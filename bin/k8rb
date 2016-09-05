@@ -10,6 +10,8 @@
 
 require 'keight'
 require 'baby_erubis'
+require 'open-uri'
+require 'fileutils'
 
 
 module K8
@@ -124,35 +126,72 @@ module K8
     @option.("-s, --skeleton=DIR", "directory of skeleton files")
     def do_project(name, dir: nil)
       project_name = name
-      dir ||= K8::FILEPATH.sub(/\.rb\z/, '') + "/skeleton"
-      if dir
-        File.directory?(dir)  or
-          raise "#{dir}: directory not exist."
+      echo = proc {|filepath, desc|
+        arr = filepath.split('/')
+        s = "  " * (arr.length - 1) + arr[-1]
+        s << "/" if File.directory?(filepath)
+        puts "%-40s # %s" % [s, desc]
+      }
+      #
+      zip_file = proc {|user, repo|
+        html_url = "https://github.com/#{user}/#{repo}/releases"
+        html = open(html_url) {|f| f.read }
+        rexp = %r`href="(/#{user}/#{Regexp.escape(repo)}/archive/.*?\.zip)"`
+        zips = html.scan(rexp).find {|m| m[0] }
+        url  = "https://github.com" + zips[0]
+        print "## Download #{url} ..."
+        data = open(url) {|f| f.read() }
+        file = File.basename(url)
+        File.open(file, 'wb') {|f| f.write(data) }
+        puts " done."
+        puts ""
+        file
+      }.call('kwatch', 'keight-ruby-boilerpl8')
+      #
+      proc {|project, zip_file|
+        puts "## Extract files"
+        globbed = Dir.glob('keight-ruby-boilerpl8-*')
+        FileUtils.rm_rf globbed, :verbose=>true if ! globbed.empty?
+        FileUtils.rm_rf project, :verbose=>true if File.exist?(name)
+        cmd  = ["unzip", "-q", zip_file]
+        puts cmd.join(" ")
+        system(*cmd)
+        FileUtils.mv Dir.glob('keight-ruby-boilerpl8-*')[0], project, :verbose=>true
+        puts ""
+      }.call(project_name, zip_file)
+      #
+      proc {|project|
+        puts "## File list"
         o = K8::FileTool.new
         descs = o.parse_index_file("#{dir}/index.txt")
-        o.mkdir(project_name, "project root directory")
-        files = Dir.glob("#{dir}/**/*")
-        files.concat(["#{dir}/.gitignore"])
+        echo.call(project, "project root directory")
+        files = Dir.glob("#{project}/**/*", File::FNM_DOTMATCH)
+        files.concat(["#{project}/.gitignore"])
         files.each do |path|
-          base = path[(dir.length+1)..-1]
-          if base == "index.txt"
+          base = path[(name.length+1)..-1]
+          if path.end_with?('/.')
             next
-          elsif base =~ /\/\.keep\z/
-            next
+          elsif base == "index.txt"
+            File.unlink path
+          elsif base.end_with?('/.keep')
+            File.unlink path
           elsif File.directory?(path)
-            o.mkdir("#{project_name}/#{base}", descs[base+"/"])
+            echo.call(path, descs[base+"/"])
           elsif File.file?(path)
-            content = path =~ /\Astatic\/lib|\.gz\z/  \
-                    ? File.read(path, encoding: 'ascii-8bit')  \
-                    : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
-            o.mkfile("#{project_name}/#{base}", content, descs[base])
+            if path !~ /\Astatic\/lib|\.gz\z/
+              s = K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
+              File.open(path, 'wb') {|f| f.write(s) }
+            end
+            echo.call(path, descs[base])
           else
-            next
+            raise "** internal error: path=#{path.inspect}"
           end
         end
-        #
+        puts ""
+      }.call(project_name)
+      #
+      proc {
         msg = <<-END
-
         ##
         ## File copied.
         ## Please run 'rake setup' in '#{project_name}' directory, for example:
@@ -165,7 +204,7 @@ module K8
         ##
         END
         return msg.gsub(/^        /, '')
-      end
+      }.call
       0
     end
 

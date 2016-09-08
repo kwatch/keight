@@ -143,7 +143,7 @@ module K8
         url  = dict['zipball_url']
         print "## Download #{url} ..."
         data = open(url) {|f| f.read() }
-        file = File.basename(url)
+        file = "#{repo}_#{dict['tag_name']}.zip"
         File.open(file, 'wb') {|f| f.write(data) }
         puts " done."
         puts ""
@@ -152,20 +152,28 @@ module K8
       #
       proc {|project, zip_file|
         puts "## Extract files"
-        globbed = Dir.glob('keight-ruby-boilerpl8-*')
-        FileUtils.rm_rf globbed, :verbose=>true if ! globbed.empty?
-        FileUtils.rm_rf project, :verbose=>true if File.exist?(name)
-        cmd  = ["unzip", "-q", zip_file]
-        puts cmd.join(" ")
-        system(*cmd)
-        FileUtils.mv Dir.glob('keight-ruby-boilerpl8-*')[0], project, :verbose=>true
+        destdir = project
+        tmpdir  = destdir + ".tmp"
+        FileUtils.rm_rf destdir, :verbose=>true if File.exist?(destdir)
+        FileUtils.rm_rf tmpdir,  :verbose=>true if File.exist?(tmpdir)
+        cmd = "unzip -d #{tmpdir} -q #{zip_file}"
+        puts cmd
+        system(cmd)
+        paths = Dir.glob("#{tmpdir}/*")
+        if paths.length == 1 && File.directory?(paths[0])
+          FileUtils.mv paths[0], destdir, :verbose=>true
+          FileUtils.rm_rf tmpdir, :verbose=>true
+        else
+          FileUtils.mv tmpdir, destdir, :verbose=>true
+        end
+        FileUtils.rm zip_file, :verbose=>true
         puts ""
       }.call(project_name, zip_file)
       #
       proc {|project|
         puts "## File list"
         o = K8::FileTool.new
-        descs = o.parse_index_file("#{dir}/index.txt")
+        descs = o.parse_index_file("#{project}/index.txt")
         echo.call(project, "project root directory")
         files = Dir.glob("#{project}/**/*", File::FNM_DOTMATCH)
         files.concat(["#{project}/.gitignore"])

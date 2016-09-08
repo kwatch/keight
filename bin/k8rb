@@ -12,6 +12,7 @@ require 'keight'
 require 'baby_erubis'
 require 'open-uri'
 require 'fileutils'
+require 'json'
 
 
 module K8
@@ -134,11 +135,12 @@ module K8
       }
       #
       zip_file = proc {|user, repo|
-        html_url = "https://github.com/#{user}/#{repo}/releases"
-        html = open(html_url) {|f| f.read }
-        rexp = %r`href="(/#{user}/#{Regexp.escape(repo)}/archive/.*?\.zip)"`
-        zips = html.scan(rexp).find {|m| m[0] }
-        url  = "https://github.com" + zips[0]
+        json_url = "https://api.github.com/repos/#{user}/#{repo}/releases"
+        json_str = open(json_url) {|f| f.read }
+        json_arr = JSON.parse(json_str)
+        version2intarr = proc {|s| /\d+(\.\d+)*/.match(s)[0].split('.').map(&:to_i) }
+        dict = json_arr.max_by {|d| version2intarr.call(d['tag_name']) }
+        url  = dict['zipball_url']
         print "## Download #{url} ..."
         data = open(url) {|f| f.read() }
         file = File.basename(url)

@@ -20,7 +20,7 @@ END
   o.files         = Dir[*%w[
                       README.md CHANGES.txt MIT-LICENSE keight.gemspec setup.rb Rakefile
                       bin/k8rb
-                      lib/keight.rb lib/keight/**/*.{[a-z]*} lib/keight/**/.{[a-z]*}
+                      lib/keight.rb
                       test/*_test.rb test/data/* test/oktest.rb
                       bench/bench.rb bench/benchmarker.rb
                     ]]

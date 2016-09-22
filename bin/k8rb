@@ -254,11 +254,10 @@ module K8
     end
 
     def _cdnjs_list(pattern)
-      url  = "https://cdnjs.com/libraries"
-      rexp = %r'href="/libraries/([-.\w]+)"'
-      html = open(url) {|f| f.read() }
-      libs = []; html.scan(rexp) { libs << $1 }
-      libs = libs.compact.sort.uniq
+      url  = "https://api.cdnjs.com/libraries"
+      json_str  = open(url) {|f| f.read() }
+      json_dict = JSON.parse(json_str)
+      libs = json_dict['results'].collect {|d| d['name'] }
       if pattern
         s = Regexp.escape(pattern)   # ex: '*foo.js*'    -> '\*foo\.js\*'
         s = s.gsub(/\\\*/, '.*')     # ex: '\*foo\.js\*' -> '.*foo\.js.*'

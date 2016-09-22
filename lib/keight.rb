@@ -1590,6 +1590,9 @@ module K8
     end
 
     def set_cookie(name, value, domain: nil, path: nil, expires: nil, max_age: nil, httponly: nil, secure: nil)
+      if expires && expires.is_a?(Time)
+        expires = Util.http_utc_time(expires)
+      end
       s = "#{name}=#{value}"
       s << "; Domain=#{domain}"   if domain
       s << "; Path=#{path}"       if path

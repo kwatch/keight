@@ -9,7 +9,6 @@
 
 
 require 'keight'
-require 'baby_erubis'
 require 'open-uri'
 require 'fileutils'
 require 'json'
@@ -509,18 +508,6 @@ module K8
 
 
   class OptionError < StandardError
-  end
-
-
-  class SkeletonTemplate < BabyErubis::Text
-
-    rexp = BabyErubis::Text::PATTERN
-    PATTERN = Regexp.compile(rexp.to_s.sub(/<%/, '\{%').sub(/%>/, '%\}'))
-
-    def pattern
-      PATTERN
-    end
-
   end
 
 

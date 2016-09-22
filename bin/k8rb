@@ -124,7 +124,6 @@ module K8
     end
 
     @action.(:project, "create project files")
-    @option.("-s, --skeleton=DIR", "directory of skeleton files")
     def do_project(name, dir: nil)
       project_name = name
       echo = proc {|filepath, desc|

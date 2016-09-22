@@ -6,11 +6,11 @@ Release 0.3.0 (2016-??-??)
 
 ### Enhancements
 
-* URL path parameter format cat accept parameter type (`int`, `str`, `date`).  
+* URL path parameter format can accept parameter type (`int`, `str`, `date`).  
   ex: `/api/books/{id:int}`, `/blog/{entry_date:date}`
 
-* `K8::Util::TemporaryFile` class added. It allows you to crete temporary
-   file which will be removed *after* sending response body.  
+* `K8::Util::TemporaryFile` class added. It allows you to create temporary
+  file which will be removed automatically *after* sending response body.  
   See document of `K8::Util::TemporaryFile` for details.
 
 * `K8::Util::ShellCommand` class added. It allows you to send command output
@@ -76,7 +76,7 @@ Release 0.3.0 (2016-??-??)
       526 Invalid SSL Certificate              # CloudFlare
 
 
-### Imcomppatible changes
+### Incomppatible changes
 
 * URL path parameter format is changed.  
   (old) `/books/{id:\d+}`  

@@ -160,12 +160,6 @@ module K8
     @action.(:project, "create project files")
     def do_project(name, dir: nil)
       project_name = name
-      echo = proc {|filepath, desc|
-        arr = filepath.split('/')
-        s = "  " * (arr.length - 1) + arr[-1]
-        s << "/" if File.directory?(filepath)
-        puts "%-40s # %s" % [s, desc]
-      }
       ## download zip file
       zip_file = proc {|user, repo|
         json_url = "https://api.github.com/repos/#{user}/#{repo}/releases"

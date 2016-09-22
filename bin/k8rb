@@ -166,7 +166,7 @@ module K8
         s << "/" if File.directory?(filepath)
         puts "%-40s # %s" % [s, desc]
       }
-      #
+      ## download zip file
       zip_file = proc {|user, repo|
         json_url = "https://api.github.com/repos/#{user}/#{repo}/releases"
         json_str = open(json_url) {|f| f.read }
@@ -180,7 +180,7 @@ module K8
         puts ""
         file
       }.call('kwatch', 'keight-ruby-boilerpl8')
-      #
+      ## unzip it
       proc {|project, zip_file|
         puts "## Extract files"
         destdir = project
@@ -198,8 +198,9 @@ module K8
         rm_rf zip_file
         puts ""
       }.call(project_name, zip_file)
-      #
+      ## run initializer script
       proc {|project|
+        puts "## Initialize"
         arrs = [
           ["ruby"   , "__init.rb"],
           ["python" , "__init.py"],
@@ -221,11 +222,12 @@ module K8
         ##
         ##    $ cd #{project_name}
         ##    $ export APP_ENV='dev'      # or 'prod', 'stg', 'test'
+        ##    $ rake -T
         ##    $ rake server port=8000
         ##    $ open http://localhost:8000/
         ##
         END
-        return msg.gsub(/^        /, '')
+        return msg.gsub(/^\s+/, '')
       }.call
       0
     end

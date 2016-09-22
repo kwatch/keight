@@ -10,6 +10,9 @@
 
 require 'keight'
 require 'baby_erubis'
+require 'open-uri'
+require 'fileutils'
+require 'json'
 
 
 module K8
@@ -121,51 +124,81 @@ module K8
     end
 
     @action.(:project, "create project files")
-    @option.("-s, --skeleton=DIR", "directory of skeleton files")
     def do_project(name, dir: nil)
       project_name = name
-      dir ||= K8::FILEPATH.sub(/\.rb\z/, '') + "/skeleton"
-      if dir
-        File.directory?(dir)  or
-          raise "#{dir}: directory not exist."
-        o = K8::FileTool.new
-        descs = o.parse_index_file("#{dir}/index.txt")
-        o.mkdir(project_name, "project root directory")
-        files = Dir.glob("#{dir}/**/*")
-        files.concat(["#{dir}/.gitignore"])
-        files.each do |path|
-          base = path[(dir.length+1)..-1]
-          if base == "index.txt"
-            next
-          elsif base =~ /\/\.keep\z/
-            next
-          elsif File.directory?(path)
-            o.mkdir("#{project_name}/#{base}", descs[base+"/"])
-          elsif File.file?(path)
-            content = path =~ /\Astatic\/lib|\.gz\z/  \
-                    ? File.read(path, encoding: 'ascii-8bit')  \
-                    : K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
-            o.mkfile("#{project_name}/#{base}", content, descs[base])
-          else
-            next
+      echo = proc {|filepath, desc|
+        arr = filepath.split('/')
+        s = "  " * (arr.length - 1) + arr[-1]
+        s << "/" if File.directory?(filepath)
+        puts "%-40s # %s" % [s, desc]
+      }
+      #
+      zip_file = proc {|user, repo|
+        json_url = "https://api.github.com/repos/#{user}/#{repo}/releases"
+        json_str = open(json_url) {|f| f.read }
+        json_arr = JSON.parse(json_str)
+        version2intarr = proc {|s| /\d+(\.\d+)*/.match(s)[0].split('.').map(&:to_i) }
+        dict = json_arr.max_by {|d| version2intarr.call(d['tag_name']) }
+        url  = dict['zipball_url']
+        print "## Download #{url} ..."
+        data = open(url) {|f| f.read() }
+        file = "#{repo}_#{dict['tag_name']}.zip"
+        File.open(file, 'wb') {|f| f.write(data) }
+        puts " done."
+        puts ""
+        file
+      }.call('kwatch', 'keight-ruby-boilerpl8')
+      #
+      proc {|project, zip_file|
+        puts "## Extract files"
+        destdir = project
+        tmpdir  = destdir + ".tmp"
+        FileUtils.rm_rf destdir, :verbose=>true if File.exist?(destdir)
+        FileUtils.rm_rf tmpdir,  :verbose=>true if File.exist?(tmpdir)
+        cmd = "unzip -d #{tmpdir} -q #{zip_file}"
+        puts cmd
+        system(cmd)
+        paths = Dir.glob("#{tmpdir}/*")
+        if paths.length == 1 && File.directory?(paths[0])
+          FileUtils.mv paths[0], destdir, :verbose=>true
+          FileUtils.rm_rf tmpdir, :verbose=>true
+        else
+          FileUtils.mv tmpdir, destdir, :verbose=>true
+        end
+        FileUtils.rm zip_file, :verbose=>true
+        puts ""
+      }.call(project_name, zip_file)
+      #
+      proc {|project|
+        arrs = [
+          ["ruby"   , "__init.rb"],
+          ["python" , "__init.py"],
+          ["bash"   , "__init.sh"],
+        ]
+        FileUtils.chdir project, :verbose=>true do
+          command, script = arrs.find {|_, script| File.exist?(script) }
+          if script
+            puts "#{command} #{script}"
+            system "#{command} #{script}"
           end
         end
-        #
+        puts ""
+      }.call(project_name)
+      #
+      proc {
         msg = <<-END
-
         ##
-        ## File copied.
-        ## Please run 'rake setup' in '#{project_name}' directory, for example:
+        ## Project directory created.
+        ## Next action:
         ##
         ##    $ cd #{project_name}
-        ##    $ rake setup
         ##    $ export APP_ENV='dev'      # or 'prod', 'stg', 'test'
         ##    $ rake server port=8000
         ##    $ open http://localhost:8000/
         ##
         END
         return msg.gsub(/^        /, '')
-      end
+      }.call
       0
     end
 

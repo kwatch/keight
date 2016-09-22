@@ -50,7 +50,7 @@ module K8
   end
 
 
-  class Main
+  class MainApp
     include ShellHelper
 
     @__current = nil
@@ -515,5 +515,5 @@ end
 
 
 #if __FILE__ == $0
-  K8::Main.main() unless defined? NOEXEC_SCRIPT
+  K8::MainApp.main() unless defined? NOEXEC_SCRIPT
 #end

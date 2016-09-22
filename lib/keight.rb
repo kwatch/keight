@@ -396,14 +396,16 @@ module K8
     MONTHS   = [nil, 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].freeze
 
-    t = Time.now.utc
-    if t.strftime('%a') != WEEKDAYS[t.wday] || t.strftime('%b') != MONTHS[t.month]
-      def http_utc_time(utc_time)
-        utc_time.utc?  or
-          raise ArgumentError.new("http_utc_time(#{utc_time.inspect}): expected UTC time but got local time.")
-        return utc_time.strftime("#{WEEKDAYS[utc_time.wday]}, %d #{MONTHS[utc_time.month]} %Y %H:%M:%S GMT")
-      end
+    def http_utc_time_without_locale(utc_time)
+      utc_time.utc?  or
+        raise ArgumentError.new("http_utc_time(#{utc_time.inspect}): expected UTC time but got local time.")
+      return utc_time.strftime("#{WEEKDAYS[utc_time.wday]}, %d #{MONTHS[utc_time.month]} %Y %H:%M:%S GMT")
     end
+
+    has_diff = (1..12).collect {|mo| Time.utc(2000, mo, 1) }.any? {|t|
+      http_utc_time(t) != http_utc_time_without_locale(t)
+    }
+    alias http_utc_time http_utc_time_without_locale if has_diff
 
 
     ##

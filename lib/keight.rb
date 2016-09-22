@@ -1363,6 +1363,12 @@ module K8
       return name ? super : @meth
     end
 
+    def path_ext
+      #; [!tf6yz] returns extension of request path such as '.html' or '.json'.
+      #; [!xnurj] returns empty string when no extension.
+      return File.extname(@path)
+    end
+
     def header(name)
       #; [!1z7wj] returns http header value from environment.
       return @env["HTTP_#{name.upcase.sub('-', '_')}"]

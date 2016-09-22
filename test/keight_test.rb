@@ -680,6 +680,25 @@ Oktest.scope do
     end
 
 
+    topic '#path_ext()' do
+
+      spec "[!tf6yz] returns extension of request path such as '.html' or '.json'." do
+        req1 = K8::RackRequest.new(new_env("GET", "/api/books/123.html"))
+        ok {req1.path_ext} == ".html"
+        req2 = K8::RackRequest.new(new_env("GET", "/api/books/123.json"))
+        ok {req2.path_ext} == ".json"
+      end
+
+      spec "[!xnurj] returns empty string when no extension." do
+        req1 = K8::RackRequest.new(new_env("GET", "/api/books/123"))
+        ok {req1.path_ext} == ""
+        req2 = K8::RackRequest.new(new_env("GET", "/api/books.d/123"))
+        ok {req2.path_ext} == ""
+      end
+
+    end
+
+
     topic '#header()' do
 
       spec "[!1z7wj] returns http header value from environment." do

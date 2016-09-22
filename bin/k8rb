@@ -9,7 +9,6 @@
 
 
 require 'keight'
-require 'baby_erubis'
 require 'open-uri'
 require 'fileutils'
 require 'json'
@@ -18,7 +17,41 @@ require 'json'
 module K8
 
 
-  class Main
+  module ShellHelper
+
+    def rm_rf(path)
+      puts "$ rm -rf #{path}"
+      FileUtils.rm_rf path
+    end
+
+    def mv(oldpath, newpath)
+      puts "$ mv #{oldpath} #{newpath}"
+      File.rename oldpath, newpath
+    end
+
+    def sys(command)
+      puts "$ #{command}"
+      system command
+    end
+
+    def chdir(dir, &block)
+      puts "$ cd #{dir}"
+      Dir.chdir(dir, &block)
+      puts "$ cd -"
+    end
+
+    def curl_o(filename, url)
+      puts "$ curl -o #{filename} \\"
+      puts "       #{url}"
+      data = open(url) {|f| f.read() }
+      File.open(filename, 'wb') {|f| f.write(data) }
+    end
+
+  end
+
+
+  class MainApp
+    include ShellHelper
 
     @__current = nil
     @__actions = []
@@ -126,13 +159,7 @@ module K8
     @action.(:project, "create project files")
     def do_project(name, dir: nil)
       project_name = name
-      echo = proc {|filepath, desc|
-        arr = filepath.split('/')
-        s = "  " * (arr.length - 1) + arr[-1]
-        s << "/" if File.directory?(filepath)
-        puts "%-40s # %s" % [s, desc]
-      }
-      #
+      ## download zip file
       zip_file = proc {|user, repo|
         json_url = "https://api.github.com/repos/#{user}/#{repo}/releases"
         json_str = open(json_url) {|f| f.read }
@@ -140,47 +167,42 @@ module K8
         version2intarr = proc {|s| /\d+(\.\d+)*/.match(s)[0].split('.').map(&:to_i) }
         dict = json_arr.max_by {|d| version2intarr.call(d['tag_name']) }
         url  = dict['zipball_url']
-        print "## Download #{url} ..."
-        data = open(url) {|f| f.read() }
+        puts "## Download boilerplate files"
         file = "#{repo}_#{dict['tag_name']}.zip"
-        File.open(file, 'wb') {|f| f.write(data) }
-        puts " done."
+        curl_o(file, url)
         puts ""
         file
       }.call('kwatch', 'keight-ruby-boilerpl8')
-      #
+      ## unzip it
       proc {|project, zip_file|
         puts "## Extract files"
         destdir = project
         tmpdir  = destdir + ".tmp"
-        FileUtils.rm_rf destdir, :verbose=>true if File.exist?(destdir)
-        FileUtils.rm_rf tmpdir,  :verbose=>true if File.exist?(tmpdir)
-        cmd = "unzip -d #{tmpdir} -q #{zip_file}"
-        puts cmd
-        system(cmd)
+        rm_rf destdir if File.exist?(destdir)
+        rm_rf tmpdir  if File.exist?(tmpdir)
+        sys "unzip -d #{tmpdir} -q #{zip_file}"
         paths = Dir.glob("#{tmpdir}/*")
         if paths.length == 1 && File.directory?(paths[0])
-          FileUtils.mv paths[0], destdir, :verbose=>true
-          FileUtils.rm_rf tmpdir, :verbose=>true
+          mv paths[0], destdir
+          rm_rf tmpdir
         else
-          FileUtils.mv tmpdir, destdir, :verbose=>true
+          mv tmpdir, destdir
         end
-        FileUtils.rm zip_file, :verbose=>true
+        rm_rf zip_file
         puts ""
       }.call(project_name, zip_file)
-      #
+      ## run initializer script
       proc {|project|
+        puts "## Initialize"
         arrs = [
           ["ruby"   , "__init.rb"],
           ["python" , "__init.py"],
           ["bash"   , "__init.sh"],
         ]
-        FileUtils.chdir project, :verbose=>true do
+        destdir = project
+        chdir(destdir) do
           command, script = arrs.find {|_, script| File.exist?(script) }
-          if script
-            puts "#{command} #{script}"
-            system "#{command} #{script}"
-          end
+          sys "#{command} #{script}" if script
         end
         puts ""
       }.call(project_name)
@@ -193,205 +215,15 @@ module K8
         ##
         ##    $ cd #{project_name}
         ##    $ export APP_ENV='dev'      # or 'prod', 'stg', 'test'
+        ##    $ rake -T
         ##    $ rake server port=8000
         ##    $ open http://localhost:8000/
         ##
         END
-        return msg.gsub(/^        /, '')
+        return msg.gsub(/^\s+/, '')
       }.call
       0
     end
-
-    @action.(:mapping, "show action mappings")
-    @option.("--format={text|json|yaml|javascript|jquery|angular}", "output format")
-    def do_mapping(format: nil)
-      ENV['APP_MODE'] ||= 'dev'
-      load_config()
-      require './config/urlpath_mapping'
-      return \
-        case format
-        when nil         ; _do_mapping_in_text_format()
-        when 'text'      ; _do_mapping_in_text_format()
-        when 'json'      ; _do_mapping_in_json_format()
-        when 'yaml'      ; _do_mapping_in_yaml_format()
-        when 'javascript'; _do_mapping_in_javascript_format(nil)
-        when 'jquery'    ; _do_mapping_in_javascript_format('type')
-        when 'angular'   ; _do_mapping_in_javascript_format('method')
-        else
-          raise OptionError.new("#{format}: expected one of text/json/yaml/javascript/jquery/angular.")
-        end
-    end
-
-    private
-
-    def _do_mapping(&block)
-      app = K8::RackApplication.new($urlpath_mapping)
-      app.each_mapping do |urlpath_pat, action_class, action_methods, |
-        yield urlpath_pat, action_class, action_methods
-      end
-    end
-    private :_do_mapping
-
-    def _do_mapping_in_json_format()
-      s = %Q`{ "mappings": [\n`.dup()
-      i = 0
-      _do_mapping do |urlpath_pat, action_class, action_methods|
-        i += 1
-        arr = action_methods.map {|k, v| %Q`"#{k}": "#{v}"` }
-        s << (i == 1 ? '  ' : ', ')
-        s << %Q`{"urlpath": "#{urlpath_pat}"`
-        s << %Q`, "class": \"#{action_class.name}"`
-        s << %Q`, "method": {#{arr.join(', ')}}}\n`
-      end
-      s << "] }\n"
-      return s
-    end
-
-    def _do_mapping_in_yaml_format()
-      s = ""
-      _do_mapping do |urlpath_pat, action_class, action_methods|
-        arr = action_methods.map {|k, v| "#{k}: #{v}" }
-        s << "- urlpath: '#{urlpath_pat}'\n"
-        s << "  class:   #{action_class.name}\n"
-        s << "  method:  {#{arr.join(', ')}}\n"
-        s << "\n"
-      end
-      return s
-    end
-
-    def _do_mapping_in_javascript_format(attr)
-      rexp = K8::ActionMapping::URLPATH_PARAM_REXP
-      defs = {}
-      _do_mapping do |urlpath_pat, action_class, action_methods|
-        (defs[action_class.name] ||= []) << [urlpath_pat, action_methods]
-      end
-      buf = []
-      defs.each do |action_class_name, pairs|
-        if action_class_name =~ /\A\w+\z/
-          buf << "#{action_class_name}:{\n"
-        else
-          buf << "'#{action_class_name}':{\n"
-        end
-        sep = ' '
-        pairs.each do |urlpath_pat, action_methods|
-          args = []; i = 0
-          urlpath_pat.scan(rexp) {|x, _| args << (x.empty? ? "_#{i+=1}" : x) }
-          a = args.dup()
-          js_urlpath = "'" + urlpath_pat.gsub(rexp) {|x, _| "'+#{a.shift}+'" } + "'"
-          js_urlpath.gsub!(/\+''/, '')
-          #
-          action_methods.each do |req_meth, action_method|
-            buf << sep; sep = ','
-            if attr
-              js_code = "return{#{attr}:'#{req_meth}',url:#{js_urlpath}}"
-              buf << "#{action_method}:function(#{args.join(',')}){#{js_code}}\n"
-            else
-              js_code = "function(#{args.join(',')}){return#{js_urlpath}}"
-              buf << "#{action_method}:{method:'#{req_meth}',urlpath:#{js_code}}\n"
-            end
-          end
-        end
-        buf << "},\n"
-      end
-      buf[-1] = "}\n" if buf[-1] == "},\n"
-      return buf.join()
-    end
-
-    def _do_mapping_in_text_format()
-      s = ""
-      _do_mapping do |urlpath_pat, action_class, action_methods|
-        action_methods.each do |req_meth, action_method|
-          s << "%-6s %-30s # %s\#%s\n" % [req_meth, urlpath_pat, action_class.name, action_method]
-        end
-      end
-      return s
-    end
-
-    public
-
-    @action.(:configs, "list config keys and values")
-    @option.("--getenv", "show actual ENV value")
-    def do_configs(getenv: false)
-      ENV['APP_MODE'] ||= 'dev'
-      load_config()
-      s = ""
-      ::Config.each do |key, val, desc, secret|
-        kv = "%-20s = %s" % [key, __var_dump(val, secret, getenv)]
-        s << ("%-43s # %s\n" % [kv, desc]) if desc
-      end
-      return s
-    end
-
-    @action.(:config, "show config value")
-    @option.("--getenv", "show actual ENV value")
-    def do_config(key, getenv: false)
-      key_name = key
-      ENV['APP_MODE'] ||= 'dev'
-      load_config()
-      ::Config.each do |key, val, desc, secret|
-        if key.to_s == key_name
-          return __var_dump(val, secret, getenv)
-        end
-      end
-      $stderr.puts "#{key_name}: no such config key."
-      return 1
-    end
-
-    @action.(:'config:check', "check config values")
-    def do_config_check()
-      ENV['APP_MODE'] ||= 'dev'
-      load_config()
-      not_set = []
-      not_env = []
-      ::Config.each do |key, val, desc, secret|
-        if val.is_a?(K8::SecretValue)
-          if ! val.name
-            not_set << [key, val, desc]
-          elsif ! ENV[val.name]
-            not_env << [key, val, desc]
-          end
-        end
-      end
-      if not_set.empty? && not_env.empty?
-        puts "ok."
-        return 0
-      else
-        sb = []
-        sb <<     "**"
-        sb <<     "** NG!"
-        unless not_set.empty?
-          sb <<   "**"
-          sb <<   "** The following configs should be set, but not."
-          sb <<   "**"
-          not_set.each do |key, val, desc|
-            sb << "**   %-20s = %s" % [key, val.inspect]
-          end
-        end
-        unless not_env.empty?
-          sb <<   "**"
-          sb <<   "** The following configs expect environment variable, but not set."
-          sb <<   "**"
-          not_env.each do |key, val, desc|
-            sb << "**   %-20s = %s" % [key, val.inspect]
-          end
-        end
-        sb <<     "**"
-        puts sb.join("\n")
-        return 1
-      end
-    end
-
-    def __var_dump(val, secret, getenv)
-      if ! val.is_a?(K8::SecretValue)
-        #secret ? '<secret>' : val.inspect
-        val.inspect
-      elsif val.name
-        getenv ? ENV[val.name].inspect : "ENV['#{val.name}']"
-      else
-        '<SECRET>'
-      end
-    end
-    private :__var_dump
 
     @action.(:cdnjs, "search or download libraries from cdnjs.com")
     @option.("-d, --basedir=DIR", "base directory (default: 'static/lib')")
@@ -415,12 +247,10 @@ module K8
     end
 
     def _cdnjs_list(pattern)
-      url  = "https://cdnjs.com/libraries"
-      rexp = %r'href="/libraries/([-.\w]+)"'
-      libs = open(url) {|f|
-        #f.grep(rexp) { $1 }  # not work
-        f.collect {|s| $1 if s =~ rexp }.compact.sort.uniq
-      }
+      url  = "https://api.cdnjs.com/libraries"
+      json_str  = open(url) {|f| f.read() }
+      json_dict = JSON.parse(json_str)
+      libs = json_dict['results'].collect {|d| d['name'] }
       if pattern
         s = Regexp.escape(pattern)   # ex: '*foo.js*'    -> '\*foo\.js\*'
         s = s.gsub(/\\\*/, '.*')     # ex: '\*foo\.js\*' -> '.*foo\.js.*'
@@ -446,9 +276,11 @@ module K8
     end
 
     def _cdnjs_download(library, version, basedir=nil)
+      option_d_specified = !! basedir
       basedir ||= "static/lib"
       File.exist?(basedir)  or
-        raise OptionError.new("#{basedir}: directory not exist.")
+        raise OptionError.new("#{basedir}: directory not exist" +
+                              (option_d_specified ? "." : " (try '-d' to specify location)."))
       File.directory?(basedir)  or
         raise OptionError.new("#{basedir}: not a directory.")
       url = "https://api.cdnjs.com/libraries/#{library}"
@@ -525,10 +357,6 @@ module K8
 
 
     ###
-
-    def load_config
-      require './config' rescue K8::ConfigError
-    end
 
     def run(*cmd_args)
       action_name = cmd_args.shift() || 'help'
@@ -685,63 +513,9 @@ module K8
   end
 
 
-  class SkeletonTemplate < BabyErubis::Text
-
-    rexp = BabyErubis::Text::PATTERN
-    PATTERN = Regexp.compile(rexp.to_s.sub(/<%/, '\{%').sub(/%>/, '%\}'))
-
-    def pattern
-      PATTERN
-    end
-
-  end
-
-
-  class FileTool
-
-    def initialize(width: 30)
-      @width = width
-      @depth = 0
-    end
-
-    def parse_index_file(index_file)
-      dict = File.open(index_file) {|f|
-        f.grep(/^[^#]/).each_with_object({}) {|line, d|
-          path, desc = line.chomp.split(/\s+/, 2)
-          d[path] = desc
-        }
-      }
-      return dict
-    end
-
-    def report(s, desc)
-      indent = '  ' * @depth
-      puts "%s%-#{@width - indent.length}s # %s" % [indent, s, desc]
-    end
-
-    def mkrootdir(dirpath)
-      @root = dirpath
-      mkdir(dirpath)
-    end
-
-    def mkdir(dirpath, desc)
-      Dir.mkdir dirpath
-      s = dirpath.gsub(/.*?[\/\\]/, '  ') + "/"
-      report(s, desc)
-    end
-
-    def mkfile(filepath, content, desc)
-      File.open(filepath, 'wb') {|dst| dst.write(content) }
-      s = filepath.gsub(/.*?[\/\\]/, '  ')
-      report(s, desc)
-    end
-
-  end
-
-
 end
 
 
 #if __FILE__ == $0
-  K8::Main.main() unless defined? NOEXEC_SCRIPT
+  K8::MainApp.main() unless defined? NOEXEC_SCRIPT
 #end

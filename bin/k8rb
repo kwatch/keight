@@ -511,48 +511,6 @@ module K8
   end
 
 
-  class FileTool
-
-    def initialize(width: 30)
-      @width = width
-      @depth = 0
-    end
-
-    def parse_index_file(index_file)
-      dict = File.open(index_file) {|f|
-        f.grep(/^[^#]/).each_with_object({}) {|line, d|
-          path, desc = line.chomp.split(/\s+/, 2)
-          d[path] = desc
-        }
-      }
-      return dict
-    end
-
-    def report(s, desc)
-      indent = '  ' * @depth
-      puts "%s%-#{@width - indent.length}s # %s" % [indent, s, desc]
-    end
-
-    def mkrootdir(dirpath)
-      @root = dirpath
-      mkdir(dirpath)
-    end
-
-    def mkdir(dirpath, desc)
-      Dir.mkdir dirpath
-      s = dirpath.gsub(/.*?[\/\\]/, '  ') + "/"
-      report(s, desc)
-    end
-
-    def mkfile(filepath, content, desc)
-      File.open(filepath, 'wb') {|dst| dst.write(content) }
-      s = filepath.gsub(/.*?[\/\\]/, '  ')
-      report(s, desc)
-    end
-
-  end
-
-
 end
 
 

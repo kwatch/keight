@@ -171,30 +171,16 @@ module K8
       }.call(project_name, zip_file)
       #
       proc {|project|
-        puts "## File list"
-        o = K8::FileTool.new
-        descs = o.parse_index_file("#{project}/index.txt")
-        echo.call(project, "project root directory")
-        files = Dir.glob("#{project}/**/*", File::FNM_DOTMATCH)
-        files.concat(["#{project}/.gitignore"])
-        files.each do |path|
-          base = path[(name.length+1)..-1]
-          if path.end_with?('/.')
-            next
-          elsif base == "index.txt"
-            File.unlink path
-          elsif base.end_with?('/.keep')
-            File.unlink path
-          elsif File.directory?(path)
-            echo.call(path, descs[base+"/"])
-          elsif File.file?(path)
-            if path !~ /\Astatic\/lib|\.gz\z/
-              s = K8::SkeletonTemplate.new.from_file(path, 'ascii-8bit').render()
-              File.open(path, 'wb') {|f| f.write(s) }
-            end
-            echo.call(path, descs[base])
-          else
-            raise "** internal error: path=#{path.inspect}"
+        arrs = [
+          ["ruby"   , "__init.rb"],
+          ["python" , "__init.py"],
+          ["bash"   , "__init.sh"],
+        ]
+        FileUtils.chdir project, :verbose=>true do
+          command, script = arrs.find {|_, script| File.exist?(script) }
+          if script
+            puts cmd
+            system cmd
           end
         end
         puts ""

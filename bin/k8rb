@@ -276,9 +276,11 @@ module K8
     end
 
     def _cdnjs_download(library, version, basedir=nil)
+      option_d_specified = !! basedir
       basedir ||= "static/lib"
       File.exist?(basedir)  or
-        raise OptionError.new("#{basedir}: directory not exist.")
+        raise OptionError.new("#{basedir}: directory not exist" +
+                              (option_d_specified ? "." : " (try '-d' to specify location)."))
       File.directory?(basedir)  or
         raise OptionError.new("#{basedir}: not a directory.")
       url = "https://api.cdnjs.com/libraries/#{library}"

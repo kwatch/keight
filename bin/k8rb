@@ -178,8 +178,8 @@ module K8
         FileUtils.chdir project, :verbose=>true do
           command, script = arrs.find {|_, script| File.exist?(script) }
           if script
-            puts cmd
-            system cmd
+            puts "#{command} #{script}"
+            system "#{command} #{script}"
           end
         end
         puts ""

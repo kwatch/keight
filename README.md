@@ -65,13 +65,14 @@ class HelloAction < K8::Action
   mapping '/{id}'  , :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
 
   def do_index
-    #{"message"=>"Hello"}   # JSON
-    "<h1>Hello</h1>"        # HTML
+    return {"message"=>"Hello"}   # JSON
+    #return "<h1>Hello</h1>"      # HTML
   end
 
   def do_show(id)
     ## 'id' or 'xxx_id' will be converted into integer.
-    "<h1>Hello: id=#{id.inspect}</h1>"
+    return {"id"=>id}
+    #return "<h1>id=#{id.inspect}</h1>"
   end
 
   def do_create    ; "<p>create</p>"; end
@@ -86,13 +87,12 @@ config.ru:
 ```ruby
 # -*- coding: utf-8 -*-
 require 'keight'
-require './hello'
 
 mapping = [
   ['/api', [
-    ['/hello'     , HelloAction],
-    ## or
-    #['/hello'    , "./hello:HelloAction"],
+    ['/hello'    , "./hello:HelloAction"],
+    ### or
+    #['/hello'     , HelloAction],
   ]],
 ]
 app = K8::RackApplication.new(mapping)
@@ -103,26 +103,49 @@ run app
 Open http://localhost:8000/api/hello or http://localhost:8000/api/hello/123
 with your browser.
 
-Do you like it? If so, try `k8rb project myapp1` to generate project skeleton.
+Do you like it? Try the following steps to generate your project.
 
 ```console
 $ mkdir gems                         # if necessary
 $ export GEM_HOME=$PWD/gems          # if necessary
 $ export PATH=$GEM_HOME/bin:$PATH    # if necessary
-$ gem install -N keight
-$ k8rb help                          # show help
-$ k8rb project myapp1                # create new project
-$ cd myapp1/
-$ rake setup                         # install gems and download libs
-$ export APP_ENV=dev    # 'dev', 'prod', or 'stg'
-$ k8rb help mapping
-$ k8rb mapping                       # list urlpath mappings
-$ k8rb mapping --format=javascript   # or jquery,angular,json,yaml
-$ k8rb configs                       # list config parameters
+
+$ gem install boilerpl8
+$ boilerpl8 github:kwatch/keight-ruby myapp1
+## select CSS framework
+**    1. None
+**    2. Bootstrap
+**    3. Pure (recommended)
+** Which CSS framework do you like? [1-3]: 1
+
+$ cd myapp1
+$ export APP_MODE=dev                # 'dev', 'prod', or 'stg'
+$ rake -T
+$ ls public
 $ rake server port=8000
 $ open http://localhost:8000/
-$ ab -n 10000 -c 100 http://localhost:8000/api/hello
+$ ab -n 10000 -c 100 http://localhost:8000/api/hello.json
 ```
+
+
+Command `k8rb`
+--------------
+
+Keight.rb provices `k8rb`.
+
+* `k8rb project myapp1` creates new project.  
+  This is equvarent to `boilerpl8 github:kwatch/keight-ruby myapp1`.
+
+* `k8rb cdnjs -d static/lib jquery 3.1.0` downloads jQuery files
+  from cdnjs.com and stores into `static/lib` directory.  
+  This is equivarent to `cdnget cdnjs jquery 3.1.0 static/lib`.
+
+`k8rb` command is provided mainly for backward compatibility.
+You can use [boilerpl8](https://github.com/kwatch/boilerpl8/tree/ruby)
+and [cdnget](https://github.com/kwatch/cdnget/tree/ruby-release)
+inead of `k8rb project` and `k8rb cdnjs`.
+`k8rb` is specific to Keight.rb, but both boilerpl8 and cdnget are
+available in any project.
 
 
 CheatSheet
@@ -134,8 +157,8 @@ require 'keight'
 class HelloAction < K8::Action
 
   ## mapping
-  mapping '',              :GET=>:do_hello_world
-  mapping '/{name:\w+}',   :GET=>:do_hello
+  mapping ''             , :GET=>:do_hello_world
+  mapping '/{name:str}'  , :GET=>:do_hello
 
   ## request, response, and helpers
 
@@ -148,14 +171,14 @@ class HelloAction < K8::Action
     ## request
     @req                   # K8::Request object (!= Rack::Request)
     @req.env               # Rack environment
-    @req.method            # ex: :GET, :POST, :PUT, ...
+    @req.meth              # ex: :GET, :POST, :PUT, ...
     @req.request_method    # ex: "GET", "POST", "PUT", ...
     @req.path              # ex: '/api/hello'
     @req.query             # query string (Hash)
     @req.form              # form data (Hash)
     @req.multipart         # multipart form data ([Hash, Hash])
     @req.json              # JSON data (Hash)
-    @req.params            # query, form, multipart or json
+    @req.params            # query, form or json (except multipart!)
     @req.cookies           # cookies (Hash)
     @req.xhr?              # true when requested by jQuery etc
     @req.client_ip_addr    # ex: '127.0.0.1'
@@ -195,16 +218,20 @@ class HelloAction < K8::Action
   def handle_content(content)   # convert content
     if content.is_a?(Hash)
       @resp.content_type = 'application/json'
-      return [JSON.dump(content)]
+      return JSON.dump(content)
     end
     super
   end
 
   def handle_exception(ex)   # exception handler
-    meth = "on_#{ex.class.name}"
-    return __send__(meth, ex) if respond_to?(meth)
+    proc_ = WHEN_RAISED[ex.class]
+    return self.instance_exec(ex, &proc_) if proc_
     super
   end
+
+  WHEN_RAISED = {}
+  WHEN_RAISED[NotFound]     = proc {|ex| ... }
+  WHEN_RAISED[NotPermitted] = proc {|ex| ... }
 
   def csrf_protection_required?
     x = @req.method
@@ -219,7 +246,7 @@ urlpath_mapping = [
   ['/api', [
     ['/books'        , './app/api/books:BooksAPI'],
     ['/books/{book_id}/comments'
-                     , './app/api/book_comments:BookCommentsAPI'],
+                     , './app/api/books:BookCommentsAPI'],
     ['/orders'       , './app/api/orders:OrdersAPI'],
   ]],
 ]
@@ -231,10 +258,104 @@ opts = {
 app = K8::RackApplication.new(urlpath_mapping, opts)
 
 ## misc
-p HelloAction[:do_update].method        #=> :GET
-p HelloAction[:do_update].urlpath(123)  #=> "/api/books/123"
+p HelloAction[:do_update].meth          #=> :GET
+p HelloAction[:do_update].path(123)     #=> "/api/books/123"
 p HelloAction[:do_update].form_action_attr(123)
                                         #=> "/api/books/123?_method=PUT"
+```
+
+
+URL Mapping
+-----------
+
+Rails-like mapping:
+
+```ruby
+class BookAPI < K8::Action
+
+  mapping ''       , :GET=>:do_index, :POST=>:do_create
+  mapping '/new'   , :GET=>:do_new
+  mapping '/{id}'  , :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
+  mapping '/{id}/edit', :GET=>:do_edit
+
+  def do_index()   ; {list: []}; end
+  def do_create()  ; {list: []}; end
+  def do_new()     ; {item: id}; end
+  def do_show(id)  ; {item: id}; end
+  def do_edit(id)  ; {item: id}; end
+  def do_update(id); {item: id}; end
+  def do_delete(id); {item: id}; end
+
+end
+```
+
+Data type and pattern:
+
+```ruby
+class BookAPI < K8::Action
+
+  ##
+  ## data type and pattern
+  ##
+  mapping '/{name:str<[^/]+>}' , :GET=>:do_show1
+  mapping '/{id:int<\d+>}'     , :GET=>:do_show2
+  mapping '/{birthday:date<\d\d\d\d-\d\d-\d\d>}', :GET=>:do_show3
+
+  ##
+  ## default pattern
+  ##  - '/{name:str}' is same as '/{name:str<[^/]+>}'
+  ##  - '/{id:int}' is same as '/{id:int<\d+>}'
+  ##  - '/{birthday:date}' is same as '/{birthday:date<\d\d\d\d-\d\d-\d\d>}'
+  ##
+  mapping '/{name:str}'        , :GET=>:do_show1
+  mapping '/{id:int}'          , :GET=>:do_show2
+  mapping '/{birthday:date}'   , :GET=>:do_show3
+
+  ##
+  ## default data type
+  ##  - 'id' and '*_id' are int type
+  ##  - 'date' and '*_date' are date type
+  ##  - others are str type
+  ##
+  mapping '/{name}'      , :GET=>:do_show1   # same as '{name:str}'
+  mapping '/{id}'        , :GET=>:do_show2   # same as '{id:int}'
+  mapping '/{birth_date}', :GET=>:do_show3   # same as '{birth_date:date}'
+
+  ##
+  ## pattern with default data type
+  ##
+  mapping '/{code:<[A-Z]{3}>}', ...  # same as '/{code:str<[A-Z]{3}>'
+  mapping '/{id:<[1-9]\d*>}'  , ...  # same as '/{id:int<\d{4}>}'
+
+end
+```
+
+URL mapping helper:
+
+```ruby
+## for example
+p BookAPI[:do_index].meth        #=> :GET
+p BookAPI[:do_index].path        #=> "/api/books"
+p BookAPI[:do_create].meth       #=> :POST
+p BookAPI[:do_create].path       #=> "/api/books"
+p BookAPI[:do_show].meth         #=> :GET
+p BookAPI[:do_show].path(123)    #=> "/api/books/123"
+p BookAPI[:do_update].meth       #=> :PUT
+p BookAPI[:do_update].path(123)  #=> "/api/books/123"
+p BookAPI[:do_delete].meth       #=> :DELETE
+p BookAPI[:do_delete].path(123)  #=> "/api/books/123"
+```
+
+Show URL mappings:
+
+```console
+$ boilerpl8 github:kwatch/keight-ruby myapp1
+$ cd myapp1
+$ rake mapping:text       # list url mapping
+$ rake mapping:yaml       # list in YAML format
+$ rake mapping:json       # list in JSON format
+$ rake mapping:jquery     # list for jQuery
+$ rake mapping:angularjs  # list for AngularJS
 ```
 
 
@@ -272,8 +393,8 @@ This will make routing for variable one much faster.
 
 ### Default Pattern of URL Path Parameter
 
-URL path parameter `{id}` and `{xxx_id}` are regarded as `{id:\d+}` and
-`{xxx_id:\d+}` respectively and converted into positive interger automatically.
+URL path parameter `{id}` and `{xxx_id}` are regarded as `{id:int<\d+>}` and
+`{xxx_id:int<\d+>}` respectively and converted into positive interger automatically.
 For example:
 
 ```ruby
@@ -287,8 +408,8 @@ end
 ```
 
 URL path parameter `{date}` and `{xxx_date}` are regarded as
-`{date:\d\d\d\d-\d\d-\d\d}` and `{xxx_date:\d\d\d\d-\d\d-\d\d}` respectively
-and converted into Date object automatically.
+`{date:date<\d\d\d\d-\d\d-\d\d>}` and `{xxx_date:date<\d\d\d\d-\d\d-\d\d>}`
+respectively and converted into Date object automatically.
 For example:
 
 ```ruby
@@ -301,10 +422,8 @@ class BlogAPI < K8::Action
 end
 ```
 
-**If you specify `{id:\d+}` or `{date:\d\d\d\d-\d\d-\d\d}` explicitly,
-URL path parameter value is not converted into integer nor Date object.**
-In other words, you can cancel automatic conversion by specifing regular
-expression of URL path parameters.
+If you don't like auto-convert, specify data type and pettern explicitly.
+For example, `{id:str<\d+>}` or `{date:str<\d\d\d\d-\d\d-\d\d>}`.
 
 
 ### Nested Routing
@@ -312,8 +431,8 @@ expression of URL path parameters.
 ```ruby
 urlpath_mapping = [
     ['/api', [
-        ['/books'                      , BookAPI],
-        ['/books/{book_id}/comments'   , BookCommentsAPI],
+        ['/books'                    , "./app/api/books:BookAPI"],
+        ['/books/{book_id}/comments' , "./app/api/books:BookCommentsAPI"],
     ]],
 ]
 ```
@@ -338,35 +457,34 @@ p BooksAPI[:do_update].form_action_attr(123)   #=> "/api/books/123?_method=PUT"
 Keight.rb can generate JavaScript routing file.
 
 ```console
-$ k8rb project myapp1
-$ cd myapp1/
-$ k8rb mapping --format=javascript | less  # or 'jquery', 'angular'
-$ mkdir -p static/js
-$ jsfile=static/js/urlpath_mapping.js
-$ rm -f $jsfile
-$ echo 'var Mapping = {'           >> $jsfile
-$ k8rb mapping --format=javascript >> $jsfile
-$ echo '};'                        >> $jsfile
+$ boilerpl8 github:kwatch/keight-ruby myapp1
+$ cd myapp1
+$ rake mapping:text         # list URL path mapping
+$ rake mapping:yaml         # list in YAML format
+$ rake mapping:json         # list in JSON format
+$ rake mapping:jquery       # list for jQuery
+$ rake mapping:angularjs    # list for AngularJS
 ```
 
 
 ### Download JavaScript Libraries
 
-Keight.rb can download Javascript or CSS libraries from [cdnjs.com].
-It is good idea to make layout of JavaScript libraries to be same as CDN.
-
-[cdnjs.com]: https://cdnjs.com/
+Install `cdnget` gem in order to download such as jQuery or Bootstrap.
 
 ```console
-$ k8rb project myapp1
-$ cd myapp1/
-$ k8rb help cdnjs
-$ k8rb cdnjs                 # list libraries
-$ k8rb cdnjs 'jquery*'       # search libraries
-$ k8rb cdnjs jquery          # list versions
-$ k8rb cdnjs jquery 2.1.4    # download library
-## or
-$ k8rb cdnjs --basedir=static/lib jquery 2.1.4
+$ gem install cdnget
+$ cdnget                                 # list CDN
+$ cdnget cdnjs                           # list libraries
+$ cdnget cdnjs 'jquery*'                 # search libraries
+$ cdnget cdnjs jquery                    # list versions
+$ cdnget cdnjs jquery 2.2.4              # list files
+$ cdnget cdnjs jquery 2.2.4 static/lib   # download files
+static/lib/jquery/2.2.4/jquery.js ... Done (257,551 byte)
+static/lib/jquery/2.2.4/jquery.min.js ... Done (85,578 byte)
+static/lib/jquery/2.2.4/jquery.min.map ... Done (129,572 byte)
+
+$ ls static/lib/jquery/2.2.4
+jquery.js	jquery.min.js	jquery.min.map
 ```
 
 
@@ -382,22 +500,26 @@ I don't think Keight.rb is so fast. Other frameworks are just too slow.
 
 #### How to setup template engine?
 
-Try `k8rb project myapp1; cd myapp1; less app/action.rb`.
+Try `k8rb project myapp1; less myapp1/app/action.rb`.
+(or `boilerpl8 github:kwatch/keight-ruby myapp1; less myapp1/app/action.rb`).
 
 
 #### How to support static files?
 
-Try `k8rb project myapp1; cd myapp1; less app/action.rb`.
+Try `k8rb project myapp1; less myapp1/app/action.rb`.
+(or `boilerpl8 github:kwatch/keight-ruby myapp1; less myapp1/app/action.rb`).
 
 
 #### How to setup session?
 
-Try `k8rb project myapp1; cd myapp1; less config.ru`.
+Try `k8rb project myapp1; less myapp1/app/config.ru`.
+(or `boilerpl8 github:kwatch/keight-ruby myapp1; less myapp1/app/config.ru`).
 
 
 #### Can I use Rack::Request and Rack::Response instead of Keight's?
 
-Try `K8::REQUEST_CLASS = Rack::Request; K8::RESPONSE_CLASS = Rack::Response`.
+Try `K8::RackApplication::REQUEST_CLASS = Rack::Request` and
+`K8::RackApplication::RESPONSE_CLASS = Rack::Response`.
 
 
 License and Copyright

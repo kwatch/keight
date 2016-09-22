@@ -188,11 +188,10 @@ module K8
       proc {
         msg = <<-END
         ##
-        ## File copied.
-        ## Please run 'rake setup' in '#{project_name}' directory, for example:
+        ## Project directory created.
+        ## Next action:
         ##
         ##    $ cd #{project_name}
-        ##    $ rake setup
         ##    $ export APP_ENV='dev'      # or 'prod', 'stg', 'test'
         ##    $ rake server port=8000
         ##    $ open http://localhost:8000/

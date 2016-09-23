@@ -2826,19 +2826,6 @@ Oktest.scope do
         ok {body} == ["<div>\n<h2>301 Moved Permanently</h2>\n<p></p>\n</div>\n"]
       end
 
-      spec "[!2a9c9] adds query string to 'Location' header." do
-        |app|
-        env = new_env("GET", "/api/books", query: 'x=1&y=2')
-        status, headers, body = app.call(env)
-        ok {status} == 301
-        ok {headers['Location']} == "/api/books/?x=1&y=2"
-        #
-        env = new_env("GET", "/api/books/123/", query: 'x=3&y=4')
-        status, headers, body = app.call(env)
-        ok {status} == 301
-        ok {headers['Location']} == "/api/books/123?x=3&y=4"
-      end
-
       spec "[!vz07j] redirects only when request method is GET or HEAD." do
         |app|
         env = new_env("HEAD", "/api/books")

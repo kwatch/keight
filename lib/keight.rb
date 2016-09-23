@@ -1765,14 +1765,6 @@ END
       return false
     end
 
-    def lookup_autoredirect_location(req)
-      location = req.path.end_with?('/') ? req.path[0..-2] : "#{req.path}/"
-      return nil unless find(location)
-      #; [!2a9c9] adds query string to 'Location' header.
-      qs = req.env['QUERY_STRING']
-      return qs && ! qs.empty? ? "#{location}?#{qs}" : location
-    end
-
     public
 
     def each_mapping(&block)

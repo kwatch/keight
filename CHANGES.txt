@@ -49,6 +49,10 @@ Release 0.3.0 (2016-??-??)
       ]
       p K8::ActionMapping.new(mapping).urlpath_rexp
 
+* Define `@req.path_ext` which returns such as `.json` or `.html`.
+
+* `@resp.set_cookie()` now accepts Time object as `expires` keyword arg.
+
 * New HTTP response status codes are added.  
   #
 
@@ -74,6 +78,8 @@ Release 0.3.0 (2016-??-??)
       524 A Timeout Occurred"                  # CloudFlare
       525 SSL Handshake Failed                 # CloudFlare
       526 Invalid SSL Certificate              # CloudFlare
+
+* `k8rb cdnjs` now calls CDNJS.com api instead of scraping HTML page.
 
 
 ### Incomppatible changes
@@ -116,6 +122,17 @@ Release 0.3.0 (2016-??-??)
 * Remove 'K8::DefaultPatterns' class.
 * Remove 'K8::DEFAULT_PATTERNS' object.
 
+* `k8rb mapping` command is removed. Use `rake mapping` instead.
+* `k8rb configs` command is removed. Use `rake configs` instead.
+
+* Remove `K8::BaseConfig` and `K8::SecretValue` classes.
+  Use 'benry-config' gem instead.
+
+* Remove 'keight/skeleton/*' files. File are moved to
+  https://github.com/kwatch/keight-ruby-boilerpl8/releases .
+
+* Remove `K8::RackApplicaiton#lookup_autoredirect_location()`.
+
 
 ### Changes
 
@@ -123,6 +140,7 @@ Release 0.3.0 (2016-??-??)
 * Remove `K8::ActionMethodMapping` class.
 * Rewrite `K8::RackRequest#params_form`, `#params_multipart` and `#params_json`.
 * Move session initialization code from `K8::BaseAction` to `K8::Action`.
+* Remove dependency to `baby_erubis` gem.
 
 
 Release 0.2.0 (2016-01-06)

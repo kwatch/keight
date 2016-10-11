@@ -110,8 +110,8 @@ $ mkdir gems                         # if necessary
 $ export GEM_HOME=$PWD/gems          # if necessary
 $ export PATH=$GEM_HOME/bin:$PATH    # if necessary
 
-$ gem install boilerpl8
-$ boilerpl8 github:kwatch/keight-ruby myapp1
+$ gem install keight    # or: gem install boilerpl8
+$ k8rb project myapp1   # or: boilerpl8 github:kwatch/keight-ruby myapp1
 ## select CSS framework
 **    1. None
 **    2. Bootstrap
@@ -134,11 +134,11 @@ Command `k8rb`
 Keight.rb provices `k8rb`.
 
 * `k8rb project myapp1` creates new project.  
-  This is equvarent to `boilerpl8 github:kwatch/keight-ruby myapp1`.
+  (Note: This is equvarent to `boilerpl8 github:kwatch/keight-ruby myapp1`.)
 
 * `k8rb cdnjs -d static/lib jquery 3.1.0` downloads jQuery files
   from cdnjs.com and stores into `static/lib` directory.  
-  This is equivarent to `cdnget cdnjs jquery 3.1.0 static/lib`.
+  (Note: This is equivarent to `cdnget cdnjs jquery 3.1.0 static/lib`.)
 
 `k8rb` command is provided mainly for backward compatibility.
 You can use [boilerpl8](https://github.com/kwatch/boilerpl8/tree/ruby)
@@ -173,7 +173,8 @@ class HelloAction < K8::Action
     @req.env               # Rack environment
     @req.meth              # ex: :GET, :POST, :PUT, ...
     @req.request_method    # ex: "GET", "POST", "PUT", ...
-    @req.path              # ex: '/api/hello'
+    @req.path              # ex: '/api/hello.json'
+    @req.path_ext          # ex: '.json'
     @req.query             # query string (Hash)
     @req.form              # form data (Hash)
     @req.multipart         # multipart form data ([Hash, Hash])
@@ -258,7 +259,7 @@ opts = {
 app = K8::RackApplication.new(urlpath_mapping, opts)
 
 ## misc
-p HelloAction[:do_update].meth          #=> :GET
+p HelloAction[:do_update].meth          #=> :PUT
 p HelloAction[:do_update].path(123)     #=> "/api/books/123"
 p HelloAction[:do_update].form_action_attr(123)
                                         #=> "/api/books/123?_method=PUT"
@@ -278,13 +279,14 @@ class BookAPI < K8::Action
   mapping '/{id}'  , :GET=>:do_show, :PUT=>:do_update, :DELETE=>:do_delete
   mapping '/{id}/edit', :GET=>:do_edit
 
-  def do_index()   ; {list: []}; end
-  def do_create()  ; {list: []}; end
-  def do_new()     ; {item: id}; end
-  def do_show(id)  ; {item: id}; end
-  def do_edit(id)  ; {item: id}; end
-  def do_update(id); {item: id}; end
-  def do_delete(id); {item: id}; end
+  def do_index()   ; {"list": []}; end
+  def do_create()  ; {"list": []}; end
+  def do_new()     ; {"item": id}; end
+  def do_show(id)  ; {"item": id}; end
+  def do_edit(id)  ; {"item": id}; end
+  def do_update(id); {"item": id}; end
+  def do_delete(id); {"item": id}; end
+  # (Note: 'do_' prefix is NOT mandatory.)
 
 end
 ```
@@ -371,7 +373,7 @@ p BookAPI[:do_delete].path(123)  #=> "/api/books/123"
 Show URL mappings:
 
 ```console
-$ boilerpl8 github:kwatch/keight-ruby myapp1
+$ k8rb project myapp1   # or: boilerpl8 github:kwatch/keight-ruby myapp1
 $ cd myapp1
 $ rake mapping:text       # list url mapping
 $ rake mapping:yaml       # list in YAML format
@@ -463,15 +465,16 @@ urlpath_mapping = [
 ### URL Path Helpers
 
 ```ruby
-p BooksAPI[:do_index].method          #=> :GET
-p BooksAPI[:do_index].urlpath()       #=> "/api/books"
+p BooksAPI[:do_index].meth         #=> :GET
+p BooksAPI[:do_index].path()       #=> "/api/books"
+p BooksAPI[:do_update].form_action_attr(123)   #=> "/api/books/123"
 
-p BooksAPI[:do_update].method         #=> :PUT
-p BooksAPI[:do_update].urlpath(123)   #=> "/api/books/123"
+p BooksAPI[:do_update].meth        #=> :PUT
+p BooksAPI[:do_update].path(123)   #=> "/api/books/123"
 p BooksAPI[:do_update].form_action_attr(123)   #=> "/api/books/123?_method=PUT"
 ```
 
-(Notice that these are availabe after `K8::RackApplication` object is created.)
+(Notice that these are availabe after `K8::RackApplication.new()` is called.)
 
 
 ### Routing for JavaScript
@@ -479,7 +482,7 @@ p BooksAPI[:do_update].form_action_attr(123)   #=> "/api/books/123?_method=PUT"
 Keight.rb can generate JavaScript routing file.
 
 ```console
-$ boilerpl8 github:kwatch/keight-ruby myapp1
+$ k8rb project myapp1   # or: boilerpl8 github:kwatch/keight-ruby myapp1
 $ cd myapp1
 $ rake mapping:text         # list URL path mapping
 $ rake mapping:yaml         # list in YAML format
@@ -522,20 +525,26 @@ I don't think Keight.rb is so fast. Other frameworks are just too slow.
 
 #### How to setup template engine?
 
-Try `k8rb project myapp1; less myapp1/app/action.rb`.
+Try `k8rb project myapp1; less myapp1/app/action.rb`.  
 (or `boilerpl8 github:kwatch/keight-ruby myapp1; less myapp1/app/action.rb`).
 
 
 #### How to support static files?
 
-Try `k8rb project myapp1; less myapp1/app/action.rb`.
+Try `k8rb project myapp1; less myapp1/app/action.rb`.  
 (or `boilerpl8 github:kwatch/keight-ruby myapp1; less myapp1/app/action.rb`).
 
 
 #### How to setup session?
 
-Try `k8rb project myapp1; less myapp1/app/config.ru`.
+Try `k8rb project myapp1; less myapp1/app/config.ru`.  
 (or `boilerpl8 github:kwatch/keight-ruby myapp1; less myapp1/app/config.ru`).
+
+
+#### Is it necessary to add 'do_' prefix to action methods?
+
+No. You can define `index()` or `show(id)` instead of `do_index()` or
+`do_show(id)`, like Ruby on Rails.
 
 
 #### Can I use Rack::Request and Rack::Response instead of Keight's?

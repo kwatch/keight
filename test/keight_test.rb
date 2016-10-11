@@ -1011,13 +1011,6 @@ Oktest.scope do
         ok {req.params} == {"a"=>"8", "b"=>"9"}
       end
 
-      spec "[!cr0zj] parses JSON when content type is 'application/json'." do
-        qstr = "a=8&b=9"
-        json = '{"n":123}'
-        req = K8::RackRequest.new(new_env('POST', '/', query: qstr, json: json))
-        ok {req.params} == {"n"=>123}
-      end
-
       spec "[!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'." do
         qstr = "a=8&b=9"
         form = "x=1&y=2"
@@ -1031,6 +1024,14 @@ Oktest.scope do
         req = K8::RackRequest.new(env)
         pr = proc { req.params }
         ok {pr}.raise?(K8::PayloadParseError, "don't use `@req.params' for multipart data; use `@req.params_multipart' instead.")
+      end
+
+      spec "[!td6fw] raises error when content type is 'application/json' (because JSON data can contain non-string values)." do
+        qstr = "a=8&b=9"
+        json = '{"n":123}'
+        req  = K8::RackRequest.new(new_env('POST', '/', query: qstr, json: json))
+        pr = proc { req.params }
+        ok {pr}.raise?(K8::PayloadParseError, "use `@req.json' for JSON data instead of `@req.params'.")
       end
 
     end

@@ -1536,7 +1536,7 @@ module K8
       #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
       #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
       #; [!z5w4k] raises error when content type is 'multipart/form-data' (because params_multipart() returns two values).
-      #; [!cr0zj] parses JSON when content type is 'application/json'.
+      #; [!td6fw] raises error when content type is 'application/json' (because JSON data can contain non-string values).
       if @meth == :GET || @meth == :HEAD
         return params_query()       # hash object
       end
@@ -1548,7 +1548,7 @@ module K8
         raise PayloadParseError.new("don't use `@req.params' for multipart data; use `@req.params_multipart' instead.")
       when /\Aapplication\/json\b/
         #return params_json()       # hash object
-        raise PayloadParseError.new("don't use `@req.params' for JSON data; use `@req.json' instead.")
+        raise PayloadParseError.new("use `@req.json' for JSON data instead of `@req.params'.")
       else
         return {}                   # hash object
       end

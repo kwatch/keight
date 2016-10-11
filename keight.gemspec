@@ -18,7 +18,7 @@ See https://github.com/kwatch/keight/tree/ruby for details.
 END
 
   o.files         = Dir[*%w[
-                      README.md CHANGES.txt MIT-LICENSE keight.gemspec setup.rb Rakefile
+                      README.md CHANGES.md MIT-LICENSE keight.gemspec Rakefile
                       bin/k8rb
                       lib/keight.rb
                       test/*_test.rb test/data/* test/oktest.rb

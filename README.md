@@ -175,15 +175,12 @@ class HelloAction < K8::Action
     @req.request_method    # ex: "GET", "POST", "PUT", ...
     @req.path              # ex: '/api/hello.json'
     @req.path_ext          # ex: '.json'
-    @req.params_query      # query string (Hash)
-    @req.query             # query string (Hash)  # alias
-    @req.params_form       # form data (Hash)
-    @req.form              # form data (Hash)     # alias
-    @req.params_multipart  # multipart form data ([Hash, Hash])
-    @req.multipart         # multipart form data ([Hash, Hash]) # alias
-    @req.params_json       # JSON data (Hash)
-    @req.json              # JSON data (Hash)     # alias
-    @req.params            # query, form or json (except multipart!)
+    @req.query_string      # query string (String)
+    @req.query             # query string (Hash)
+    @req.form              # form data (Hash)
+    @req.multipart         # multipart form data ([Hash, Hash])
+    @req.json              # JSON data (Hash)
+    @req.params            # query or form (not multipart nor json!)
     @req.cookies           # cookies (Hash)
     @req.xhr?              # true when requested by jQuery etc
     @req.client_ip_addr    # ex: '127.0.0.1'
@@ -589,6 +586,15 @@ p req.POST['name'].strip
 #### Why does `@req.params` raise error when multipart form data?
 
 Because `@req.multipart` returns two Hash objects. See above section.
+
+
+#### Why does `@req.params` raise error for JSON data?
+
+Because both `@req.query` and `@req.form` returns a Hash object containing
+only string values, but `@req.json` returns a Hash object containing
+non-string values sucha as integer or boolean.
+
+Use `@req.json` instead of `@req.params` for JSON data.
 
 
 

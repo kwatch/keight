@@ -1070,6 +1070,18 @@ Oktest.scope do
 
 
   topic K8::RackResponse do
+
+
+    topic '#initialize()' do
+
+      spec "[!ehdkl] default status code is 200." do
+        resp = K8::RackResponse.new
+        ok {resp.status} == 200
+      end
+
+    end
+
+
   end
 
 

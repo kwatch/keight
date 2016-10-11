@@ -1127,6 +1127,9 @@ module K8
           buf2 = []
           action_class._mappings.each do |upath, action_methods|
             validate(action_class, action_methods)
+            #; [!m51yy] regards '.*' at end of urlpath pattern as extension.
+            upath = upath.sub(/\.\*\z/, '{_:<(?:\.\w+)?>}')
+            #
             full_urlpath = "#{curr_urlpath}#{upath}"
             if has_urlpath_param?(full_urlpath)
               buf2 << "#{compile_urlpath(upath)[0]}(\\z)"  # ex: /{id} -> /\d+(\z)

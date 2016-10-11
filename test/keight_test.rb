@@ -2260,6 +2260,26 @@ Oktest.scope do
               \z'.gsub(/\s+/, ''))
       end
 
+      spec "[!m51yy] regards '.*' at end of urlpath pattern as extension." do
+        cls = Class.new(K8::Action) do
+          mapping '.*',      :GET=>:do_index
+          mapping '/{id}.*', :GET=>:do_show
+          def do_index; end
+          def do_show(id); end
+        end
+        am = K8::ActionMapping.new([
+            ['/api', [
+                ['/foo', cls],
+            ]],
+        ])
+        ok {am.urlpath_rexp} == Regexp.compile('
+              \A /api
+                     /foo (?:      (?:\.\w+)? (\z)
+                           |  /\d+ (?:\.\w+)? (\z)
+                          )
+              \z'.gsub(/\s+/, ''))
+      end
+
     end
 
 

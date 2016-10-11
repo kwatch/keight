@@ -1571,6 +1571,7 @@ module K8
   class RackResponse
 
     def initialize
+      #; [!ehdkl] default status code is 200.
       @status  = 200
       @headers = {}
     end

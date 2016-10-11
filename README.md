@@ -330,6 +330,28 @@ class BookAPI < K8::Action
 end
 ```
 
+Path extension (such as '.json' or '.html'):
+
+```ruby
+class FooAPI < K8::Action
+
+  ## ex: '.*' is same as '{_:<(?:\w+)?>}' which matches to any extension.
+  mapping '.*'       , :GET=>:do_index
+
+  ## ex: '/{id}.*' is same as '/{id}{_:<(?:\w+)?>}'
+  mapping '/{id}.*'  , :GET=>:do_show
+
+  def do_index
+    p @req.path_ext    #=> ex: '.json', '.html', and so on
+  end
+
+  def do_show(id)
+    p @req.path_ext    #=> ex: '.json', '.html', and so on
+  end
+
+end
+```
+
 URL mapping helper:
 
 ```ruby

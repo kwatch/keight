@@ -130,8 +130,15 @@ Release 0.3.0 (2016-??-??)
 * Rename `@current_action` to `@action_name` in `K8::Action` class.
   It represents current action name, such as `:do_index` or `:do_show`.
 
-* `@req.params` now raises `K8::PayloadParseError` when request format is multipart.
-  Use `@req.params_multipart` instead for multipart request.
+* `@req.params` now raises `K8::PayloadParseError` for JSON data,
+  because `@req.params` should return hash object of string, but
+  JSON data contains non-string values.
+  Use `@req.json` instead fo `@req.params`.
+
+* `@req.params` now raises `K8::PayloadParseError` for multipart data,
+  because `@req.params` should return hash object of string, but
+  multipart form contains file data which is not a string value.
+  Use `@req.multipart` instead fo `@req.params`.
 
 * Rename `K8::Request` class to `K8::RackRequest`.
 

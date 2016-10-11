@@ -8,7 +8,7 @@ Overview
 --------
 
 Keight.rb is the very fast web application framework for Ruby.
-It is about 100 times faster than Rails and 20 times faster than Sinatra.
+It runs about 100 times faster than Rails, and 20 times faster than Sinatra.
 
 *Keight.rb is under development and is subject to change without notice.*
 
@@ -103,7 +103,7 @@ run app
 Open http://localhost:4423/api/hello or http://localhost:4423/api/hello/123
 with your browser.
 
-Do you like it? Try the following steps to generate your project.
+How do you like it? Try the following steps to generate your project.
 
 ```console
 $ mkdir gems                         # if necessary
@@ -175,10 +175,14 @@ class HelloAction < K8::Action
     @req.request_method    # ex: "GET", "POST", "PUT", ...
     @req.path              # ex: '/api/hello.json'
     @req.path_ext          # ex: '.json'
-    @req.query             # query string (Hash)
-    @req.form              # form data (Hash)
-    @req.multipart         # multipart form data ([Hash, Hash])
-    @req.json              # JSON data (Hash)
+    @req.params_query      # query string (Hash)
+    @req.query             # query string (Hash)  # alias
+    @req.params_form       # form data (Hash)
+    @req.form              # form data (Hash)     # alias
+    @req.params_multipart  # multipart form data ([Hash, Hash])
+    @req.multipart         # multipart form data ([Hash, Hash]) # alias
+    @req.params_json       # JSON data (Hash)
+    @req.json              # JSON data (Hash)     # alias
     @req.params            # query, form or json (except multipart!)
     @req.cookies           # cookies (Hash)
     @req.xhr?              # true when requested by jQuery etc
@@ -198,7 +202,7 @@ class HelloAction < K8::Action
 
     ## helpers
     token = csrf_token()   # get csrf token
-    validation_failed()    # same as @resp.status_code = 422
+    validation_failed()    # same as @resp.status = 422
     return redirect_to(location, 302, flash: "message")
     return send_file(filepath)
 
@@ -235,7 +239,7 @@ class HelloAction < K8::Action
 
   def csrf_protection_required?
     x = @req.method
-    return x == :POST || x == :PUT || x == :DELETE
+    return x == :POST || x == :PUT || x == :DELETE || x == :PATCH
   end
 
 end
@@ -339,7 +343,7 @@ class FooAPI < K8::Action
   ## ex: '.*' is same as '{_:<(?:\w+)?>}' which matches to any extension.
   mapping '.*'       , :GET=>:do_index
 
-  ## ex: '/{id}.*' is same as '/{id}{_:<(?:\w+)?>}'
+  ## ex: '/{id}.*' is same as '/{id}{_:<(?:\w+)?>}' which matches to any extension.
   mapping '/{id}.*'  , :GET=>:do_show
 
   def do_index
@@ -367,6 +371,12 @@ p BookAPI[:do_update].meth       #=> :PUT
 p BookAPI[:do_update].path(123)  #=> "/api/books/123"
 p BookAPI[:do_delete].meth       #=> :DELETE
 p BookAPI[:do_delete].path(123)  #=> "/api/books/123"
+
+p BookAPI[:do_index ].form_action_attr()   #=> "/api/books"
+p BookAPI[:do_create].form_action_attr()   #=> "/api/books"
+p BookAPI[:do_show  ].form_action_attr(9)  #=> "/api/books/9"
+p BookAPI[:do_update].form_action_attr(9)  #=> "/api/books/9?_method=PUT"
+p BookAPI[:do_delete].form_action_attr(9)  #=> "/api/books/9?_method=DELETE"
 ```
 
 Show URL mappings:
@@ -550,6 +560,36 @@ No. You can define `index()` or `show(id)` instead of `do_index()` or
 
 Try `K8::RackApplication::REQUEST_CLASS = Rack::Request` and
 `K8::RackApplication::RESPONSE_CLASS = Rack::Response`.
+
+
+#### Why does `@req.multipart` returns two Hash objects?
+
+Because in order NOT to mix string objects and file objects in a hash.
+
+```ruby
+## str_params contains only string or array of string.
+## file_params contains only file object or array of file.
+str_params, file_params = @req.multipart
+p str_params['name'].strip
+    #=> no error because str_params['name'] is a string
+
+## It is easy to merge two hash objects (but not recommended).
+p str_params.merge(file_params)
+```
+
+In contrast, `Rack::Request#POST()` may contains both string and file.
+
+```ruby
+req = Rack::Request.new(env)
+p req.POST['name'].strip
+    #=> will raise error when req.POST['name'] is file object uploaded
+```
+
+
+#### Why does `@req.params` raise error when multipart form data?
+
+Because `@req.multipart` returns two Hash objects. See above section.
+
 
 
 License and Copyright

@@ -50,7 +50,7 @@ $ export PATH=$GEM_HOME/bin:$PATH
 $ gem install keight
 $ vi hello.rb      # see below
 $ vi config.ru     # != 'config.rb'
-$ rackup -p 8000 config.ru
+$ rackup -p 4423 config.ru
 ```
 
 hello.rb:
@@ -100,7 +100,7 @@ app = K8::RackApplication.new(mapping)
 run app
 ```
 
-Open http://localhost:8000/api/hello or http://localhost:8000/api/hello/123
+Open http://localhost:4423/api/hello or http://localhost:4423/api/hello/123
 with your browser.
 
 Do you like it? Try the following steps to generate your project.
@@ -122,9 +122,9 @@ $ cd myapp1
 $ export APP_MODE=dev                # 'dev', 'prod', or 'stg'
 $ rake -T
 $ ls public
-$ rake server port=8000
-$ open http://localhost:8000/
-$ ab -n 10000 -c 100 http://localhost:8000/api/hello.json
+$ rake server port=4423
+$ open http://localhost:4423/
+$ ab -n 10000 -c 100 http://localhost:4423/api/hello.json
 ```
 
 

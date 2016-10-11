@@ -49,6 +49,25 @@ Release 0.3.0 (2016-??-??)
       ]
       p K8::ActionMapping.new(mapping).urlpath_rexp
 
+* Regard '.*' at end of urlpath pattern as extension pattern.  
+  ex:
+
+      class BooksAPI < K8::Action
+
+        ## ex: '.*' is same as '{_:<(?:\.\w+)?>}'
+        mapping '.*'     , :GET=>:do_index
+
+	## ex: '/{id}.*' is same as '/{id}{_:<(?:\.\w+)?>}'
+        mapping '/{id}.*', :GET=>:do_show
+
+	def do_index
+	  p @req.path_ext    #=> ex: '.json', '.html', etc
+        end
+	def do_show(id)
+	  p @req.path_ext    #=> ex: '.json', '.html', etc
+        end
+      end
+
 * Define `@req.path_ext` which returns such as `.json` or `.html`.
 
 * `@resp.set_cookie()` now accepts Time object as `expires` keyword arg.

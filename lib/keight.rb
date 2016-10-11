@@ -1534,20 +1534,21 @@ module K8
 
     def params
       #; [!erlc7] parses QUERY_STRING when request method is GET or HEAD.
-      #; [!cr0zj] parses JSON when content type is 'application/json'.
       #; [!j2lno] parses form parameters when content type is 'application/x-www-form-urlencoded'.
       #; [!z5w4k] raises error when content type is 'multipart/form-data' (because params_multipart() returns two values).
+      #; [!cr0zj] parses JSON when content type is 'application/json'.
       if @meth == :GET || @meth == :HEAD
         return params_query()       # hash object
       end
       case @env['CONTENT_TYPE']
-      when /\Aapplication\/json\b/
-        return params_json()        # hash object
       when /\Aapplication\/x-www-form-urlencoded\b/
         return params_form()        # hash object
       when /\Amultipart\/form-data\b/
         #return params_multipart()  # array of hash objects
         raise PayloadParseError.new("don't use `@req.params' for multipart data; use `@req.params_multipart' instead.")
+      when /\Aapplication\/json\b/
+        #return params_json()       # hash object
+        raise PayloadParseError.new("don't use `@req.params' for JSON data; use `@req.json' instead.")
       else
         return {}                   # hash object
       end

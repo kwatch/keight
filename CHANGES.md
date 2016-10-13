@@ -70,6 +70,8 @@ Release 0.3.0 (2016-??-??)
 
 * Define `@req.path_ext` which returns such as `.json` or `.html`.
 
+* Define `@resp.status_line` which returns such as `"200 OK"` or `"302 Found"`.
+
 * `@resp.set_cookie()` now accepts Time object as `expires` keyword arg.
 
 * New HTTP response status codes are added.  

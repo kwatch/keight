@@ -1077,7 +1077,23 @@ Oktest.scope do
 
       spec "[!ehdkl] default status code is 200." do
         resp = K8::RackResponse.new
-        ok {resp.status} == 200
+        ok {resp.status_code} == 200
+      end
+
+    end
+
+
+    topic '#status_line' do
+
+      spec "[!apy81] returns status line such as '200 OK'." do
+        resp = K8::RackResponse.new
+        ok {resp.status_line} == "200 OK"
+        resp.status_code = 302
+        ok {resp.status_line} == "302 Found"
+        resp.status_code = 404
+        ok {resp.status_line} == "404 Not Found"
+        resp.status_code = 500
+        ok {resp.status_line} == "500 Internal Server Error"
       end
 
     end

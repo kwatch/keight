@@ -188,11 +188,16 @@ class HelloAction < K8::Action
     ## response
     @resp                  # K8::Response object (!= Rack::Response)
     @resp.status_code      # ex: 200
+    @resp.status_code=(i)  # ex: i=200
+    @resp.status_line      # ex: "200 OK"
     @resp.status           # alias of @resp.status_code
+    @resp.status=(i)       # alias of @resp.status_code=(i)
     @resp.headers          # Hash object
     @resp.set_cookie(k, v) # cookie
-    @resp.content_type     # same as @resp.headers['Content-Type']
-    @resp.content_length   # same as @resp.headers['Content-Length'].to_i
+    @resp.content_type        # same as @resp.headers['Content-Type']
+    @resp.content_type=(s)    # same as @resp.headers['Content-Type'] = s
+    @resp.content_length      # same as @resp.headers['Content-Length']
+    @resp.content_length=(i)  # same as @resp.headers['Content-Length'] = i.to_s
 
     ## session (requires Rack::Session)
     @sess[key] = val       # set session data

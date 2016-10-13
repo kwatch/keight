@@ -1621,7 +1621,8 @@ module K8
       #; [!u9w9l] supports multiple cookies.
       value = @headers['Set-Cookie']
       @headers['Set-Cookie'] = value ? (value << "\n" << s) : s
-      return value
+      #; [!7otip] returns cookie string.
+      return s
     end
 
     def clear

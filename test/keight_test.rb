@@ -1115,12 +1115,10 @@ Oktest.scope do
         ok {resp.headers['Set-Cookie']} == "foo=FOO\nbar=BAR\nbaz=BAZ"
       end
 
-      spec "[!u9w9l] supports multiple cookies." do
+      spec "[!7otip] returns cookie string." do
         resp = K8::RackResponse.new
-        resp.set_cookie("foo", "FOO")
-        resp.set_cookie("bar", "BAR")
-        resp.set_cookie("baz", "BAZ")
-        ok {resp.headers['Set-Cookie']} == "foo=FOO\nbar=BAR\nbaz=BAZ"
+        ok {resp.set_cookie("foo", "FOO")} == "foo=FOO"
+        ok {resp.set_cookie("bar", "BAR", path: '/', httponly: true)} == "bar=BAR; Path=/; HttpOnly"
       end
 
       spec "[!oanme] converts Time object into HTTP timestamp string." do

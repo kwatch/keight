@@ -1583,6 +1583,11 @@ module K8
     alias status status_code
     alias status= status_code=
 
+    def status_line
+      #; [!apy81] returns status line such as '200 OK'.
+      return "#{@status_code} #{HTTP_RESPONSE_STATUS[@status_code] || 'UNKNOWN'}"
+    end
+
     def content_type
       return @headers['Content-Type']
     end

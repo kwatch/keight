@@ -111,8 +111,6 @@ Release 0.3.0 (2016-??-??)
 * Rename `@req.method` to `@req.meth`.  
   `@req.method` is also available, but not recommended. Use `@req.meth`.
 
-* Rename '@resp.status_code' to `@resp.status`.
-
 * Rename `K8::BaseAction[]#method` to `K8::BaseAction[]#meth`.  
   ex:
 

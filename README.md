@@ -187,7 +187,8 @@ class HelloAction < K8::Action
 
     ## response
     @resp                  # K8::Response object (!= Rack::Response)
-    @resp.status           # ex: 200
+    @resp.status_code      # ex: 200
+    @resp.status           # alias of @resp.status_code
     @resp.headers          # Hash object
     @resp.set_cookie(k, v) # cookie
     @resp.content_type     # same as @resp.headers['Content-Type']

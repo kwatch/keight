@@ -1,7 +1,7 @@
 Changes
 =======
 
-Release 0.3.0 (2016-??-??)
+Release 0.3.0 (2016-10-13)
 --------------------------
 
 ### Enhancements
@@ -53,13 +53,13 @@ Release 0.3.0 (2016-??-??)
   ex:
 
       class BooksAPI < K8::Action
-
+        
         ## ex: '.*' is same as '{_:<(?:\.\w+)?>}'
         mapping '.*'     , :GET=>:do_index
-
+        
 	## ex: '/{id}.*' is same as '/{id}{_:<(?:\.\w+)?>}'
         mapping '/{id}.*', :GET=>:do_show
-
+        
 	def do_index
 	  p @req.path_ext    #=> ex: '.json', '.html', etc
         end

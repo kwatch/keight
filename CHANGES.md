@@ -53,18 +53,18 @@ Release 0.3.0 (2016-10-13)
   ex:
 
       class BooksAPI < K8::Action
-        
+
         ## ex: '.*' is same as '{_:<(?:\.\w+)?>}'
         mapping '.*'     , :GET=>:do_index
-        
-	## ex: '/{id}.*' is same as '/{id}{_:<(?:\.\w+)?>}'
+
+        ## ex: '/{id}.*' is same as '/{id}{_:<(?:\.\w+)?>}'
         mapping '/{id}.*', :GET=>:do_show
-        
-	def do_index
-	  p @req.path_ext    #=> ex: '.json', '.html', etc
+
+        def do_index
+          p @req.path_ext    #=> ex: '.json', '.html', etc
         end
-	def do_show(id)
-	  p @req.path_ext    #=> ex: '.json', '.html', etc
+        def do_show(id)
+          p @req.path_ext    #=> ex: '.json', '.html', etc
         end
       end
 

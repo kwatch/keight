@@ -1099,6 +1099,39 @@ Oktest.scope do
     end
 
 
+    topic '#set_cookie()' do
+
+      spec "[!58tby] adds 'Set-Cookie' response header." do
+        resp = K8::RackResponse.new
+        resp.set_cookie("hom", "HOMHOM")
+        ok {resp.headers['Set-Cookie']} == "hom=HOMHOM"
+      end
+
+      spec "[!u9w9l] supports multiple cookies." do
+        resp = K8::RackResponse.new
+        resp.set_cookie("foo", "FOO")
+        resp.set_cookie("bar", "BAR")
+        resp.set_cookie("baz", "BAZ")
+        ok {resp.headers['Set-Cookie']} == "foo=FOO\nbar=BAR\nbaz=BAZ"
+      end
+
+      spec "[!u9w9l] supports multiple cookies." do
+        resp = K8::RackResponse.new
+        resp.set_cookie("foo", "FOO")
+        resp.set_cookie("bar", "BAR")
+        resp.set_cookie("baz", "BAZ")
+        ok {resp.headers['Set-Cookie']} == "foo=FOO\nbar=BAR\nbaz=BAZ"
+      end
+
+      spec "[!oanme] converts Time object into HTTP timestamp string." do
+        resp = K8::RackResponse.new
+        resp.set_cookie("hom", "HOMHOM", expires: Time.utc(2001, 11, 30, 12, 34, 56))
+        ok {resp.headers['Set-Cookie']} == "hom=HOMHOM; Expires=Fri, 30 Nov 2001 12:34:56 GMT"
+      end
+
+    end
+
+
   end
 
 

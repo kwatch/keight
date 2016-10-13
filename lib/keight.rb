@@ -1606,9 +1606,11 @@ module K8
     end
 
     def set_cookie(name, value, domain: nil, path: nil, expires: nil, max_age: nil, httponly: nil, secure: nil)
+      #; [!oanme] converts Time object into HTTP timestamp string.
       if expires && expires.is_a?(Time)
         expires = Util.http_utc_time(expires)
       end
+      #; [!58tby] adds 'Set-Cookie' response header.
       s = "#{name}=#{value}"
       s << "; Domain=#{domain}"   if domain
       s << "; Path=#{path}"       if path
@@ -1616,6 +1618,7 @@ module K8
       s << "; Max-Age=#{max_age}" if max_age
       s << "; HttpOnly"           if httponly
       s << "; Secure"             if secure
+      #; [!u9w9l] supports multiple cookies.
       value = @headers['Set-Cookie']
       @headers['Set-Cookie'] = value ? (value << "\n" << s) : s
       return value

@@ -131,7 +131,7 @@ $ ab -n 10000 -c 100 http://localhost:4423/api/hello.json
 Command `k8rb`
 --------------
 
-Keight.rb provices `k8rb`.
+Keight.rb provides `k8rb`.
 
 * `k8rb project myapp1` creates new project.  
   (Note: This is equvarent to `boilerpl8 github:kwatch/keight-ruby myapp1`.)
@@ -412,17 +412,17 @@ rack_app = K8::RackApplication.new(urlpath_mapping,
                                    urlpath_cache_size: 100)  # !!!
 ```
 
-In general, there are two type of URL path pattern: fixed and variable.
+In general, there are two types of URL path pattern: fixed and variable.
 
 * Fixed URL path pattern doesn't contain any URL path parameter.<br>
   Example: `/`, `/api/books`, `/api/books/new`.
 * Variable URL path pattern contains one or more URL path parameters.<br>
   Example: `/api/books/{id}`, `/api/books/new.{format:html|json}`.
 
-Keight.rb caches fixed patterns and doesn't variable ones, therefore
-routing for fixed URL path is faster than variable one.
+Keight.rb caches fixed patterns and doesn't cache variable ones, therefore
+routing for a fixed URL path is faster than a variable one.
 
-If `urlpath_cache_size: n` is specified, Keight.rb caches latest `n` entries
+If `urlpath_cache_size: n` is specified, Keight.rb caches the latest `n` entries
 of request path matched to variable URL path pattern.
 This will make routing for variable one much faster.
 
@@ -430,7 +430,7 @@ This will make routing for variable one much faster.
 ### Default Pattern of URL Path Parameter
 
 URL path parameter `{id}` and `{xxx_id}` are regarded as `{id:int<\d+>}` and
-`{xxx_id:int<\d+>}` respectively and converted into positive interger automatically.
+`{xxx_id:int<\d+>}` respectively and converted into positive integer automatically.
 For example:
 
 ```ruby
@@ -458,7 +458,7 @@ class BlogAPI < K8::Action
 end
 ```
 
-If you don't like auto-convert, specify data type and pettern explicitly.
+If you don't like auto-convert, specify data type and pattern explicitly.
 For example, `{id:str<\d+>}` or `{date:str<\d\d\d\d-\d\d-\d\d>}`.
 
 
@@ -506,7 +506,7 @@ $ rake mapping:angularjs    # list for AngularJS
 
 ### Download JavaScript Libraries
 
-Install `cdnget` gem in order to download such as jQuery or Bootstrap.
+Install `cdnget` gem in order to download client-side libraries such as jQuery or Bootstrap.
 
 ```console
 $ gem install cdnget
@@ -528,9 +528,9 @@ jquery.js	jquery.min.js	jquery.min.map
 FAQ
 ---
 
-#### Why Keight.rb is so fast?
+#### Why is Keight.rb so fast?
 
-I don't think Keight.rb is so fast. Other frameworks are just too slow.
+I don't think Keight.rb is that fast. Other frameworks are just too slow.
 
 **You should know that Rails is slow due to Rails itself, and not to Ruby.**
 
@@ -553,7 +553,7 @@ Try `k8rb project myapp1; less myapp1/app/config.ru`.
 (or `boilerpl8 github:kwatch/keight-ruby myapp1; less myapp1/app/config.ru`).
 
 
-#### Is it necessary to add 'do_' prefix to action methods?
+#### Is it necessary to add a `do_` prefix to action methods?
 
 No. You can define `index()` or `show(id)` instead of `do_index()` or
 `do_show(id)`, like Ruby on Rails.
@@ -565,7 +565,7 @@ Try `K8::RackApplication::REQUEST_CLASS = Rack::Request` and
 `K8::RackApplication::RESPONSE_CLASS = Rack::Response`.
 
 
-#### Why does `@req.multipart` returns two Hash objects?
+#### Why does `@req.multipart` return two Hash objects?
 
 Because in order NOT to mix string objects and file objects in a hash.
 
@@ -580,7 +580,7 @@ p str_params['name'].strip
 p str_params.merge(file_params)
 ```
 
-In contrast, `Rack::Request#POST()` may contains both string and file.
+In contrast, `Rack::Request#POST()` may contain both string and file.
 
 ```ruby
 req = Rack::Request.new(env)
@@ -596,9 +596,9 @@ Because `@req.multipart` returns two Hash objects. See above section.
 
 #### Why does `@req.params` raise error for JSON data?
 
-Because both `@req.query` and `@req.form` returns a Hash object containing
+Because both `@req.query` and `@req.form` return a Hash object containing
 only string values, but `@req.json` returns a Hash object containing
-non-string values sucha as integer or boolean.
+non-string values such as integer or boolean.
 
 Use `@req.json` instead of `@req.params` for JSON data.
 

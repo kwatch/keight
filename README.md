@@ -134,11 +134,11 @@ Command `k8rb`
 Keight.rb provides `k8rb`.
 
 * `k8rb project myapp1` creates new project.  
-  (Note: This is equvarent to `boilerpl8 github:kwatch/keight-ruby myapp1`.)
+  (Note: This is equivalent to `boilerpl8 github:kwatch/keight-ruby myapp1`.)
 
 * `k8rb cdnjs -d static/lib jquery 3.1.0` downloads jQuery files
   from cdnjs.com and stores into `static/lib` directory.  
-  (Note: This is equivarent to `cdnget cdnjs jquery 3.1.0 static/lib`.)
+  (Note: This is equivalent to `cdnget cdnjs jquery 3.1.0 static/lib`.)
 
 `k8rb` command is provided mainly for backward compatibility.
 You can use [boilerpl8](https://github.com/kwatch/boilerpl8/tree/ruby)

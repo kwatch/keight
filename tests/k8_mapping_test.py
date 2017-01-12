@@ -80,7 +80,7 @@ class NewsAction(Action):
     return name
 
 def remove_pyfiles(name):
-    import shutil
+    import os, shutil
     if os.path.exists(name):
         shutil.rmtree(name)
 
@@ -92,7 +92,8 @@ def clear_modules(name):
 ##
 create_pyfiles("tmp1")
 import atexit
-atexit.register(lambda: remove_pyfiles("tmp1"))
+#atexit.register(lambda: remove_pyfiles("tmp1"))   # error in Py2.7 (why?)
+atexit.register(lambda fn=remove_pyfiles: fn("tmp1"))
 ##
 
 

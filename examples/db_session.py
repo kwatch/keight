@@ -11,18 +11,21 @@ from keight import on
 
 class Controller(k8.Action):
 
-    def run_action(self, action_func, action_args):
-        try:
-            # self.db = create_db()
-            # self.db.begin()
-            content = super(Controller, self).run_action(action_func, action_args)
+    def before_action(self):
+        # self.db = create_db()
+        # self.db.begin()
+        print("start session")
+        super(Controller, self).before_action()
+
+    def after_action(self, ex):
+        if not ex:
+            print("commit")
             # self.db.commit()
-            return content
-        except Exception as ex:
+            pass
+        else:
+            print("rollback")
             # self.db.rollback()
-            import traceback
-            traceback.print_exc()
-            raise
+            pass
 
 
 class WelcomeAction(Controller):

@@ -931,7 +931,7 @@ class ActionRexpMapping(ActionMapping):
         #; [!wduo6] returns None when not found.
         m = self._variable_rexp.match(req_urlpath)
         #m = self._variable_rexp_match(req_urlpath)
-        if m is None:
+        if m is None or len(m.groups()) == 0:
             return None
         idx = m.groups().index('')
         action_class, action_methods, upath_rexp = self._variable_entries[idx]

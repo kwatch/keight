@@ -11,10 +11,12 @@
 __all__ = (
     'PY2', 'PY3', 'U', 'B', 'S',
     'on', 'mapping',
-    'ActionMapping', 'ActionEagerMapping', 'ActionLazyMapping',
-    'BaseAction', 'Action', 'Request', 'Response',
+    'ActionMapping', 'ActionRexpMapping', 'ActionRexpLazyMapping', 'ActionTrieMapping', 'ActionTrieLazyMapping',
+    'BaseAction', 'Action',
     'WSGIApplication',
     'HttpException',
+    'KeightError', 'ActionMappingError', 'UnknownHttpStatusCodeError',
+    'HTTP_STATUS_DICT', 'UploadedFile',
 )
 
 import sys, os, re, json, traceback

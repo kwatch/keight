@@ -1,42 +1,14 @@
 import sys, os, re
 from kook.utils import glob2
 
-test_files = [
-    'test_multipart.py',
-    'test_core.py',
-    'test_common.py',
-    'test_app.py',
-    'test_handler.py',
-    'test_controller.py',
-    'test_router.py',
-    'test_session.py',
-    'test_util.py',
-    'test_debug.py',
-    'test_form.py',
-]
-
-
-def _check_test_files():
-    actual_test_files = [ x.replace('tests/', '') for x in glob2('tests/test_*.py') ]
-    set1 = set(test_files)
-    set2 = set(actual_test_files)
-    if set1 != set2:
-        sys.stderr.write("\033[0;31m*** debug: set1-set2=%r\033[0m\n" % (set1-set2))
-        sys.stderr.write("\033[0;31m*** debug: set2-set1=%r\033[0m\n" % (set2-set1))
-        raise RuntimeException("You must update 'test_files' variable")
-
 
 @recipe
+@spices("-s STYLE: '-sv'(verbose), '-ss'(simple), '-sp'(plain)")
 def task_test(c, *args, **kwargs):
-    _check_test_files()
-    if args:
-        targets = [ "tests/test_%s.py" % x for x in args ]
-    else:
-        targets = [ "tests/%s" % x for x in test_files ]
-    #system("python " + ' '.join(targets))
-    for t in targets:
-        #system("%s %s" % (sys.executable, t))
-        os.system("%s %s" % (sys.executable, t))
+    target = ' '.join(args or ('tests',))
+    style = kwargs.get('s') or 'v'
+    os.environ['PYTHONPATH'] = '.'
+    system(c%"python tests/oktest.py -s$(style) $(target)")
 
 
 @recipe
@@ -124,7 +96,6 @@ def task_editorkicker(c, *args, **kwargs):
 ###
 
 import sys, re
-import keight as k8
 
 @recipe
 def task_form(c, *args, **kwargs):

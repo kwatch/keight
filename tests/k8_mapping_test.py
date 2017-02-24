@@ -587,6 +587,19 @@ class ActionRexpMapping_Test(object):
             ok (am.lookup('/api/book')) == None
             ok (am.lookup('/api/authors/123/456')) == None
 
+        @test("[!viut2] returns None when not matched.")
+        def _(self, am):
+            class HelloAPI(k8.Action):
+                @on('GET', r'')
+                def do_index(self): pass
+            mapping_list = [
+                (r'/api', [
+                    (r'/hello', HelloAPI),
+                ]),
+            ]
+            am = self.provide_am(mapping_list)
+            ok (am.lookup('/api')) == None
+
 
     with subject('#__iter__()'):
 

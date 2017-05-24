@@ -279,14 +279,17 @@ def _load_class(string):
     ## ex:
     ##   cls = _load_class("foo.bar.BazClass")
     ##   print(cls.__name__)   #=> 'BazClass'
-    #; [!xkimv] loads module object which contains Class object.
+    #; [!hwvc4] finds class object from globals when no module specified.
     idx = string.rfind('.')
     if idx < 0:
-        module_path = None
-        class_name  = string
-    else:
-        module_path = string[:idx]
-        class_name  = string[idx+1:]
+        if PY3:
+            import builtins
+        if PY2:
+            import __builtin__ as builtins
+        return getattr(builtins, string)
+    #; [!xkimv] loads module object which contains Class object.
+    module_path = string[:idx]
+    class_name  = string[idx+1:]
     mod = _load_module(module_path)
     #; [!9nvnz] returns class object.
     #; [!jq5wu] returns None when class not found.

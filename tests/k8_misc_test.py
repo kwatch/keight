@@ -85,6 +85,11 @@ class misc_Test(object):
             cls = k8._load_class(basedir + ".foo.bar.hello.XXX")
             ok (cls) == None
 
+        @test("[!hwvc4] finds class object from globals when no module specified.")
+        def _(self):
+            cls = k8._load_class("ValueError")
+            ok (cls).is_(ValueError)
+
 
 
 if __name__ == '__main__':

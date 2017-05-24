@@ -248,7 +248,10 @@ def _re_escape(text):
 
 
 def _create_module(module_name, **kwargs):
-    """ex. mod = create_module('keight.wsgi')"""
+    ## ex:
+    ##   mod = create_module('keight.wsgi', X=1, Y=2)
+    ##   print(mod.X)   #=> 1
+    #; [!dacsh] creates new module object and returns it.
     try:
         mod = type(sys)(module_name)
     except:    # on Jython 2.5.2
@@ -256,11 +259,16 @@ def _create_module(module_name, **kwargs):
         mod = imp.new_module(module_name)
     mod.__file__ = __file__
     mod.__dict__.update(kwargs)
+    #; [!0k2on] registers module object created into sys.modules.
     sys.modules[module_name] = mod
     return mod
 
 
 def _load_module(string):
+    ## ex:
+    ##   mod = _load_module("foo.bar.baz")
+    ##   print(mod.__name__)   #=> 'foo.bar.baz'  (!= 'foo')
+    #; [!z4rh2] returns the child module object instead of parent module.
     mod = __import__(string)
     for x in string.split('.')[1:]:
         mod = getattr(mod, x)
@@ -268,6 +276,10 @@ def _load_module(string):
 
 
 def _load_class(string):
+    ## ex:
+    ##   cls = _load_class("foo.bar.BazClass")
+    ##   print(cls.__name__)   #=> 'BazClass'
+    #; [!xkimv] loads module object which contains Class object.
     idx = string.rfind('.')
     if idx < 0:
         module_path = None
@@ -276,6 +288,8 @@ def _load_class(string):
         module_path = string[:idx]
         class_name  = string[idx+1:]
     mod = _load_module(module_path)
+    #; [!9nvnz] returns class object.
+    #; [!jq5wu] returns None when class not found.
     return getattr(mod, class_name, None)
 
 

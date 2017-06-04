@@ -3,12 +3,31 @@ from kook.utils import glob2
 
 
 @recipe
-@spices("-s STYLE: '-sv'(verbose), '-ss'(simple), '-sp'(plain)")
+@spices("-s STYLE: '-sv'(verbose), '-ss'(simple), '-sp'(plain)",
+        "--all: run on multi version (requires 'versionswitcher')")
 def task_test(c, *args, **kwargs):
     target = ' '.join(args or ('tests',))
-    style = kwargs.get('s') or 'v'
+    target = ' '.join(args or ('tests',))
     os.environ['PYTHONPATH'] = '.'
-    system(c%"python tests/oktest.py -s$(style) $(target)")
+    if not kwargs.get('all'):
+        style = kwargs.get('s') or 'v'
+        system(c%"python tests/oktest.py -s$(style) $(target)")
+    else:
+        style = kwargs.get('s') or 'p'
+        try:
+            with open("test-all.sh", "w") as f:
+                f.write(c%r"""
+                    . ~/.vs/bootstrap.sh
+                    for pyver in 2.7 3.3 3.4 3.5 3.6; do
+                      vs python $pyver > /dev/null
+                      version=`python --version 2>&1`
+                      echo -n "[$version] "
+                      PYTHONPATH=. python tests/oktest.py -sp tests
+                    done
+                """)
+            system_f(c%"bash test-all.sh")
+        finally:
+            rm_f("test-all.sh")
 
 
 @recipe

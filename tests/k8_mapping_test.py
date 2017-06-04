@@ -7,6 +7,7 @@ from oktest import ok, test, skip, todo, subject, situation, at_end
 
 import keight as k8
 from keight import on, mapping
+from keight import PY3, PY2
 
 
 def provide_name(self):
@@ -443,6 +444,18 @@ class ActionMapping_Test(object):
             ok (val).is_a(type)
             ok (issubclass(val, k8.Action)) == True
             ok (val.__name__) == "HelloAPI"
+
+        @test("[!ix8e0] don't catch ImportError when importing action module.")
+        def _(self, am, classstr):
+            with open("tmp1/api/hello_ix8e0.py", "w") as f:
+                f.write("import x.y.z")
+                f.flush()
+            def fn():
+                am._load_action_class("tmp1.api.hello_ix8e0.Hello")
+            if PY3:
+                ok (fn).raises(ImportError, "No module named 'x'")
+            elif PY2:
+                ok (fn).raises(ImportError, "No module named x.y.z")
 
         @test("[!7iso7] raises ValueError when failed to load specified class.", tag="gzlsn")
         def _(self, am):

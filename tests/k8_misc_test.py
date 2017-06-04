@@ -13,10 +13,18 @@ if PY3:
     xrange = range
 
 
+def _clear_import_cache():
+    import importlib
+    try:
+        importlib.invalidate_caches()   # Python 3.3 or later
+    except AttributeError:
+        pass
+
 
 class misc_Test(object):
 
     def provide_dummies(self, basedir):
+        _clear_import_cache()
         self._basedir = basedir
         os.makedirs(basedir + "/foo/bar")
         at_end(lambda: shutil.rmtree(self._basedir))
@@ -29,6 +37,9 @@ class misc_Test(object):
             f.write("class Hello(object):\n")
             f.write("  def hello(self):\n")
             f.write("    return 'Hello, world!'\n")
+
+    def release_dummies(self, dummies):
+        _clear_import_cache()
 
 
     with subject('_create_module()'):

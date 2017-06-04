@@ -89,6 +89,14 @@ def clear_modules(name):
         if key.startswith(name):
             del sys.modules[key]
 
+def clear_module_cache():
+    import importlib
+    try:
+        importlib.invalidate_caches()   # Python 3.3 or later
+    except AttributeError:
+        pass
+
+
 ##
 create_pyfiles("tmp1")
 import atexit
@@ -130,6 +138,9 @@ def validate_lookup(am, lazy=False, argstype=dict):
 
 
 class K8_Test(object):
+
+    def after(self):
+        clear_module_cache()
 
 
     with subject('on()'):
@@ -274,6 +285,9 @@ class HelloActionMapping(k8.ActionMapping):
 
 
 class ActionMapping_Test(object):
+
+    def after(self):
+        clear_module_cache()
 
     def provide_am(self):
         return HelloActionMapping()
@@ -504,6 +518,9 @@ class AuthorsAction(k8.Action):
 
 class ActionRexpMapping_Test(object):
 
+    def after(self):
+        clear_module_cache()
+
     def provide_mapping_list(self):
         return [
             ('/api', [
@@ -631,6 +648,9 @@ class ActionRexpMapping_Test(object):
 
 class ActionRexpLazyMapping_Test(object):
 
+    def after(self):
+        clear_module_cache()
+
     def provide_mapping_list(self, name):
         return [
             ('/api', [
@@ -732,6 +752,7 @@ class ActionTrieMapping_Test(object):
         return k8.ActionTrieMapping(mapping_list, lazy=lazy)
 
     def after(self):
+        clear_module_cache()
         clear_modules(provide_name(self))
 
 

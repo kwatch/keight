@@ -76,25 +76,6 @@ class misc_Test(object):
             ok (mod_baz.__name__) == basedir + ".foo.bar.baz"
             ok (basedir + ".foo.bar.baz").in_(sys.modules)
 
-        @test("[!x3wg8] returns None when module not found.")
-        def _(self, dummies, basedir="test_x3wg8"):
-            def fn():
-                mod = k8._load_module(basedir + ".xxx.yyy.zzz")
-            ok (fn).not_raise(Exception)
-            mod = k8._load_module(basedir + ".xxx.yyy.zzz")
-            ok (mod) == None
-
-        @test("[!uiupn] re-raises ImportError except module not found.")
-        def _(self, dummies, basedir="tset_uiupn"):
-            with open(basedir + "/foo/bar/hello2.py", 'w') as f:
-                f.write("import xxx.yyy.zzz")
-            def fn():
-                k8._load_module(basedir + ".foo.bar.hello2")
-            if PY3:
-                ok (fn).raises(ImportError, "No module named 'xxx'")
-            elif PY2:
-                ok (fn).raises(ImportError, "No module named xxx.yyy.zzz")
-
 
     with subject('_load_class()'):
 
@@ -109,11 +90,6 @@ class misc_Test(object):
             cls = k8._load_class(basedir + ".foo.bar.hello.Hello")
             ok (cls).is_a(type(self.__class__))
             ok (cls.__name__) == "Hello"
-
-        @test("[!g77mm] returns None when module not found.")
-        def _(self, dummies, basedir="test_g77mm"):
-            cls = k8._load_class(basedir + ".foo.bar.hello.Homhom")
-            ok (cls) == None
 
         @test("[!jq5wu] returns None when class not found.")
         def _(self, dummies, basedir="test_jq5wu"):

@@ -269,19 +269,7 @@ def _load_module(string):
     ##   mod = _load_module("foo.bar.baz")
     ##   print(mod.__name__)   #=> 'foo.bar.baz'  (!= 'foo')
     #; [!z4rh2] returns the child module object instead of parent module.
-    try:
-        mod = __import__(string)
-    except ImportError as ex:
-        #; [!x3wg8] returns None when module not found.
-        frame = sys._getframe(0)
-        curr_filename = frame.f_code.co_filename
-        curr_lineno   = frame.f_lineno
-        import traceback
-        tb = traceback.extract_tb(sys.exc_info()[2], None)[-1]
-        if tb[0] == curr_filename and tb[1] == curr_lineno - 5:
-            return None
-        #; [!uiupn] re-raises ImportError except module not found.
-        raise
+    mod = __import__(string)
     for x in string.split('.')[1:]:
         mod = getattr(mod, x)
     return mod
@@ -303,9 +291,6 @@ def _load_class(string):
     module_path = string[:idx]
     class_name  = string[idx+1:]
     mod = _load_module(module_path)
-    #; [!g77mm] returns None when module not found.
-    if mod is None:
-        return None
     #; [!9nvnz] returns class object.
     #; [!jq5wu] returns None when class not found.
     return getattr(mod, class_name, None)
@@ -840,8 +825,10 @@ class ActionMapping(object):
 
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
         #; [!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).
-        #; [!ix8e0] don't catch ImportError when importing action module.
-        action_class = _load_class(class_string)
+        try:
+            action_class = _load_class(class_string)
+        except ImportError:
+            action_class = None
         #; [!7iso7] raises ValueError when failed to load specified class.
         if not action_class:
             raise ValueError("%s: No such module or class." % class_string)

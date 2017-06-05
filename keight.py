@@ -268,8 +268,9 @@ def _load_module(string):
     ## ex:
     ##   mod = _load_module("foo.bar.baz")
     ##   print(mod.__name__)   #=> 'foo.bar.baz'  (!= 'foo')
-    #; [!z4rh2] returns the child module object instead of parent module.
+    #; [!vaqn2] raises ImportError when module not found.
     mod = __import__(string)
+    #; [!z4rh2] returns the child module object instead of parent module.
     for x in string.split('.')[1:]:
         mod = getattr(mod, x)
     return mod
@@ -289,10 +290,19 @@ def _load_class(string):
         return getattr(builtins, string)
     #; [!xkimv] loads module object which contains Class object.
     module_path = string[:idx]
-    class_name  = string[idx+1:]
-    mod = _load_module(module_path)
+    try:
+        mod = _load_module(module_path)
+    except ImportError:
+        #; [!d56p7] returns None when module not found.
+        #; [!ex267] raises ImportError when it is raised in loading module.
+        for frame in traceback.extract_tb(sys.exc_info()[2]):
+            pass
+        if frame[2] == '_load_module':
+            return None
+        raise
     #; [!9nvnz] returns class object.
     #; [!jq5wu] returns None when class not found.
+    class_name  = string[idx+1:]
     return getattr(mod, class_name, None)
 
 

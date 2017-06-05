@@ -76,6 +76,15 @@ class misc_Test(object):
             ok (mod_baz.__name__) == basedir + ".foo.bar.baz"
             ok (basedir + ".foo.bar.baz").in_(sys.modules)
 
+        @test("[!vaqn2] raises ImportError when module not found.")
+        def _(self, dummies, basedir="test_vaqn2"):
+            def fn():
+                k8._load_module(basedir + ".xxx.yyy.zzz")
+            if PY3:
+                ok (fn).raises(ImportError, "No module named 'test_vaqn2.xxx'")
+            elif PY2:
+                ok (fn).raises(ImportError, "No module named xxx.yyy.zzz")
+
 
     with subject('_load_class()'):
 
@@ -90,6 +99,19 @@ class misc_Test(object):
             cls = k8._load_class(basedir + ".foo.bar.hello.Hello")
             ok (cls).is_a(type(self.__class__))
             ok (cls.__name__) == "Hello"
+
+        @test("[!d56p7] returns None when module not found.")
+        def _(self, dummies, basedir="test_d56p7"):
+            cls = k8._load_class(basedir + ".foo.bar.hello2.Hello2")
+            ok (cls) == None
+
+        @test("[!ex267] raises ImportError when it is raised in loading module.")
+        def _(self, dummies, basedir="test_ex267"):
+            with open(basedir + "/foo/bar/hello2.py", "w") as f:
+                f.write("from sys import xxyyzz\n")
+            def fn():
+                k8._load_class(basedir + ".foo.bar.hello2.Hello2")
+            ok (fn).raises(ImportError, re.compile(r"^cannot import name '?xxyyzz'?$"))
 
         @test("[!jq5wu] returns None when class not found.")
         def _(self, dummies, basedir="test_jq5wu"):

@@ -23,6 +23,7 @@ import sys, os, re, json, traceback
 from datetime import datetime
 from random import random
 from time import time
+from contextlib import contextmanager
 hashlib = None
 base64  = None
 
@@ -704,6 +705,39 @@ def mapping(urlpath_pattern, **methods):
 
 
 class On(object):
+
+    _urlpath_pattern = None
+
+    @contextmanager
+    def path(self, urlpath_pattern):
+        """Make specifying urlpath pattern DRY.
+        ex:
+            ## NOT DRY: urlpath pattern appears more than once. Oh...
+            @on('GET', r'/{id:int}.json')
+            def do_show(self, id):
+                ....
+            @on('PUT', r'/{id:int}.json')
+            def do_show(self, id):
+                ....
+
+            ## DRY: urlpath pattern appears only once. Great!
+            with on.path(r'/{id:int}.json'):
+                @on('GET')
+                def do_show(self, id):
+                    ....
+                @on('PUT')
+                def do_update(self, id):
+                    ....
+        """
+        #; [!nhlhs] works with 'with' statement.
+        #; [!fl2hd] (UNDOCUMENTED) allows to nest 'with' statement.
+        path = urlpath_pattern
+        prev = self._urlpath_pattern
+        if prev:
+            path = prev + path
+        self._urlpath_pattern = path
+        yield path
+        self._urlpath_pattern = prev
 
     def __call__(self, request_method, urlpath_pattern=None, **options):
         """maps request path and urlpath pattern with action method.

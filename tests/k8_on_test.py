@@ -142,19 +142,21 @@ class On_Test(object):
                  )
             ]
 
-        @test("[!6tgv3] raises error when both 'on.path()' and 2nd arg specified.")
+        @test("[!kc43q] when both 'on.path()' and 2nd arg are specified, concats them.")
         def _(self):
-            def fn():
-                class HelloAction(k8.Action):
-                    with on.path(r'/{id}'):
-                        @on('GET')
-                        def do_show(self, id):
-                            return "..."
-                        @on('PUT', '.json')
-                        def do_update(self, id):
-                            return "..."
-            expected = "@on('PUT', '.json'): urlpath pattern should be None when using 'with on.path()'."
-            ok (fn).raises(k8.ActionMappingError, expected)
+            class HelloAction(k8.Action):
+                with on.path(r'/{id}'):
+                    @on('GET', '.html')
+                    def do_show_html(self, id):
+                        return "..."
+                    @on('GET', '.json')
+                    def do_show_json(self, id):
+                        return "..."
+            #
+            ok (HelloAction.__mapping__) == [
+                (r'/{id}.html', {'GET': HelloAction.__dict__['do_show_html']}),
+                (r'/{id}.json', {'GET': HelloAction.__dict__['do_show_json']}),
+            ]
 
         @test("[!6iv0b] raises error when neither 'on.path()' nor 2nd arg specified.")
         def _(self):

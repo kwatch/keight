@@ -763,11 +763,11 @@ class On(object):
 
     def _on(self, request_method, urlpath_pattern=None, **options):
         #; [!st0sl] uses urlpath specified by 'on.path()' when 2nd arg is null.
-        #; [!6tgv3] raises error when both 'on.path()' and 2nd arg specified.
+        #; [!kc43q] when both 'on.path()' and 2nd arg are specified, concats them.
         #; [!6iv0b] raises error when neither 'on.path()' nor 2nd arg specified.
         if self._urlpath_pattern is not None:  # when using 'with on.path()'
             if urlpath_pattern is not None:
-                raise ActionMappingError("@on(%r, %r): urlpath pattern should be None when using 'with on.path()'." % (request_method, urlpath_pattern))
+                urlpath_pattern = self._urlpath_pattern + urlpath_pattern
             else:
                 urlpath_pattern = self._urlpath_pattern
         else:                                  # when not using 'with on.path()'

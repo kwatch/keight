@@ -113,6 +113,53 @@ class On_Test(object):
             ]
 
 
+        @test("[!st0sl] uses urlpath specified by 'on.path()' when 2nd arg is null.")
+        def _(self):
+            class HelloAction(k8.Action):
+                with on.path(r'/{id}'):
+                    @on('GET')
+                    def do_show(self, id):
+                        return "..."
+                    @on('PUT')
+                    def do_update(self, id):
+                        return "..."
+            #
+            ok (HelloAction.__mapping__) == [
+                (r'/{id}', {'GET'    : HelloAction.__dict__['do_show'],
+                            'PUT'    : HelloAction.__dict__['do_update'],
+                           }
+                 )
+            ]
+
+        @test("[!6tgv3] raises error when both 'on.path()' and 2nd arg specified.")
+        def _(self):
+            def fn():
+                class HelloAction(k8.Action):
+                    with on.path(r'/{id}'):
+                        @on('GET')
+                        def do_show(self, id):
+                            return "..."
+                        @on('PUT', '.json')
+                        def do_update(self, id):
+                            return "..."
+            expected = "@on('PUT', '.json'): urlpath pattern should be None when using 'with on.path()'."
+            ok (fn).raises(k8.ActionMappingError, expected)
+
+        @test("[!6iv0b] raises error when neither 'on.path()' nor 2nd arg specified.")
+        def _(self):
+            def fn():
+                class HelloAction(k8.Action):
+                    #with on.path(r'/{id}'):
+                        @on('GET', r'/{id}')
+                        def do_show(self, id):
+                            return "..."
+                        @on('PUT')
+                        def do_update(self, id):
+                            return "..."
+            expected = "@on('GET', '/{id}'): urlpath pattern should be None when using 'with on.path()'."
+            ok (fn).raises(k8.ActionMappingError, expected)
+
+
 
 if __name__ == '__main__':
     import oktest

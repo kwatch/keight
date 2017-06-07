@@ -759,6 +759,19 @@ class On(object):
         return self._on(request_method, urlpath_pattern, **options)
 
     def _on(self, request_method, urlpath_pattern=None, **options):
+        #; [!st0sl] uses urlpath specified by 'on.path()' when 2nd arg is null.
+        #; [!6tgv3] raises error when both 'on.path()' and 2nd arg specified.
+        #; [!6iv0b] raises error when neither 'on.path()' nor 2nd arg specified.
+        if self._urlpath_pattern is not None:  # when using 'with on.path()'
+            if urlpath_pattern is not None:
+                raise ActionMappingError("@on(%r, %r): urlpath pattern should be None when using 'with on.path()'." % (request_method, urlpath_pattern))
+            else:
+                urlpath_pattern = self._urlpath_pattern
+        else:                                  # when not using 'with on.path()'
+            if urlpath_pattern is not None:
+                pass
+            else:
+                raise ActionMappingError("on(%r): requires urlpath pattern as 2nd argument." % (request_method,))
         #; [!i47p3] maps request path and urlpath pattern with action method.
         d = _get_mapping_dict(urlpath_pattern, 3)
         def deco(func):

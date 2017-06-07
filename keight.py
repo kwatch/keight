@@ -736,8 +736,11 @@ class On(object):
         if prev:
             path = prev + path
         self._urlpath_pattern = path
-        yield path
-        self._urlpath_pattern = prev
+        try:
+            yield path
+        finally:
+            #; [!nbcq8] clears urlpath data even if exception raised.
+            self._urlpath_pattern = prev
 
     def __call__(self, request_method, urlpath_pattern=None, **options):
         """maps request path and urlpath pattern with action method.

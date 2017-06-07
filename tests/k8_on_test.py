@@ -36,6 +36,17 @@ class On_Test(object):
                 ok (on._urlpath_pattern) == '/foo'
             ok (on._urlpath_pattern) == None
 
+        @test("[!nbcq8] clears urlpath data even if exception raised.")
+        def _(self):
+            ok (on._urlpath_pattern) == None
+            try:
+                with on.path('/foo'):
+                    ok (on._urlpath_pattern) == '/foo'
+                    1/0
+            except ZeroDivisionError:
+                pass
+            ok (on._urlpath_pattern) == None
+
 
     with subject('#__call__()'):
 
@@ -156,7 +167,7 @@ class On_Test(object):
                         @on('PUT')
                         def do_update(self, id):
                             return "..."
-            expected = "@on('GET', '/{id}'): urlpath pattern should be None when using 'with on.path()'."
+            expected = "on('PUT'): requires urlpath pattern as 2nd argument."
             ok (fn).raises(k8.ActionMappingError, expected)
 
 

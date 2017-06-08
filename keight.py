@@ -23,6 +23,7 @@ import sys, os, re, json, traceback
 from datetime import datetime
 from random import random
 from time import time
+from contextlib import contextmanager
 hashlib = None
 base64  = None
 
@@ -703,47 +704,100 @@ def mapping(urlpath_pattern, **methods):
         d[meth] = func
 
 
-def on(request_method, urlpath_pattern, **options):
-    """maps request path and urlpath pattern with action method.
-    ex:
-        class HelloAction(keight.Action):
+class On(object):
 
-            @on('GET', r'')
-            def do_index(self):
-                return "..."
+    _urlpath_pattern = None
 
-            @on('GET', r'/{id}')
+    @contextmanager
+    def path(self, urlpath_pattern):
+        """Make specifying urlpath pattern DRY.
+        ex:
+            ## NOT DRY: urlpath pattern appears more than once. Oh...
+            @on('GET', r'/{id:int}.json')
             def do_show(self, id):
-                return "..."
+                ....
+            @on('PUT', r'/{id:int}.json')
+            def do_show(self, id):
+                ....
 
-            @on('PUT', r'/{id}')
-            def do_update(self, id):
-                return "..."
-    """
-    return _on(request_method, urlpath_pattern, **options)
+            ## DRY: urlpath pattern appears only once. Great!
+            with on.path(r'/{id:int}.json'):
+                @on('GET')
+                def do_show(self, id):
+                    ....
+                @on('PUT')
+                def do_update(self, id):
+                    ....
+        """
+        #; [!nhlhs] works with 'with' statement.
+        #; [!fl2hd] (UNDOCUMENTED) allows to nest 'with' statement.
+        path = urlpath_pattern
+        prev = self._urlpath_pattern
+        if prev:
+            path = prev + path
+        self._urlpath_pattern = path
+        try:
+            yield path
+        finally:
+            #; [!nbcq8] clears urlpath data even if exception raised.
+            self._urlpath_pattern = prev
 
-def _on(request_method, urlpath_pattern, **options):
-    #; [!i47p3] maps request path and urlpath pattern with action method.
-    d = _get_mapping_dict(urlpath_pattern, 3)
-    def deco(func):
-        #; [!a6xv2] sets keyword args to function as options.
-        func.options = options
-        ActionMapping._validate_request_method(request_method)
-        d[request_method] = func
-        return func
-    return deco
+    def __call__(self, request_method, urlpath_pattern=None, **options):
+        """maps request path and urlpath pattern with action method.
+        ex:
+            class HelloAction(keight.Action):
 
-#; [!2ftjv] @on.GET(), @on.POST(), ... are same as @on('GET'), @on('POST'), ...
-on.GET     = lambda urlpath_pattern, **options: _on('GET',     urlpath_pattern, **options)
-on.POST    = lambda urlpath_pattern, **options: _on('POST',    urlpath_pattern, **options)
-on.PUT     = lambda urlpath_pattern, **options: _on('PUT',     urlpath_pattern, **options)
-on.DELETE  = lambda urlpath_pattern, **options: _on('DELETE',  urlpath_pattern, **options)
-on.PATCH   = lambda urlpath_pattern, **options: _on('PATCH',   urlpath_pattern, **options)
-on.HEAD    = lambda urlpath_pattern, **options: _on('HEAD',    urlpath_pattern, **options)
-on.OPTIONS = lambda urlpath_pattern, **options: _on('OPTIONS', urlpath_pattern, **options)
-on.TRACE   = lambda urlpath_pattern, **options: _on('TRACE',   urlpath_pattern, **options)
-on.LINK    = lambda urlpath_pattern, **options: _on('LINK',    urlpath_pattern, **options)
-on.UNLINK  = lambda urlpath_pattern, **options: _on('UNLINK',  urlpath_pattern, **options)
+                @on('GET', r'')
+                def do_index(self):
+                    return "..."
+
+                @on('GET', r'/{id}')
+                def do_show(self, id):
+                    return "..."
+
+                @on('PUT', r'/{id}')
+                def do_update(self, id):
+                    return "..."
+        """
+        return self._on(request_method, urlpath_pattern, **options)
+
+    def _on(self, request_method, urlpath_pattern=None, **options):
+        #; [!st0sl] uses urlpath specified by 'on.path()' when 2nd arg is null.
+        #; [!kc43q] when both 'on.path()' and 2nd arg are specified, concats them.
+        #; [!6iv0b] raises error when neither 'on.path()' nor 2nd arg specified.
+        if self._urlpath_pattern is not None:  # when using 'with on.path()'
+            if urlpath_pattern is not None:
+                urlpath_pattern = self._urlpath_pattern + urlpath_pattern
+            else:
+                urlpath_pattern = self._urlpath_pattern
+        else:                                  # when not using 'with on.path()'
+            if urlpath_pattern is not None:
+                pass
+            else:
+                raise ActionMappingError("on(%r): requires urlpath pattern as 2nd argument." % (request_method,))
+        #; [!i47p3] maps request path and urlpath pattern with action method.
+        d = _get_mapping_dict(urlpath_pattern, 3)
+        def deco(func):
+            #; [!a6xv2] sets keyword args to function as options.
+            func.options = options
+            ActionMapping._validate_request_method(request_method)
+            d[request_method] = func
+            return func
+        return deco
+
+    #; [!2ftjv] @on.GET(), @on.POST(), ... are same as @on('GET'), @on('POST'), ...
+    def GET    (self, urlpath=None, **kw): return self._on('GET'    , urlpath, **kw)
+    def POST   (self, urlpath=None, **kw): return self._on('POST'   , urlpath, **kw)
+    def PUT    (self, urlpath=None, **kw): return self._on('PUT'    , urlpath, **kw)
+    def DELETE (self, urlpath=None, **kw): return self._on('DELETE' , urlpath, **kw)
+    def PATCH  (self, urlpath=None, **kw): return self._on('PATCH'  , urlpath, **kw)
+    def HEAD   (self, urlpath=None, **kw): return self._on('HEAD'   , urlpath, **kw)
+    def OPTIONS(self, urlpath=None, **kw): return self._on('OPTIONS', urlpath, **kw)
+    def TRACE  (self, urlpath=None, **kw): return self._on('TRACE'  , urlpath, **kw)
+    def LINK   (self, urlpath=None, **kw): return self._on('LINK'   , urlpath, **kw)
+    def UNLINK (self, urlpath=None, **kw): return self._on('UNLINK' , urlpath, **kw)
+
+on = On()
 
 
 class ActionMapping(object):

@@ -365,12 +365,12 @@ class ActionMapping_Test(object):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', False)) == r'^/(?:\d+)$'
 
 
-    with subject('#_load_class()'):
+    with subject('#_load_action_class()'):
 
         def provide_classstr(self):
             return "gzlsn.api.hello.HelloAPI"
 
-        @test("[!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).", tag="gzlsn")
+        @test("[!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).")
         def _(self, am, classstr):
             assert os.path.isfile("tmp1/api/hello.py")
             val = am._load_action_class("tmp1.api.hello.HelloAPI")
@@ -378,14 +378,14 @@ class ActionMapping_Test(object):
             ok (issubclass(val, k8.Action)) == True
             ok (val.__name__) == "HelloAPI"
 
-        @test("[!7iso7] raises ValueError when specified module or class not found", tag="gzlsn")
+        @test("[!7iso7] raises ValueError when specified module or class not found")
         def _(self, am):
             fn = lambda: am._load_action_class("xxx.api.hello.HelloAPI")
             ok (fn).raises(ValueError, "xxx.api.hello.HelloAPI: No such module or class.")
             fn = lambda: am._load_action_class("tmp1.api.hello.HelloAPIxxx")
             ok (fn).raises(ValueError, "tmp1.api.hello.HelloAPIxxx: No such module or class.")
 
-        @test("[!bv2ps] don't catch ImportError raised in specified module.", tag="gzlsn")
+        @test("[!bv2ps] don't catch ImportError raised in specified module.")
         def _(self, am):
             fn = lambda: am._load_action_class("tmp1.api.hello9.HelloAPI")
             if PY3:
@@ -393,17 +393,17 @@ class ActionMapping_Test(object):
             elif PY2:
                 ok (fn).raises(ImportError, "No module named on")
 
-        @test("[!4ci2t] raises TypeError when value is not a class.", tag="gzlsn")
+        @test("[!4ci2t] raises TypeError when value is not a class.")
         def _(self, am, classstr):
             fn = lambda: am._load_action_class("tmp1.api.hello.k8")
             ok (fn).raises(TypeError, re.compile(r"^tmp1\.api\.hello\.k8: Action class expected but got <module 'keight' from '.*?'>.$"))
 
-        @test("[!9861d] raises TypeError when value is not a subclass of BaseAction class.", tag="gzlsn")
+        @test("[!9861d] raises TypeError when value is not a subclass of BaseAction class.")
         def _(self, am, classstr):
             fn = lambda: am._load_action_class("tmp1.api.hello.HelloAPI2")
             ok (fn).raises(TypeError, "tmp1.api.hello.HelloAPI2: Action class expected.")
 
-        @test("[!e3qw0] raises ValueError when no action mehtods.", tag="gzlsn")
+        @test("[!e3qw0] raises ValueError when no action mehtods.")
         def _(self, am, classstr):
             fn = lambda: am._load_action_class("tmp1.api.hello.HelloAPI3")
             ok (fn).raises(TypeError, "tmp1.api.hello.HelloAPI3: No action methods.")

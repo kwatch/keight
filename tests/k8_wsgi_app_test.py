@@ -104,6 +104,12 @@ class Application_Test(object):
             app = k8.wsgi.Application(mapping_list, lazy=True, engine='statemachine')
             ok (app._mapping).is_a(k8.ActionTrieLazyMapping)
 
+        @test("[!ah3gh] if mapping_list is an ActionMapping object, use it as is.")
+        def _(self, mapping_list):
+            mapping_obj = k8.ActionTrieLazyMapping(mapping_list)
+            app = k8.wsgi.Application(mapping_obj)
+            ok (app._mapping).is_(mapping_obj)
+
 
     with subject('#lookup()'):
 

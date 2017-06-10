@@ -1677,14 +1677,16 @@ class WSGIApplication(object):
     RESPONSE = WSGIResponse
 
     def __init__(self, mapping_list, _=None, lazy=False, engine='rexp'):
-        #; [!us151] accepts mapping list and creates ActionMapping object.
         if _ is not None:
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
+        #; [!ah3gh] if mapping_list is an ActionMapping object, use it as is.
         if isinstance(mapping_list, ActionMapping):
             self._mapping = mapping_list
-        index = (lazy and 1 or 0) | (engine == 'statemachine' and 2 or 0)
-        klass = (ActionRexpMapping, ActionRexpLazyMapping, ActionTrieMapping, ActionTrieLazyMapping)[index]
-        self._mapping = klass(mapping_list)
+        #; [!us151] accepts mapping list and creates ActionMapping object.
+        else:
+            index = (lazy and 1 or 0) | (engine == 'statemachine' and 2 or 0)
+            klass = (ActionRexpMapping, ActionRexpLazyMapping, ActionTrieMapping, ActionTrieLazyMapping)[index]
+            self._mapping = klass(mapping_list)
 
     def lookup(self, req_urlpath):
         """Delegates to ActionMapping#lookup()."""

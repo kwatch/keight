@@ -892,11 +892,9 @@ class ActionMapping(object):
 
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
         #; [!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).
-        try:
-            action_class = _load_class(class_string)
-        except ImportError:
-            action_class = None
-        #; [!7iso7] raises ValueError when failed to load specified class.
+        #; [!bv2ps] don't catch ImportError raised in specified module.
+        action_class = _load_class(class_string)
+        #; [!7iso7] raises ValueError when specified module or class not found.
         if not action_class:
             raise ValueError("%s: No such module or class." % class_string)
         #; [!4ci2t] raises TypeError when value is not a class.

@@ -7,6 +7,7 @@ from oktest import ok, test, skip, todo, subject, situation, at_end
 
 import keight as k8
 from keight import on, mapping
+from keight import PY3, PY2
 
 
 def provide_name(self):
@@ -57,8 +58,8 @@ class ItemsAction(Action):
     def do_delete(self, id):
         return "<p>delete(%r)</p>" % id
 """)
-        with open(name+"/api/news.py", 'w') as f:
-            f.write(r"""
+    with open(name+"/api/news.py", 'w') as f:
+        f.write(r"""
 from keight import on, Action
 class NewsAction(Action):
     @on('GET', r'')
@@ -76,6 +77,15 @@ class NewsAction(Action):
     @on('DELETE', r'/{id}')
     def do_delete(self, id):
         return "<p>delete(%r)</p>" % id
+""")
+    with open(name+"/api/hello9.py", 'w') as f:
+        f.write(r"""
+import keight as k8, on   #=> ImportError: No module named 'on'
+
+class Hello9Action(k8.Action):
+    @on('GET', r'')
+    def do_hello(self):
+        return "<p>hello</p>"
 """)
     return name
 
@@ -368,12 +378,20 @@ class ActionMapping_Test(object):
             ok (issubclass(val, k8.Action)) == True
             ok (val.__name__) == "HelloAPI"
 
-        @test("[!7iso7] raises ValueError when failed to load specified class.", tag="gzlsn")
+        @test("[!7iso7] raises ValueError when specified module or class not found", tag="gzlsn")
         def _(self, am):
             fn = lambda: am._load_action_class("xxx.api.hello.HelloAPI")
             ok (fn).raises(ValueError, "xxx.api.hello.HelloAPI: No such module or class.")
             fn = lambda: am._load_action_class("tmp1.api.hello.HelloAPIxxx")
             ok (fn).raises(ValueError, "tmp1.api.hello.HelloAPIxxx: No such module or class.")
+
+        @test("[!bv2ps] don't catch ImportError raised in specified module.", tag="gzlsn")
+        def _(self, am):
+            fn = lambda: am._load_action_class("tmp1.api.hello9.HelloAPI")
+            if PY3:
+                ok (fn).raises(ImportError, "No module named 'on'")
+            elif PY2:
+                ok (fn).raises(ImportError, "No module named on")
 
         @test("[!4ci2t] raises TypeError when value is not a class.", tag="gzlsn")
         def _(self, am, classstr):

@@ -4,7 +4,7 @@
 ### keight.py -- fast, compact, and easy to understand framework for Python
 ###
 ### $Release: 0.0.0 $
-### $Copyright: copyright(c) 2013-2016 kuwata-lab.com all rights reserved $
+### $Copyright: copyright(c) 2010-2017 kuwata-lab.com all rights reserved $
 ### $License: MIT License $
 ###
 

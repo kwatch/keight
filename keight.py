@@ -1684,9 +1684,7 @@ class WSGIApplication(object):
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
         if isinstance(mapping_list, ActionMapping):
             self._mapping = mapping_list
-        index = 0
-        if lazy: index += 1
-        if engine == 'statemachine': index += 2
+        index = (lazy and 1 or 0) | (engine == 'statemachine' and 2 or 0)
         klass = (ActionRexpMapping, ActionRexpLazyMapping, ActionTrieMapping, ActionTrieLazyMapping)[index]
         self._mapping = klass(mapping_list)
 

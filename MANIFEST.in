@@ -1,0 +1,4 @@
+include MIT-LICENSE README.txt setup.py Kookbook.py
+include keight.py
+include bench/bench.py bench/requirements.txt
+recursive-include tests *.py data/*

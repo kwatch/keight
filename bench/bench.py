@@ -352,10 +352,33 @@ class StartResponse(object):
 
 with Benchmarker(loop=100000, cycle=5, extra=2) as bench:
 
+    ## handle '--only=...' and '--except=...' options
+    availables = VERSIONS.keys()
+    if bench.properties.get('only'):
+        only_ = [ s.strip() for s in bench.properties['only'].split(',') ]
+        unknowns = set(only_) - set(availables)
+        for x in unknowns:
+            raise ValueError("--only=%s: unknown target name (avalable: %s)" % \
+                                 (x, ", ".join(availables)))
+        targets = only_
+    elif bench.properties.get('except'):
+        except_ = [ s.strip() for s in bench.properties['except'].split(',') ]
+        unknowns = set(except_) - set(availables)
+        for x in unknowns:
+            raise ValueError("--except=%s: no such target (avalable: %s)" % \
+                                 (x, ", ".join(availables)))
+        targets = [ x for x in availables if x not in set(except_) ]
+    else:
+        targets = availables
+
+    ## show framework versions
     print("")
-    for k, v in VERSIONS.items():
+    for k in targets:
+        v = VERSIONS[k]
         print("## %-20s: %s" % (k, v or '(not installed)'))
     print("")
+
+    ## start benchmark
 
     @bench(None)
     def _(bm):
@@ -366,72 +389,79 @@ with Benchmarker(loop=100000, cycle=5, extra=2) as bench:
         for _ in bm:
             start_response(status, headers)
 
-    k8rexp_app = build_keight_app(engine='rexp')
-    for upath in URLPATHS:
-        @bench('keight(rexp): %s' % upath)
-        def _(bm, upath=upath, app=k8rexp_app):
-            if app is None: raise Skip("not installed")
-            environ = new_environ('GET', upath)
-            start_response = StartResponse()
-            for _ in bm:
-                body = app(environ, start_response)
+    if 'keight' in targets:
+        k8rexp_app = build_keight_app(engine='rexp')
+        for upath in URLPATHS:
+            @bench('keight(rexp): %s' % upath)
+            def _(bm, upath=upath, app=k8rexp_app):
+                if app is None: raise Skip("not installed")
+                environ = new_environ('GET', upath)
+                start_response = StartResponse()
+                for _ in bm:
+                    body = app(environ, start_response)
 
-    k8trie_app = build_keight_app(engine='statemachine')
-    for upath in URLPATHS:
-        @bench('keight(trie): %s' % upath)
-        def _(bm, upath=upath, app=k8trie_app):
-            if app is None: raise Skip("not installed")
-            environ = new_environ('GET', upath)
-            start_response = StartResponse()
-            for _ in bm:
-                body = app(environ, start_response)
+    if 'keight' in targets:
+        k8trie_app = build_keight_app(engine='statemachine')
+        for upath in URLPATHS:
+            @bench('keight(trie): %s' % upath)
+            def _(bm, upath=upath, app=k8trie_app):
+                if app is None: raise Skip("not installed")
+                environ = new_environ('GET', upath)
+                start_response = StartResponse()
+                for _ in bm:
+                    body = app(environ, start_response)
 
-    falcon_app = build_falcon_app()
-    for upath in URLPATHS:
-        @bench('falcon: %s' % upath)
-        def _(bm, upath=upath, app=falcon_app):
-            if app is None: raise Skip("not installed")
-            environ = new_environ('GET', upath)
-            start_response = StartResponse()
-            for _ in bm:
-                body = app(environ, start_response)
+    if 'falcon' in targets:
+        falcon_app = build_falcon_app()
+        for upath in URLPATHS:
+            @bench('falcon: %s' % upath)
+            def _(bm, upath=upath, app=falcon_app):
+                if app is None: raise Skip("not installed")
+                environ = new_environ('GET', upath)
+                start_response = StartResponse()
+                for _ in bm:
+                    body = app(environ, start_response)
 
-    bottle_app = build_bottle_app()
-    for upath in URLPATHS:
-        @bench('bottle: %s' % upath)
-        def _(bm, upath=upath, app=bottle_app):
-            if app is None: raise Skip("not installed")
-            environ = new_environ('GET', upath)
-            start_response = StartResponse()
-            for _ in bm:
-                body = app(environ, start_response)
+    if 'bottle' in targets:
+        bottle_app = build_bottle_app()
+        for upath in URLPATHS:
+            @bench('bottle: %s' % upath)
+            def _(bm, upath=upath, app=bottle_app):
+                if app is None: raise Skip("not installed")
+                environ = new_environ('GET', upath)
+                start_response = StartResponse()
+                for _ in bm:
+                    body = app(environ, start_response)
 
-    tornado_app = build_tornado_app()
-    for upath in URLPATHS:
-        @bench('tornado: %s' % upath)
-        def _(bm, upath=upath, app=tornado_app):
-            if app is None: raise Skip("not installed")
-            environ = new_environ('GET', upath)
-            start_response = StartResponse()
-            for _ in bm:
-                body = app(environ, start_response)
+    if 'tornado' in targets:
+        tornado_app = build_tornado_app()
+        for upath in URLPATHS:
+            @bench('tornado: %s' % upath)
+            def _(bm, upath=upath, app=tornado_app):
+                if app is None: raise Skip("not installed")
+                environ = new_environ('GET', upath)
+                start_response = StartResponse()
+                for _ in bm:
+                    body = app(environ, start_response)
 
-    flask_app = build_flask_app()
-    for upath in URLPATHS:
-        @bench('flask: %s' % upath)
-        def _(bm, upath=upath, app=flask_app):
-            if app is None: raise Skip("not installed")
-            environ = new_environ('GET', upath)
-            start_response = StartResponse()
-            for _ in bm:
-                body = app(environ, start_response)
+    if 'flask' in targets:
+        flask_app = build_flask_app()
+        for upath in URLPATHS:
+            @bench('flask: %s' % upath)
+            def _(bm, upath=upath, app=flask_app):
+                if app is None: raise Skip("not installed")
+                environ = new_environ('GET', upath)
+                start_response = StartResponse()
+                for _ in bm:
+                    body = app(environ, start_response)
 
-    pyramid_app = build_pyramid_app()
-    for upath in URLPATHS:
-        @bench('pyramid: %s' % upath)
-        def _(bm, upath=upath, app=pyramid_app):
-            if app is None: raise Skip("not installed")
-            environ = new_environ('GET', upath)
-            start_response = StartResponse()
-            for _ in bm:
-                body = app(environ, start_response)
+    if 'pyramid' in targets:
+        pyramid_app = build_pyramid_app()
+        for upath in URLPATHS:
+            @bench('pyramid: %s' % upath)
+            def _(bm, upath=upath, app=pyramid_app):
+                if app is None: raise Skip("not installed")
+                environ = new_environ('GET', upath)
+                start_response = StartResponse()
+                for _ in bm:
+                    body = app(environ, start_response)

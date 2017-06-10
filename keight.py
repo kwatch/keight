@@ -43,6 +43,9 @@ if PY3:
     from urllib.parse import quote   as _quote  , quote_plus   as _quote_plus
     from urllib.parse import unquote as _unquote, unquote_plus as _unquote_plus
 
+
+__release__ = '$Release: 0.0.0 $'.split()[1]
+
 ENCODING='utf-8'
 
 def U(v, encoding=None):

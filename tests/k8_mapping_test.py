@@ -535,6 +535,22 @@ class ActionRexpMapping_Test(object):
                 ),
             }
 
+        @test("[!tzw5a] adds 'method' and 'urlpath()' to action functions.")
+        def _(self, mapping_list):
+            am = k8.ActionRexpMapping(mapping_list)
+            t = am.lookup('/api/authors')
+            klass = t[0]
+            ok (klass.do_index.method)        == 'GET'
+            ok (klass.do_index.urlpath())     == '/api/authors'
+            ok (klass.do_create.method)       == 'POST'
+            ok (klass.do_create.urlpath())    == '/api/authors'
+            ok (klass.do_show.method)         == 'GET'
+            ok (klass.do_show.urlpath(123))   == '/api/authors/123'
+            ok (klass.do_update.method)       == 'PUT'
+            ok (klass.do_update.urlpath(123)) == '/api/authors/123'
+            ok (klass.do_delete.method)       == 'DELETE'
+            ok (klass.do_delete.urlpath(123)) == '/api/authors/123'
+
 
     with subject('#lookup()'):
 

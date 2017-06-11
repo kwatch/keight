@@ -1022,6 +1022,12 @@ class ActionRexpMapping(ActionMapping):
                 tupl = (action_class, action_methods, {})
                 self._fixed_entries[full_upath_pat] = tupl
             self._all_entries.append((full_upath_pat, action_class, action_methods))
+            #; [!tzw5a] adds 'method' and 'urlpath()' to action functions.
+            func = self._upath_pat2func(full_upath_pat)
+            for meth, fn in action_methods.items():
+                fn.method  = meth
+                fn.urlpath = func
+        #
         if rexp_strs:
             if len(rexp_strs) == 1:
                 rexp_buf.append(rexp_strs[0])

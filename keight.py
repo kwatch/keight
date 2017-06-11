@@ -890,6 +890,34 @@ class ActionMapping(object):
         buf.extend((_re_escape(pat[pos:]), end))
         return "".join(buf)
 
+    def _upath_pat2func(self, urlpath_pattern):
+        #; [!1heks] builds function object from urlpath pattern and returns it.
+        #; [!lelrm] can handle '%' correctly.
+        pnames = []
+        buf = []
+        pos = 0
+        for m in self.URLPATH_PARAMETER_REXP.finditer(urlpath_pattern):
+            text = urlpath_pattern[pos:m.start(0)]
+            pos = m.end(0)
+            pname = m.group(1)    # urlpath parameter name
+            buf.append(text.replace('%', '%%'))
+            buf.append("%s")
+            pnames.append(pname)
+        if pos == 0:
+            #def let(upath):
+            #    return lambda: upath
+            #return let(urlpath_pattern)
+            fn = eval("lambda: %r" % urlpath_pattern)
+        else:
+            buf.append(urlpath_pattern[pos:].replace('%', '%%'))
+            #def let(upath, pnames):
+            #    return lambda *args: upath % args
+            #return let("".join(buf))
+            argstr = ", ".join(pnames)
+            s = "lambda %s: %r %% (%s)" % (argstr, "".join(buf), argstr)
+            fn = eval(s)
+        return fn
+
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
         #; [!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).
         #; [!bv2ps] don't catch ImportError raised in specified module.

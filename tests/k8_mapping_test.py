@@ -365,6 +365,32 @@ class ActionMapping_Test(object):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', False)) == r'^/(?:\d+)$'
 
 
+    with subject('#_upath_pat2func()'):
+
+        @test("[!1heks] builds function object from urlpath pattern and returns it.")
+        def _(self, am):
+            def args(fn):
+                if PY3:
+                    code = fn.__code__
+                elif PY2:
+                    code = fn.func_code
+                return code.co_varnames[:code.co_argcount]
+            fn = am._upath_pat2func('/api/books')
+            ok (fn()) == "/api/books"
+            ok (args(fn)) == ()
+            fn = am._upath_pat2func('/api/books/{id}')
+            ok (fn(123)) == "/api/books/123"
+            ok (args(fn)) == ('id',)
+            fn = am._upath_pat2func('/api/books/{book_id}/comments/{comment_id}')
+            ok (fn(123, 999)) == "/api/books/123/comments/999"
+            ok (args(fn)) == ('book_id', 'comment_id')
+
+        @test("[!lelrm] can handle '%' correctly.")
+        def _(self, am):
+            fn = am._upath_pat2func('/api/%3A/{book_id}/%3B')
+            ok (fn(123)) == "/api/%3A/123/%3B"
+
+
     with subject('#_load_action_class()'):
 
         def provide_classstr(self):

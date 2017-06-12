@@ -825,7 +825,7 @@ class ActionMapping(object):
     REQUEST_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH',
                        'HEAD', 'OPTIONS', 'TRACE', 'LINK', 'UNLINK', ]
 
-    URLPATH_PARAMETER_REXP = _re_compile(r'\{(\w*)(?::(.*?))?\}')
+    URLPATH_PARAMETER_REXP = _re_compile(r'\{(\w*)(?::(.*?))?(?:<([^>]*)>)?\}')
 
     @classmethod
     def _validate_request_method(cls, req_meth):
@@ -897,9 +897,22 @@ class ActionMapping(object):
         pos = 0
         for m in self.URLPATH_PARAMETER_REXP.finditer(pat):
             text = pat[pos:m.start(0)]
-            pname = m.group(1)    # urlpath parameter name
-            rexp_str = m.group(2) or '[^/]+'
             pos = m.end(0)
+            pname, type_name, rexp_str = m.groups()
+            # for backward compatibility
+            if rexp_str is None and type_name and not type_name.isalnum():
+                rexp_str = type_name
+                type_name = None
+            #
+            if not type_name:
+                type_name = "str"
+            if not rexp_str:
+                rexp_str = (r'\d+'                if type_name == "int"  else
+                            r'\d\d\d\d-\d\d-\d\d' if type_name == "date" else
+                            r'[^/]+'              if type_name == "str"  else
+                            None)
+                if rexp_str is None:
+                    raise ActionMappingError("%r: unknown param type %r." % (pat, type_name))
             if capture and pname:
                 buf.extend((_re_escape(text), '(?P<%s>' % pname, rexp_str, ')', ))
             else:

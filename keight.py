@@ -921,15 +921,9 @@ class ActionMapping(object):
             buf.append("%s")
             pnames.append(pname)
         if pos == 0:
-            #def let(upath):
-            #    return lambda: upath
-            #return let(urlpath_pattern)
             s = "def urlpath():\n  return %r" % urlpath_pattern
         else:
             buf.append(urlpath_pattern[pos:].replace('%', '%%'))
-            #def let(upath, pnames):
-            #    return lambda *args: upath % args
-            #return let("".join(buf))
             argstr = ", ".join(pnames)
             s = "def urlpath(%s):\n  return %r %% (%s)" % (argstr, "".join(buf), argstr)
         d = {}

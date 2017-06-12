@@ -935,6 +935,12 @@ class ActionMapping(object):
             fn = eval(s)
         return fn
 
+    def _set_urlpath_func_to_actions(self, action_methods, full_urlpath_pat):
+        fn = self._upath_pat2func(full_urlpath_pat)
+        for meth, func in action_methods.items():
+            assert func.method == meth
+            func.urlpath = fn
+
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
         #; [!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).
         #; [!bv2ps] don't catch ImportError raised in specified module.
@@ -1040,10 +1046,7 @@ class ActionRexpMapping(ActionMapping):
                 self._fixed_entries[full_upath_pat] = tupl
             self._all_entries.append((full_upath_pat, action_class, action_methods))
             #; [!tzw5a] sets actual 'urlpath()' to action functions.
-            func = self._upath_pat2func(full_upath_pat)
-            for meth, fn in action_methods.items():
-                assert fn.method == meth
-                fn.urlpath = func
+            self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
         #
         if rexp_strs:
             if len(rexp_strs) == 1:
@@ -1188,10 +1191,7 @@ class ActionRexpLazyMapping(ActionMapping):
                     upath_rexp = _re_compile(rexp_str)
                     arr.append([upath_rexp, action_methods])
                 #; [!wugi8] sets actual 'urlpath()' to action functions.
-                func = self._upath_pat2func(full_upath_pat)
-                for meth, fn in action_methods.items():
-                    assert fn.method == meth
-                    fn.urlpath = func
+                self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
             tupl[3] = arr
             if found:
                 action_methods = found
@@ -1350,10 +1350,7 @@ class ActionTrieMapping(ActionMapping):
                 leaf_entries, pnames2 = self._find_entries(path_elems, entries)
                 leaf_entries[None] = (action_class, action_methods, pnames + pnames2, extension)
             #; [!3zjhc] sets actual 'urlpath()' to each action functions.
-            func = self._upath_pat2func(full_urlpath)
-            for meth, fn in action_methods.items():
-                assert fn.method == meth
-                fn.urlpath = func
+            self._set_urlpath_func_to_actions(action_methods, full_urlpath)
 
     def _change_temporary_registration_to_permanently(self, entries):
         key = 0     # key for temporary registration

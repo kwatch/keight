@@ -1187,6 +1187,11 @@ class ActionRexpLazyMapping(ActionMapping):
                     rexp_str = self._upath_pat2rexp(upath_pat, '^', '$')
                     upath_rexp = _re_compile(rexp_str)
                     arr.append([upath_rexp, action_methods])
+                #; [!wugi8] sets actual 'urlpath()' to action functions.
+                func = self._upath_pat2func(full_upath_pat)
+                for meth, fn in action_methods.items():
+                    assert fn.method == meth
+                    fn.urlpath = func
             tupl[3] = arr
             if found:
                 action_methods = found

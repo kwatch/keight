@@ -684,6 +684,33 @@ class ActionRexpLazyMapping_Test(object):
             ok (am.lookup('/api/zzzz')) == None
             ok (am.lookup('/api/news/123/456')) == None
 
+        @test("[!wugi8] sets actual 'urlpath()' to action functions.")
+        def _(self):
+            class HelloAction(k8.Action):
+                @on('GET', r'')
+                def do_index(self):
+                    return "..."
+                @on('GET', r'/{id}')
+                def do_show(self, id):
+                    return "..."
+                @on('PUT', r'/{id}')
+                def do_update(self, id):
+                    return "..."
+            urlpath_mapping = [
+                (r'/api/hello', HelloAction),
+            ]
+            am = k8.ActionRexpLazyMapping(urlpath_mapping)
+            #
+            def fn():
+                HelloAction.do_show.urlpath(123)
+            ok (fn).raises(k8.UnmappedActionClassError)
+            #
+            t = am.lookup('/api/hello/123')
+            #
+            ok (t[0]).is_(HelloAction)
+            ok (fn).not_raise(k8.UnmappedActionClassError)
+            ok (HelloAction.do_show.urlpath(456)) == "/api/hello/456"
+
 
     with subject('#__iter__()'):
 

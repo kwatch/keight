@@ -319,6 +319,9 @@ class ActionMappingError(KeightError):
     pass
 
 
+class UnmappedActionClassError(KeightError):
+    pass
+
 class UnknownHttpStatusCodeError(KeightError):
     pass
 
@@ -785,6 +788,10 @@ class On(object):
             func.options = options
             ActionMapping._validate_request_method(request_method)
             d[request_method] = func
+            #; [!1wl96] sets 'method' to action functions.
+            func.method  = request_method
+            #; [!menaw] sets 'urlpath()' which raises UnmappedActionClasssError.
+            func.urlpath = _dummy_urlpath_func
             return func
         return deco
 
@@ -801,6 +808,16 @@ class On(object):
     def UNLINK (self, urlpath=None, **kw): return self._on('UNLINK' , urlpath, **kw)
 
 on = On()
+
+def urlpath(*args):
+    msg = ("urlpath(): action class is not mapped yet."
+           " Full urlpath can be determined AFTER ActionMapping class"
+           " loads action class, therefore you can call urlpath()"
+           " ONLY AFTER that."
+           " If you are using lazy option, try to turn it off.")
+    raise UnmappedActionClassError(msg)
+_dummy_urlpath_func = urlpath
+del urlpath
 
 
 class ActionMapping(object):
@@ -889,6 +906,35 @@ class ActionMapping(object):
                 buf.extend((_re_escape(text), '(?:',             rexp_str, ')', ))
         buf.extend((_re_escape(pat[pos:]), end))
         return "".join(buf)
+
+    def _upath_pat2func(self, urlpath_pattern):
+        #; [!1heks] builds function object from urlpath pattern and returns it.
+        #; [!lelrm] can handle '%' correctly.
+        pnames = []
+        buf = []
+        pos = 0
+        for m in self.URLPATH_PARAMETER_REXP.finditer(urlpath_pattern):
+            text = urlpath_pattern[pos:m.start(0)]
+            pos = m.end(0)
+            pname = m.group(1)    # urlpath parameter name
+            buf.append(text.replace('%', '%%'))
+            buf.append("%s")
+            pnames.append(pname)
+        if pos == 0:
+            s = "def urlpath():\n  return %r" % urlpath_pattern
+        else:
+            buf.append(urlpath_pattern[pos:].replace('%', '%%'))
+            argstr = ", ".join(pnames)
+            s = "def urlpath(%s):\n  return %r %% (%s)" % (argstr, "".join(buf), argstr)
+        d = {}
+        exec(s, d, d)
+        return d['urlpath']
+
+    def _set_urlpath_func_to_actions(self, action_methods, full_urlpath_pat):
+        urlpath_fn = self._upath_pat2func(full_urlpath_pat)
+        for meth, func in action_methods.items():
+            assert func.method == meth
+            func.urlpath = urlpath_fn
 
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
         #; [!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).
@@ -994,6 +1040,9 @@ class ActionRexpMapping(ActionMapping):
                 tupl = (action_class, action_methods, {})
                 self._fixed_entries[full_upath_pat] = tupl
             self._all_entries.append((full_upath_pat, action_class, action_methods))
+            #; [!tzw5a] sets actual 'urlpath()' to action functions.
+            self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
+        #
         if rexp_strs:
             if len(rexp_strs) == 1:
                 rexp_buf.append(rexp_strs[0])
@@ -1136,6 +1185,8 @@ class ActionRexpLazyMapping(ActionMapping):
                     rexp_str = self._upath_pat2rexp(upath_pat, '^', '$')
                     upath_rexp = _re_compile(rexp_str)
                     arr.append([upath_rexp, action_methods])
+                #; [!wugi8] sets actual 'urlpath()' to action functions.
+                self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
             tupl[3] = arr
             if found:
                 action_methods = found
@@ -1293,6 +1344,8 @@ class ActionTrieMapping(ActionMapping):
                 path_elems, extension = self._split_path(urlpath)
                 leaf_entries, pnames2 = self._find_entries(path_elems, entries)
                 leaf_entries[None] = (action_class, action_methods, pnames + pnames2, extension)
+            #; [!3zjhc] sets actual 'urlpath()' to each action functions.
+            self._set_urlpath_func_to_actions(action_methods, full_urlpath)
 
     def _change_temporary_registration_to_permanently(self, entries):
         key = 0     # key for temporary registration

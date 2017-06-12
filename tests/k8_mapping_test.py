@@ -365,6 +365,32 @@ class ActionMapping_Test(object):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', False)) == r'^/(?:\d+)$'
 
 
+    with subject('#_upath_pat2func()'):
+
+        @test("[!1heks] builds function object from urlpath pattern and returns it.")
+        def _(self, am):
+            def args(fn):
+                if PY3:
+                    code = fn.__code__
+                elif PY2:
+                    code = fn.func_code
+                return code.co_varnames[:code.co_argcount]
+            fn = am._upath_pat2func('/api/books')
+            ok (fn()) == "/api/books"
+            ok (args(fn)) == ()
+            fn = am._upath_pat2func('/api/books/{id}')
+            ok (fn(123)) == "/api/books/123"
+            ok (args(fn)) == ('id',)
+            fn = am._upath_pat2func('/api/books/{book_id}/comments/{comment_id}')
+            ok (fn(123, 999)) == "/api/books/123/comments/999"
+            ok (args(fn)) == ('book_id', 'comment_id')
+
+        @test("[!lelrm] can handle '%' correctly.")
+        def _(self, am):
+            fn = am._upath_pat2func('/api/%3A/{book_id}/%3B')
+            ok (fn(123)) == "/api/%3A/123/%3B"
+
+
     with subject('#_load_action_class()'):
 
         def provide_classstr(self):
@@ -509,6 +535,17 @@ class ActionRexpMapping_Test(object):
                 ),
             }
 
+        @test("[!tzw5a] sets actual 'urlpath()' to action functions.")
+        def _(self, mapping_list):
+            am = k8.ActionRexpMapping(mapping_list)
+            t = am.lookup('/api/authors')
+            klass = t[0]
+            ok (klass.do_index.urlpath())     == '/api/authors'
+            ok (klass.do_create.urlpath())    == '/api/authors'
+            ok (klass.do_show.urlpath(123))   == '/api/authors/123'
+            ok (klass.do_update.urlpath(123)) == '/api/authors/123'
+            ok (klass.do_delete.urlpath(123)) == '/api/authors/123'
+
 
     with subject('#lookup()'):
 
@@ -647,6 +684,33 @@ class ActionRexpLazyMapping_Test(object):
             ok (am.lookup('/api/zzzz')) == None
             ok (am.lookup('/api/news/123/456')) == None
 
+        @test("[!wugi8] sets actual 'urlpath()' to action functions.")
+        def _(self):
+            class HelloAction(k8.Action):
+                @on('GET', r'')
+                def do_index(self):
+                    return "..."
+                @on('GET', r'/{id}')
+                def do_show(self, id):
+                    return "..."
+                @on('PUT', r'/{id}')
+                def do_update(self, id):
+                    return "..."
+            urlpath_mapping = [
+                (r'/api/hello', HelloAction),
+            ]
+            am = k8.ActionRexpLazyMapping(urlpath_mapping)
+            #
+            def fn():
+                HelloAction.do_show.urlpath(123)
+            ok (fn).raises(k8.UnmappedActionClassError)
+            #
+            t = am.lookup('/api/hello/123')
+            #
+            ok (t[0]).is_(HelloAction)
+            ok (fn).not_raise(k8.UnmappedActionClassError)
+            ok (HelloAction.do_show.urlpath(456)) == "/api/hello/456"
+
 
     with subject('#__iter__()'):
 
@@ -783,6 +847,17 @@ class ActionTrieMapping_Test(object):
                     },
                 },
             }
+
+        @test("[!3zjhc] sets actual 'urlpath()' to each action functions.")
+        def _(self, mapping_list):
+            am = k8.ActionTrieMapping(mapping_list, lazy=False)
+            t = am.lookup("/api/items")
+            klass = t[0]
+            ok (klass.do_index.urlpath())    == '/api/items'
+            ok (klass.do_create.urlpath())   == '/api/items'
+            ok (klass.do_show.urlpath(10))   == '/api/items/10'
+            ok (klass.do_update.urlpath(20)) == '/api/items/20'
+            ok (klass.do_delete.urlpath(30)) == '/api/items/30'
 
 
     with subject('#lookup()'):

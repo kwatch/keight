@@ -826,6 +826,22 @@ class ActionTrieMapping_Test(object):
                 },
             }
 
+        @test("[!3zjhc] sets 'method' and 'urlpath()' to each action functions.")
+        def _(self, mapping_list):
+            am = k8.ActionTrieMapping(mapping_list, lazy=False)
+            t = am.lookup("/api/items")
+            klass = t[0]
+            ok (klass.do_index.method)       == 'GET'
+            ok (klass.do_index.urlpath())    == '/api/items'
+            ok (klass.do_create.method)      == 'POST'
+            ok (klass.do_create.urlpath())   == '/api/items'
+            ok (klass.do_show.method)        == 'GET'
+            ok (klass.do_show.urlpath(10))   == '/api/items/10'
+            ok (klass.do_update.method)      == 'PUT'
+            ok (klass.do_update.urlpath(20)) == '/api/items/20'
+            ok (klass.do_delete.method)      == 'DELETE'
+            ok (klass.do_delete.urlpath(30)) == '/api/items/30'
+
 
     with subject('#lookup()'):
 

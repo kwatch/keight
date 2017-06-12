@@ -1039,10 +1039,10 @@ class ActionRexpMapping(ActionMapping):
                 tupl = (action_class, action_methods, {})
                 self._fixed_entries[full_upath_pat] = tupl
             self._all_entries.append((full_upath_pat, action_class, action_methods))
-            #; [!tzw5a] adds 'method' and 'urlpath()' to action functions.
+            #; [!tzw5a] sets actual 'urlpath()' to action functions.
             func = self._upath_pat2func(full_upath_pat)
             for meth, fn in action_methods.items():
-                fn.method  = meth
+                assert fn.method == meth
                 fn.urlpath = func
         #
         if rexp_strs:
@@ -1344,10 +1344,10 @@ class ActionTrieMapping(ActionMapping):
                 path_elems, extension = self._split_path(urlpath)
                 leaf_entries, pnames2 = self._find_entries(path_elems, entries)
                 leaf_entries[None] = (action_class, action_methods, pnames + pnames2, extension)
-            #; [!3zjhc] sets 'method' and 'urlpath()' to each action functions.
+            #; [!3zjhc] sets actual 'urlpath()' to each action functions.
             func = self._upath_pat2func(full_urlpath)
             for meth, fn in action_methods.items():
-                fn.method  = meth
+                assert fn.method == meth
                 fn.urlpath = func
 
     def _change_temporary_registration_to_permanently(self, entries):

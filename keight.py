@@ -924,16 +924,17 @@ class ActionMapping(object):
             #def let(upath):
             #    return lambda: upath
             #return let(urlpath_pattern)
-            fn = eval("lambda: %r" % urlpath_pattern)
+            s = "def urlpath():\n  return %r" % urlpath_pattern
         else:
             buf.append(urlpath_pattern[pos:].replace('%', '%%'))
             #def let(upath, pnames):
             #    return lambda *args: upath % args
             #return let("".join(buf))
             argstr = ", ".join(pnames)
-            s = "lambda %s: %r %% (%s)" % (argstr, "".join(buf), argstr)
-            fn = eval(s)
-        return fn
+            s = "def urlpath(%s):\n  return %r %% (%s)" % (argstr, "".join(buf), argstr)
+        d = {}
+        exec(s, d, d)
+        return d['urlpath']
 
     def _set_urlpath_func_to_actions(self, action_methods, full_urlpath_pat):
         fn = self._upath_pat2func(full_urlpath_pat)

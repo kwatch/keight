@@ -319,6 +319,9 @@ class ActionMappingError(KeightError):
     pass
 
 
+class UnmappedActionClassError(KeightError):
+    pass
+
 class UnknownHttpStatusCodeError(KeightError):
     pass
 
@@ -787,6 +790,8 @@ class On(object):
             d[request_method] = func
             #; [!1wl96] sets 'method' to action functions.
             func.method  = request_method
+            #; [!menaw] sets 'urlpath()' which raises UnmappedActionClasssError.
+            func.urlpath = _dummy_urlpath_func
             return func
         return deco
 
@@ -803,6 +808,16 @@ class On(object):
     def UNLINK (self, urlpath=None, **kw): return self._on('UNLINK' , urlpath, **kw)
 
 on = On()
+
+def urlpath(*args):
+    msg = ("urlpath(): action class is not mapped yet."
+           " Full urlpath can be determined AFTER ActionMapping class"
+           " loads action class, therefore you can call urlpath()"
+           " ONLY AFTER that."
+           " If you are using lazy option, try to turn it off.")
+    raise UnmappedActionClassError(msg)
+_dummy_urlpath_func = urlpath
+del urlpath
 
 
 class ActionMapping(object):

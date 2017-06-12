@@ -193,6 +193,23 @@ class On_Test(object):
             ok (HelloAction.do_show  .method) == 'GET'
             ok (HelloAction.do_update.method) == 'PUT'
 
+        @test("[!menaw] sets 'urlpath()' which raises UnmappedActionClasssError.")
+        def _(self):
+            class HelloAction(k8.Action):
+                @on('POST', r'')
+                def do_create(self):
+                    return "..."
+                with on.path(r'/{id}'):
+                    @on('PUT')
+                    def do_update(self, id):
+                        return "..."
+            def fn():
+                HelloAction.do_create.urlpath()
+            ok (fn).raises(k8.UnmappedActionClassError)
+            def fn():
+                HelloAction.do_update.urlpath(123)
+            ok (fn).raises(k8.UnmappedActionClassError)
+
 
 
 if __name__ == '__main__':

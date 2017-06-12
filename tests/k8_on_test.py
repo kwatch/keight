@@ -172,6 +172,27 @@ class On_Test(object):
             expected = "on('PUT'): requires urlpath pattern as 2nd argument."
             ok (fn).raises(k8.ActionMappingError, expected)
 
+        @test("[!1wl96] sets 'method' to action functions.")
+        def _(self):
+            class HelloAction(k8.Action):
+                @on('GET', r'')
+                def do_index(self):
+                    return "..."
+                @on('POST', r'')
+                def do_create(self):
+                    return "..."
+                with on.path(r'/{id}'):
+                    @on('GET')
+                    def do_show(self, id):
+                        return "..."
+                    @on('PUT')
+                    def do_update(self, id):
+                        return "..."
+            ok (HelloAction.do_index .method) == 'GET'
+            ok (HelloAction.do_create.method) == 'POST'
+            ok (HelloAction.do_show  .method) == 'GET'
+            ok (HelloAction.do_update.method) == 'PUT'
+
 
 
 if __name__ == '__main__':

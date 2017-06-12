@@ -785,6 +785,8 @@ class On(object):
             func.options = options
             ActionMapping._validate_request_method(request_method)
             d[request_method] = func
+            #; [!1wl96] sets 'method' to action functions.
+            func.method  = request_method
             return func
         return deco
 

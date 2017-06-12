@@ -931,10 +931,10 @@ class ActionMapping(object):
         return d['urlpath']
 
     def _set_urlpath_func_to_actions(self, action_methods, full_urlpath_pat):
-        fn = self._upath_pat2func(full_urlpath_pat)
+        urlpath_fn = self._upath_pat2func(full_urlpath_pat)
         for meth, func in action_methods.items():
             assert func.method == meth
-            func.urlpath = fn
+            func.urlpath = urlpath_fn
 
     def _load_action_class(self, class_string):  # ex: 'my.api.HelloAction'
         #; [!gzlsn] converts string (ex: 'my.api.HelloAction') into class object (ex: my.api.HelloAction).

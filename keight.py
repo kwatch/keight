@@ -1834,8 +1834,8 @@ class WSGIApplication(object):
 
     def handle_exception(self, ex, req, resp):
         #; [!7qgls] writes traceback to stderr.
-        #stderr = sys.stderr
-        stderr = req.env['wsgi.errors']
+        stderr = sys.stderr
+        #stderr = req.env['wsgi.errors']
         errtext = traceback.format_exc()
         stderr.write(S(errtext))
         #

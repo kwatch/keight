@@ -266,16 +266,14 @@ class Application_Test(object):
             #
             stdout, stderr = io
             ok (stdout) == ""
-            ok (stderr) == ""
-            #
-            s = env['wsgi.errors'].getvalue()
-            lines = s.splitlines(True)
-            ok (lines[0])  == "Traceback (most recent call last):\n"
-            #ok (lines[-1]) == "ZeroDivisionError: division by zero\n"
-            ok (lines[-1]).in_([
+            ok (stderr) != ""
+            ok (stderr.splitlines(True)[-1]).in_([
                 "ZeroDivisionError: integer division or modulo by zero\n", # Py2.7
                 "ZeroDivisionError: division by zero\n",
             ])
+            #
+            s = env['wsgi.errors'].getvalue()
+            ok (s) == ""
 
 
 

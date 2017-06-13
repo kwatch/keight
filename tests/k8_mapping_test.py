@@ -352,15 +352,15 @@ class ActionMapping_Test(object):
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code}', '^', '$', True)) == r'^/(?P<code>[^/]+)$'
 
-        @test("[!iibcp] ex: _upath_pat2rexp(r'/{code}', '^', '$', False) => r'^/(?:<code>[^/]+)$'")
+        @test("[!iibcp] ex: _upath_pat2rexp(r'/{code}', '^', '$', False) => r'^/(?:[^/]+)$'")
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code}', '^', '$', False)) == r'^/(?:[^/]+)$'
 
-        @test("[!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code:\d+>[^/]+)$'")
+        @test("[!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code>\d+)$'")
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', True)) == r'^/(?P<code>\d+)$'
 
-        @test("[!9i3gn] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:<code:\d+>[^/]+)$'")
+        @test("[!9i3gn] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:\d+)$'")
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', False)) == r'^/(?:\d+)$'
 

@@ -890,9 +890,9 @@ class ActionMapping(object):
     def _upath_pat2rexp(self, pat, begin='', end='', capture=True):
         #; [!r1xu6] ex: _upath_pat2rexp(r'/x.gz', '^', '$') => r'^/x\\.gz$'
         #; [!locca] ex: _upath_pat2rexp(r'/{code}', '^', '$', True) => r'^/(?P<code>[^/]+)$'
-        #; [!iibcp] ex: _upath_pat2rexp(r'/{code}', '^', '$', False) => r'^/(?:<code>[^/]+)$'
-        #; [!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code:\d+>[^/]+)$'
-        #; [!9i3gn] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:<code:\d+>[^/]+)$'
+        #; [!iibcp] ex: _upath_pat2rexp(r'/{code}', '^', '$', False) => r'^/(?:[^/]+)$'
+        #; [!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code>\d+)$'
+        #; [!9i3gn] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:\d+)$'
         buf = [begin]
         pos = 0
         for m in self.URLPATH_PARAMETER_REXP.finditer(pat):

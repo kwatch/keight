@@ -1725,6 +1725,9 @@ class WSGIResponse(object):
 
 
 def default_exception_handler(ex, req, resp):
+    #; [!ewqep] don't catch KeyboardInterrupt error.
+    if isinstance(ex, KeyboardInterrupt):
+        return None
     #; [!7qgls] writes traceback to stderr.
     stderr = sys.stderr
     #stderr = action.req.env['wsgi.errors']
@@ -1810,9 +1813,6 @@ class WSGIApplication(object):
         #; [!f66z9] handles http exception.
         except HttpException as ex:
             return self.handle_http_exception(ex, req, resp)
-        #; [!ewqep] don't catch KeyboardInterrupt error.
-        except KeyboardInterrupt:
-            raise
         #; [!tn8yy] returns 500 Internal Server Error when exception raised.
         except Exception as ex:
             #; [!9glaw] re-raises exception when exception handler is not provided.

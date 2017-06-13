@@ -891,6 +891,11 @@ class ActionMapping(object):
         #; [!r1xu6] ex: _upath_pat2rexp(r'/x.gz', '^', '$') => r'^/x\\.gz$'
         #; [!locca] ex: _upath_pat2rexp(r'/{code}', '^', '$', True) => r'^/(?P<code>[^/]+)$'
         #; [!iibcp] ex: _upath_pat2rexp(r'/{code}', '^', '$', False) => r'^/(?:[^/]+)$'
+
+        #; [!m7u7k] ex: _upath_pat2rexp(r'/{code:int}', '^', '$', True) => r'^/(?P<code>\d+)$'
+        #; [!motph] ex: _upath_pat2rexp(r'/{code:int}', '^', '$', False) => r'^/(?:\d+)$'
+        #; [!ry5xi] ex: _upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', True) => r'^/(?P<code>\d\d\d)$'
+        #; [!y5w02] ex: _upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', False) => r'^/(?:\d\d\d)$'
         #; [!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code>\d+)$'
         #; [!9i3gn] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:\d+)$'
         buf = [begin]

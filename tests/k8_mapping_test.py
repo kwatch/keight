@@ -356,6 +356,22 @@ class ActionMapping_Test(object):
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code}', '^', '$', False)) == r'^/(?:[^/]+)$'
 
+        @test("[!m7u7k] ex: _upath_pat2rexp(r'/{code:int}', '^', '$', True) => r'^/(?P<code>\d+)$'")
+        def _(self, am):
+            ok (am._upath_pat2rexp(r'/{code:int}', '^', '$', True)) == r'^/(?P<code>\d+)$'
+
+        @test("[!motph] ex: _upath_pat2rexp(r'/{code:int}', '^', '$', False) => r'^/(?:\d+)$'")
+        def _(self, am):
+            ok (am._upath_pat2rexp(r'/{code:int}', '^', '$', False)) == r'^/(?:\d+)$'
+
+        @test("[!ry5xi] ex: _upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', True) => r'^/(?P<code>\d\d\d)$'")
+        def _(self, am):
+            ok (am._upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', True)) == r'^/(?P<code>\d\d\d)$'
+
+        @test("[!y5w02] ex: _upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', False) => r'^/(?:\d\d\d)$'")
+        def _(self, am):
+            am._upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', False) == r'^/(?:\d\d\d)$'
+
         @test("[!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code>\d+)$'")
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', True)) == r'^/(?P<code>\d+)$'

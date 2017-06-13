@@ -887,6 +887,12 @@ class ActionMapping(object):
         #; [!akpxj] returns action class, action func, and urlpath param values.
         return action_class, action_func, urlpath_params
 
+    URLPATH_PARAMETER_TYPES = {
+        "int" : r"\d+",
+        "str" : r"[^/]+",
+        "date": r"\d\d\d\d-\d\d-\d\d",
+    }
+
     def _upath_pat2rexp(self, pat, begin='', end='', capture=True):
         #; [!r1xu6] ex: _upath_pat2rexp(r'/x.gz', '^', '$') => r'^/x\\.gz$'
         #; [!locca] ex: _upath_pat2rexp(r'/{code}', '^', '$', True) => r'^/(?P<code>[^/]+)$'
@@ -911,13 +917,12 @@ class ActionMapping(object):
             #
             if not type_name:
                 type_name = "str"
+            t = self.URLPATH_PARAMETER_TYPES.get(type_name)
+            if not t:
+                raise ActionMappingError("%r: unknown param type %r." % (pat, type_name))
             if not rexp_str:
-                rexp_str = (r'\d+'                if type_name == "int"  else
-                            r'\d\d\d\d-\d\d-\d\d' if type_name == "date" else
-                            r'[^/]+'              if type_name == "str"  else
-                            None)
-                if rexp_str is None:
-                    raise ActionMappingError("%r: unknown param type %r." % (pat, type_name))
+                rexp_str = t  # ex: '[^/]+' or '\d+'
+                assert rexp_str, '** type_name=%r' % type_name
             if capture and pname:
                 buf.extend((_re_escape(text), '(?P<%s>' % pname, rexp_str, ')', ))
             else:

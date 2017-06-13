@@ -1815,9 +1815,14 @@ class WSGIApplication(object):
             raise
         #; [!tn8yy] returns 500 Internal Server Error when exception raised.
         except Exception as ex:
+            #; [!9glaw] re-raises exception when exception handler is not provided.
             if self._exception_handler is None:
                 raise
-            return self._exception_handler(ex, req, resp)
+            #; [!jajno] re-raises exception when exception handler returns None.
+            ret = self._exception_handler(ex, req, resp)
+            if ret is None:
+                raise
+            return ret
 
     def error_4xx(self, status_code, env):
         status = HTTP_STATUS_DICT[status_code]

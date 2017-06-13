@@ -1724,12 +1724,31 @@ class WSGIResponse(object):
         return cookie_str
 
 
+def default_exception_handler(ex, req, resp):
+    #; [!ewqep] don't catch KeyboardInterrupt error.
+    if isinstance(ex, KeyboardInterrupt):
+        return None
+    #; [!7qgls] writes traceback to stderr.
+    stderr = sys.stderr
+    #stderr = action.req.env['wsgi.errors']
+    errtext = traceback.format_exc()
+    stderr.write(S(errtext))
+    #
+    status  = 500
+    binary  = b"<h2>500 Internal Server Error</h2>"
+    headers = [
+        ('Content-Type',   "text/html;charset=utf-8"),
+        ('Content-Length', str(len(binary))),
+    ]
+    return status, headers, [binary]
+
+
 class WSGIApplication(object):
 
     REQUEST  = WSGIRequest
     RESPONSE = WSGIResponse
 
-    def __init__(self, mapping_list, _=None, lazy=False, engine='rexp'):
+    def __init__(self, mapping_list, _=None, lazy=False, engine='rexp', exception_handler=default_exception_handler):
         if _ is not None:
             raise TypeError("%r: Unexpected 2nd argument for %s()." % (_, self.__class__.__name__))
         #; [!ah3gh] if mapping_list is an ActionMapping object, use it as is.
@@ -1740,6 +1759,8 @@ class WSGIApplication(object):
             index = (lazy and 1 or 0) | (engine == 'statemachine' and 2 or 0)
             klass = (ActionRexpMapping, ActionRexpLazyMapping, ActionTrieMapping, ActionTrieLazyMapping)[index]
             self._mapping = klass(mapping_list)
+        #
+        self._exception_handler = exception_handler
 
     def lookup(self, req_urlpath):
         """Delegates to ActionMapping#lookup()."""
@@ -1792,12 +1813,16 @@ class WSGIApplication(object):
         #; [!f66z9] handles http exception.
         except HttpException as ex:
             return self.handle_http_exception(ex, req, resp)
-        #; [!ewqep] don't catch KeyboardInterrupt error.
-        except KeyboardInterrupt:
-            raise
         #; [!tn8yy] returns 500 Internal Server Error when exception raised.
         except Exception as ex:
-            return self.handle_exception(ex, req, resp)
+            #; [!9glaw] re-raises exception when exception handler is not provided.
+            if self._exception_handler is None:
+                raise
+            #; [!jajno] re-raises exception when exception handler returns None.
+            ret = self._exception_handler(ex, req, resp)
+            if ret is None:
+                raise
+            return ret
 
     def error_4xx(self, status_code, env):
         status = HTTP_STATUS_DICT[status_code]
@@ -1831,21 +1856,6 @@ class WSGIApplication(object):
         resp.content_type   = ctype
         resp.content_length = len(binary)
         return status, resp.get_header_list(), [binary]
-
-    def handle_exception(self, ex, req, resp):
-        #; [!7qgls] writes traceback to stderr.
-        #stderr = sys.stderr
-        stderr = req.env['wsgi.errors']
-        errtext = traceback.format_exc()
-        stderr.write(S(errtext))
-        #
-        status  = 500
-        binary  = b"<h2>500 Internal Server Error</h2>"
-        headers = [
-            ('Content-Type',   "text/html;charset=utf-8"),
-            ('Content-Length', str(len(binary))),
-        ]
-        return status, headers, [binary]
 
 
 wsgi = _create_module("keight.wsgi")

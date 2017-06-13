@@ -255,6 +255,41 @@ class Application_Test(object):
                         ('Content-Length', "34")],
                        [b"<h2>500 Internal Server Error</h2>"])
 
+        @test("[!9glaw] re-raises exception when exception handler is not provided.")
+        def _(self):
+            class HelloAction(k8.Action):
+                @on('GET', r'')
+                def do_index(self):
+                    1/0   # ZeroDivisionError
+            app = k8.wsgi.Application([(r'/hello', HelloAction)],
+                                      exception_handler=None)    # !!!
+            def fn():
+                env = k8.wsgi.mock_env('GET', '/hello')
+                app(env, k8.wsgi.StartResponse())
+            #
+            with dummy_io() as io:
+                ok (fn).raises(ZeroDivisionError)
+
+        @test("[!jajno] re-raises exception when exception handler returns None.")
+        def _(self):
+            class HelloAction(k8.Action):
+                @on('GET', r'')
+                def do_index(self):
+                    1/0   # ZeroDivisionError
+            called = [False]
+            def handler(ex, req, resp):
+                called[0] = True
+                return None
+            app = k8.wsgi.Application([(r'/hello', HelloAction)],
+                                      exception_handler=handler)   # !!!
+            def fn():
+                env = k8.wsgi.mock_env('GET', '/hello')
+                app(env, k8.wsgi.StartResponse())
+            with dummy_io() as io:
+                ok (called[0]) == False
+                ok (fn).raises(ZeroDivisionError)
+                ok (called[0]) == True
+
 
     with subject('#handle_exception()'):
 
@@ -266,16 +301,14 @@ class Application_Test(object):
             #
             stdout, stderr = io
             ok (stdout) == ""
-            ok (stderr) == ""
-            #
-            s = env['wsgi.errors'].getvalue()
-            lines = s.splitlines(True)
-            ok (lines[0])  == "Traceback (most recent call last):\n"
-            #ok (lines[-1]) == "ZeroDivisionError: division by zero\n"
-            ok (lines[-1]).in_([
+            ok (stderr) != ""
+            ok (stderr.splitlines(True)[-1]).in_([
                 "ZeroDivisionError: integer division or modulo by zero\n", # Py2.7
                 "ZeroDivisionError: division by zero\n",
             ])
+            #
+            s = env['wsgi.errors'].getvalue()
+            ok (s) == ""
 
 
 

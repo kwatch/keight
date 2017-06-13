@@ -917,9 +917,11 @@ class ActionMapping(object):
             #
             if not type_name:
                 type_name = "str"
+            #; [!tjslp] raises error when param type name is unknown.
             t = self.URLPATH_PARAMETER_TYPES.get(type_name)
             if not t:
-                raise ActionMappingError("%r: unknown param type %r." % (pat, type_name))
+                raise ActionMappingError("%r: unknown parameter type %r." % (pat, type_name))
+            #
             if not rexp_str:
                 rexp_str = t  # ex: '[^/]+' or '\d+'
                 assert rexp_str, '** type_name=%r' % type_name

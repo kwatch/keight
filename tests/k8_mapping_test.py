@@ -380,6 +380,12 @@ class ActionMapping_Test(object):
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', False)) == r'^/(?:\d+)$'
 
+        @test("[!tjslp] raises error when param type name is unknown.")
+        def _(self, am):
+            def fn():
+                am._upath_pat2rexp(r'/{code:string}', '^', '$', True)
+            ok (fn).raises(k8.ActionMappingError, "'/{code:string}': unknown parameter type 'string'.")
+
 
     with subject('#_upath_pat2func()'):
 

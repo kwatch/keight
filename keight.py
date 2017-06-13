@@ -896,8 +896,8 @@ class ActionMapping(object):
         #; [!motph] ex: _upath_pat2rexp(r'/{code:int}', '^', '$', False) => r'^/(?:\d+)$'
         #; [!ry5xi] ex: _upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', True) => r'^/(?P<code>\d\d\d)$'
         #; [!y5w02] ex: _upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', False) => r'^/(?:\d\d\d)$'
-        #; [!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code>\d+)$'
-        #; [!9i3gn] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:\d+)$'
+        #; [!t8u2o] (backward compatibility) ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code>\d+)$'
+        #; [!9i3gn] (backward compatibility) ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:\d+)$'
         buf = [begin]
         pos = 0
         for m in self.URLPATH_PARAMETER_REXP.finditer(pat):

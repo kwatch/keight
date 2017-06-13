@@ -372,11 +372,11 @@ class ActionMapping_Test(object):
         def _(self, am):
             am._upath_pat2rexp(r'/{code:int<\d\d\d>}', '^', '$', False) == r'^/(?:\d\d\d)$'
 
-        @test("[!t8u2o] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code>\d+)$'")
+        @test("[!t8u2o] (backward compatibility) ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', True) => r'^/(?P<code>\d+)$'")
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', True)) == r'^/(?P<code>\d+)$'
 
-        @test("[!9i3gn] ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:\d+)$'")
+        @test("[!9i3gn] (backward compatibility) ex: _upath_pat2rexp(r'/{code:\d+}', '^', '$', False) => r'^/(?:\d+)$'")
         def _(self, am):
             ok (am._upath_pat2rexp(r'/{code:\d+}', '^', '$', False)) == r'^/(?:\d+)$'
 

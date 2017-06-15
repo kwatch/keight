@@ -1191,8 +1191,8 @@ class ActionRexpLazyMapping(ActionMapping):
                 else:
                     full_upath_rexp = None
                 arr = None  # will be set in '#lookup()'
-                t = [full_upath_pat, full_upath_rexp, action_class, arr]
-                self._variable_urlpaths.append(t)
+                lst = [full_upath_pat, full_upath_rexp, action_class, arr]
+                self._variable_urlpaths.append(lst)
                 #
                 rexp_buf.append('((?=[/.]|$))')
                 #
@@ -1221,12 +1221,12 @@ class ActionRexpLazyMapping(ActionMapping):
         if not m:
             return None
         idx = m.groups().index('')
-        tupl = self._variable_urlpaths[idx]
-        base_upath_pat, base_upath_rexp, action_class, arr = tupl
+        lst = self._variable_urlpaths[idx]
+        base_upath_pat, base_upath_rexp, action_class, arr = lst
         #; [!8ktv8] loads action class from file when class is a string.
         if isinstance(action_class, basestring):
             action_class = self._load_action_class(action_class)
-            tupl[2] = action_class
+            lst[2] = action_class
         #
         if base_upath_rexp:
             m = base_upath_rexp.match(req_urlpath)
@@ -1251,7 +1251,7 @@ class ActionRexpLazyMapping(ActionMapping):
                     arr.append((upath_rexp, action_methods))
                 #; [!wugi8] sets actual 'urlpath()' to action functions.
                 self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
-            tupl[3] = arr
+            lst[3] = arr
             if found:
                 action_methods = found
                 return action_class, action_methods, pargs or {}

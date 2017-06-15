@@ -1237,7 +1237,7 @@ class ActionRexpLazyMapping(ActionMapping):
             remaining = req_urlpath[len(base_upath_pat):]
         #
         if arr is None:
-            arr = []  # ex: [(re.compile(r'^/(?P<id>\d+)$'), {"GET": do_show, "PUT": do_update})]
+            arr = []  # ex: [(re.compile(r'^/(?P<id>\d+)$'), {"GET": do_show, "PUT": do_update}, {"id": int})]
             found = None
             for upath_pat, action_methods in action_class.__mapping__:
                 full_upath_pat = base_upath_pat + upath_pat
@@ -1248,21 +1248,27 @@ class ActionRexpLazyMapping(ActionMapping):
                 else:
                     rexp_str = self._upath_pat2rexp(upath_pat, '^', '$')
                     upath_rexp = _re_compile(rexp_str)
-                    arr.append((upath_rexp, action_methods))
+                    converter_funcs = self._upath_pat2converters(upath_pat)
+                    arr.append((upath_rexp, action_methods, converter_funcs))
                 #; [!wugi8] sets actual 'urlpath()' to action functions.
                 self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
-            lst[3] = arr  # ex: None => [(re.compile(r'^/(?P<id>\d+)$'), {"GET": do_show, "PUT": do_update})]
+            lst[3] = arr  # ex: None => [(re.compile(r'^/(?P<id>\d+)$'), {"GET": do_show, "PUT": do_update}, {"id": int})]
             if found:
                 action_methods = found
                 return action_class, action_methods, pargs or {}
         #; [!sb5h9] returns action class, action methods and urlpath arguments.
-        for upath_rexp, action_methods in arr:
+        for upath_rexp, action_methods, converter_funcs in arr:
             m = upath_rexp.match(remaining)
             if m:
                 if pargs is None:
                     pargs = m.groupdict()
                 else:
-                    pargs.update(m.groupdict())
+                    pargs.update(m.groupdict())        # ex: {"id": "123"}
+                #; [!icpcf] converts data type of urlpath param values.
+                funcs = converter_funcs            # ex: {"id": int}
+                for k in pargs:
+                    pargs[k] = funcs[k](pargs[k])  # ex: {"id": 123}
+                #
                 return action_class, action_methods, pargs
         #; [!vtgiz] returns None when not found.
         return None

@@ -1190,7 +1190,8 @@ class ActionRexpLazyMapping(ActionMapping):
                     full_upath_rexp = _re_compile(rexp_str)
                 else:
                     full_upath_rexp = None
-                t = [full_upath_pat, full_upath_rexp, action_class, None]
+                arr = None  # will be set in '#lookup()'
+                t = [full_upath_pat, full_upath_rexp, action_class, arr]
                 self._variable_urlpaths.append(t)
                 #
                 rexp_buf.append('((?=[/.]|$))')
@@ -1236,7 +1237,7 @@ class ActionRexpLazyMapping(ActionMapping):
             remaining = req_urlpath[len(base_upath_pat):]
         #
         if arr is None:
-            arr = []
+            arr = []  # ex: [(re.compile(r'^/(?P<id>\d+)$'), {"GET": do_show, "PUT": do_update})]
             found = None
             for upath_pat, action_methods in action_class.__mapping__:
                 full_upath_pat = base_upath_pat + upath_pat
@@ -1247,7 +1248,7 @@ class ActionRexpLazyMapping(ActionMapping):
                 else:
                     rexp_str = self._upath_pat2rexp(upath_pat, '^', '$')
                     upath_rexp = _re_compile(rexp_str)
-                    arr.append([upath_rexp, action_methods])
+                    arr.append((upath_rexp, action_methods))
                 #; [!wugi8] sets actual 'urlpath()' to action functions.
                 self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
             tupl[3] = arr

@@ -20,7 +20,7 @@ __all__ = (
 )
 
 import sys, os, re, json, traceback
-from datetime import datetime
+from datetime import datetime, date
 from random import random
 from time import time
 from contextlib import contextmanager
@@ -887,11 +887,20 @@ class ActionMapping(object):
         #; [!akpxj] returns action class, action func, and urlpath param values.
         return action_class, action_func, urlpath_params
 
+    def __str2date(s):
+        #; [!oaoq5] raises 404 NotFound when date not exist.
+        try:
+            yr, mo, dy = s.split('-')
+            return date(int(yr), int(mo), int(dy))
+        except ValueError:  #=> ValueError('day is out of range for month',)
+            raise HttpException(404)
+
     URLPATH_PARAMETER_TYPES = {
-        "int" : r"\d+",
-        "str" : r"[^/]+",
-        "date": r"\d\d\d\d-\d\d-\d\d",
+        "int" : (r"\d+"               , int),
+        "str" : (r"[^/]+"             , str),
+        "date": (r"\d\d\d\d-\d\d-\d\d", __str2date),
     }
+    del __str2date
 
     def _upath_pat2rexp(self, pat, begin='', end='', capture=True):
         #; [!r1xu6] ex: _upath_pat2rexp(r'/x.gz', '^', '$') => r'^/x\\.gz$'
@@ -923,7 +932,7 @@ class ActionMapping(object):
                 raise ActionMappingError("%r: unknown parameter type %r." % (pat, type_name))
             #
             if not rexp_str:
-                rexp_str = t  # ex: '[^/]+' or '\d+'
+                rexp_str = t[0]  # ex: '[^/]+' or '\d+'
                 assert rexp_str, '** type_name=%r' % type_name
             if capture and pname:
                 buf.extend((_re_escape(text), '(?P<%s>' % pname, rexp_str, ')', ))
@@ -931,6 +940,29 @@ class ActionMapping(object):
                 buf.extend((_re_escape(text), '(?:',             rexp_str, ')', ))
         buf.extend((_re_escape(pat[pos:]), end))
         return "".join(buf)
+
+    def _upath_pat2converters(self, urlpath_pattern):
+        converter_funcs = {}   # {"param_name": func}
+        pos = 0
+        for m in self.URLPATH_PARAMETER_REXP.finditer(urlpath_pattern):
+            text = urlpath_pattern[pos:m.start(0)]
+            pos = m.end(0)
+            pname, type_name, rexp_str = m.groups()
+            # for backward compatibility
+            if rexp_str is None and type_name and not type_name.isalnum():
+                rexp_str = type_name
+                type_name = None
+            #
+            if not type_name:
+                type_name = "str"
+            #;
+            t = self.URLPATH_PARAMETER_TYPES.get(type_name)
+            if not t:
+                raise ActionMappingError("%r: unknown parameter type %r." % (pat, type_name))
+            #
+            converter_func = t[1]
+            converter_funcs[pname] = converter_func
+        return converter_funcs
 
     def _upath_pat2func(self, urlpath_pattern):
         #; [!1heks] builds function object from urlpath pattern and returns it.
@@ -1050,15 +1082,18 @@ class ActionRexpMapping(ActionMapping):
                 #rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '$')
                 #upath_rexp = _re_compile(rexp_str)
                 #
-                arr = self.URLPATH_PARAMETER_REXP.split(full_upath_pat)
-                if len(arr) == 2:
-                    pname = self.URLPATH_PARAMETER_REXP.search(full_upath_pat).group(1)
-                    upath_rexp = (pname, len(arr[0]), -len(arr[1]))  # instead of rexp
+                converter_funcs = self._upath_pat2converters(full_upath_pat)
+                if len(converter_funcs) == 1:
+                    i1 = full_upath_pat.index('{')
+                    i2 = full_upath_pat.rindex('}')
+                    i3 = i2 - len(full_upath_pat) + 1
+                    pname = list(converter_funcs)[0]
+                    upath_rexp = (pname, i1, i3)  # instead of rexp
                 else:
                     rexp_str = self._upath_pat2rexp(full_upath_pat, '^', '$')
                     upath_rexp = _re_compile(rexp_str)
                 #
-                tupl = (action_class, action_methods, upath_rexp)
+                tupl = (action_class, action_methods, upath_rexp, converter_funcs)
                 self._variable_entries.append(tupl)
                 rexp_strs.append(self._upath_pat2rexp(upath_pat, '', r'($)', False))
             else:
@@ -1095,16 +1130,19 @@ class ActionRexpMapping(ActionMapping):
         t = m.groups()
         if not t:
             return None
-        #
+        #; [!q8j1f] converts urlpath param values into int, data, etc according to param type.
         idx = t.index('')
-        action_class, action_methods, upath_rexp = self._variable_entries[idx]
+        action_class, action_methods, upath_rexp, converter_funcs = self._variable_entries[idx]
         if isinstance(upath_rexp, tuple):
             pname, start, end = upath_rexp
             pval = req_urlpath[start:end] if end else req_urlpath[start:]
-            pargs = {pname: pval} if pname else {}
+            pargs = {pname: converter_funcs[pname](pval)} if pname else {}
         else:
             m = upath_rexp.match(req_urlpath)
-            pargs = m.groupdict()
+            pargs = m.groupdict()              # ex: {"id": "123"}
+            funcs = converter_funcs            # ex: {"id": int}
+            for k in pargs:
+                pargs[k] = funcs[k](pargs[k])  # ex: {"id": 123}
         #; [!0o1rm] returns action class, action methods and urlpath arguments.
         return action_class, action_methods, pargs
 

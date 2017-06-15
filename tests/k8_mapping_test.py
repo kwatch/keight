@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys, os, re
+from datetime import date
 
 import oktest
 from oktest import ok, test, skip, todo, subject, situation, at_end
@@ -617,6 +618,37 @@ class ActionRexpMapping_Test(object):
             ]
             am = self.provide_am(mapping_list)
             ok (am.lookup('/api')) == None
+
+        @test("[!q8j1f] converts urlpath param values into int, data, etc according to param type.")
+        def _(self):
+            class BlogAPI(k8.Action):
+                @on('GET', r'/entry/{code:int}')
+                def do_show(self, code):
+                    return "code=%r" % code
+                @on('GET', r'/{date:date}/comments/{comment_code:int}')
+                def do_comment(self, date, code):
+                    return "date=%r, code=%r" % (date, code)
+            mapping_list = [
+                (r'/blog', BlogAPI),
+            ]
+            am = self.provide_am(mapping_list)
+            ok (am.lookup('/blog/entry/789')[2]) == {"code": 789}
+            ok (am.lookup('/blog/2010-03-01/comments/9')[2]) == {"date": date(2010, 3, 1), "comment_code": 9}
+
+        @test("[!oaoq5] raises 404 NotFound when date not exist.")
+        def _(self):
+            class BlogAPI(k8.Action):
+                @on('GET', r'/{date:date}/comments/{comment_code:int}')
+                def do_comment(self, date, comment_code):
+                    return "date=%r, comment_code=%r" % (date, comment_code)
+            mapping_list = [
+                (r'/blog', BlogAPI),
+            ]
+            am = self.provide_am(mapping_list)
+            def fn():
+                am.lookup('/blog/2010-02-30/comments/9')  # 2010-02-30: not existing date
+            ok (fn).raises(k8.HttpException)
+            ok (fn.exception.status) == 404
 
 
     with subject('#__iter__()'):

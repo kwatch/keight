@@ -1226,7 +1226,7 @@ class ActionRexpLazyMapping(ActionMapping):
         #; [!8ktv8] loads action class from file when class is a string.
         if isinstance(action_class, basestring):
             action_class = self._load_action_class(action_class)
-            lst[2] = action_class
+            lst[2] = action_class   # ex: 'myapp.HelloAction' => myapp.HelloAction
         #
         if base_upath_rexp:
             m = base_upath_rexp.match(req_urlpath)
@@ -1251,7 +1251,7 @@ class ActionRexpLazyMapping(ActionMapping):
                     arr.append((upath_rexp, action_methods))
                 #; [!wugi8] sets actual 'urlpath()' to action functions.
                 self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
-            lst[3] = arr
+            lst[3] = arr  # ex: None => [(re.compile(r'^/(?P<id>\d+)$'), {"GET": do_show, "PUT": do_update})]
             if found:
                 action_methods = found
                 return action_class, action_methods, pargs or {}

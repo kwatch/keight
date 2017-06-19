@@ -318,6 +318,9 @@ class KeightError(Exception):
 class ActionMappingError(KeightError):
     pass
 
+class UnknownUrlpathParameterTypeError(KeightError):
+    pass
+
 
 class UnmappedActionClassError(KeightError):
     pass
@@ -1344,8 +1347,8 @@ class ActionTrieMapping(ActionMapping):
             extension  = req_path[pos:]
         return path_elems, extension
 
-    _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
-    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w+)(?::(.*?))?\}$')
+    _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'date': 3, 'path': 4}
+    _URLPATH_PARAM_REXP  = ActionMapping.URLPATH_PARAMETER_REXP
 
     def _find_entries(self, path_elems, root_entries=None):
         if root_entries is None:
@@ -1377,7 +1380,7 @@ class ActionTrieMapping(ActionMapping):
         if not m:
             raise InvalidUrlpathParameterPatternError(
                     "%r: Invalid urlpath parameter patter." % (string,))
-        pname, ptype = m.groups()
+        pname, ptype, _ = m.groups()
         if not ptype:
             ptype = self._guess_param_type_of(pname)
         return pname, ptype
@@ -1435,7 +1438,8 @@ class ActionTrieMapping(ActionMapping):
         param_types = self._URLPATH_PARAM_TYPES
         key_int  = param_types['int']   # == 1
         key_str  = param_types['str']   # == 2
-        key_path = param_types['path']  # == 3
+        key_date = param_types['date']  # == 3
+        key_path = param_types['path']  # == 4
         args = []; add = args.append
         d = self._variable_entries
         path_elems, extension = self._split_path(req_path)  # ex: '/a/b.x' => (['a','b'], '.x')
@@ -1455,6 +1459,9 @@ class ActionTrieMapping(ActionMapping):
             elif key_str in d:
                 d = d[key_str]
                 add(s)
+            elif key_date in d:
+                d = d[key_date]
+                add(self.URLPATH_PARAMETER_TYPES['date'][-1](s))
             elif key_path in d:
                 for i, x in enumerate(path_elems):
                     if x is s:

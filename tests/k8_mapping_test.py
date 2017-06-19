@@ -1045,6 +1045,22 @@ class ActionTrieMapping_Test(object):
             ok (am.lookup('/api/zzzz')) == None
             ok (am.lookup('/api/news/123/456')) == None
 
+        @test("[!zvjdn] converts data type of urlpath param values.")
+        def _(self):
+            class BlogAPI(k8.Action):
+                @on('GET', r'/entry/{code:int}')
+                def do_show(self, id):
+                    return "code=%r" % code
+                @on('GET', r'/{date:date}/comments/{comment_code:int}')
+                def do_comment(self, date, code):
+                    return "date=%r, code=%r" % (date, code)
+            mapping_list = [
+                (r'/blog', BlogAPI),
+            ]
+            am = k8.ActionTrieMapping(mapping_list)
+            ok (am.lookup('/blog/entry/789')[2]) == [789]
+            ok (am.lookup('/blog/2010-03-01/comments/9')[2]) == [date(2010, 3, 1), 9]
+
 
     with subject('#__iter__()'):
 

@@ -318,6 +318,9 @@ class KeightError(Exception):
 class ActionMappingError(KeightError):
     pass
 
+class UnknownUrlpathParameterTypeError(KeightError):
+    pass
+
 
 class UnmappedActionClassError(KeightError):
     pass
@@ -1190,8 +1193,9 @@ class ActionRexpLazyMapping(ActionMapping):
                     full_upath_rexp = _re_compile(rexp_str)
                 else:
                     full_upath_rexp = None
-                t = [full_upath_pat, full_upath_rexp, action_class, None]
-                self._variable_urlpaths.append(t)
+                arr = None  # will be set in '#lookup()'
+                lst = [full_upath_pat, full_upath_rexp, action_class, arr]
+                self._variable_urlpaths.append(lst)
                 #
                 rexp_buf.append('((?=[/.]|$))')
                 #
@@ -1220,12 +1224,12 @@ class ActionRexpLazyMapping(ActionMapping):
         if not m:
             return None
         idx = m.groups().index('')
-        tupl = self._variable_urlpaths[idx]
-        base_upath_pat, base_upath_rexp, action_class, arr = tupl
+        lst = self._variable_urlpaths[idx]
+        base_upath_pat, base_upath_rexp, action_class, arr = lst
         #; [!8ktv8] loads action class from file when class is a string.
         if isinstance(action_class, basestring):
             action_class = self._load_action_class(action_class)
-            tupl[2] = action_class
+            lst[2] = action_class   # ex: 'myapp.HelloAction' => myapp.HelloAction
         #
         if base_upath_rexp:
             m = base_upath_rexp.match(req_urlpath)
@@ -1236,7 +1240,7 @@ class ActionRexpLazyMapping(ActionMapping):
             remaining = req_urlpath[len(base_upath_pat):]
         #
         if arr is None:
-            arr = []
+            arr = []  # ex: [(re.compile(r'^/(?P<id>\d+)$'), {"GET": do_show, "PUT": do_update}, {"id": int})]
             found = None
             for upath_pat, action_methods in action_class.__mapping__:
                 full_upath_pat = base_upath_pat + upath_pat
@@ -1247,21 +1251,27 @@ class ActionRexpLazyMapping(ActionMapping):
                 else:
                     rexp_str = self._upath_pat2rexp(upath_pat, '^', '$')
                     upath_rexp = _re_compile(rexp_str)
-                    arr.append([upath_rexp, action_methods])
+                    converter_funcs = self._upath_pat2converters(upath_pat)
+                    arr.append((upath_rexp, action_methods, converter_funcs))
                 #; [!wugi8] sets actual 'urlpath()' to action functions.
                 self._set_urlpath_func_to_actions(action_methods, full_upath_pat)
-            tupl[3] = arr
+            lst[3] = arr  # ex: None => [(re.compile(r'^/(?P<id>\d+)$'), {"GET": do_show, "PUT": do_update}, {"id": int})]
             if found:
                 action_methods = found
                 return action_class, action_methods, pargs or {}
         #; [!sb5h9] returns action class, action methods and urlpath arguments.
-        for upath_rexp, action_methods in arr:
+        for upath_rexp, action_methods, converter_funcs in arr:
             m = upath_rexp.match(remaining)
             if m:
                 if pargs is None:
                     pargs = m.groupdict()
                 else:
-                    pargs.update(m.groupdict())
+                    pargs.update(m.groupdict())        # ex: {"id": "123"}
+                #; [!icpcf] converts data type of urlpath param values.
+                funcs = converter_funcs            # ex: {"id": int}
+                for k in pargs:
+                    pargs[k] = funcs[k](pargs[k])  # ex: {"id": 123}
+                #
                 return action_class, action_methods, pargs
         #; [!vtgiz] returns None when not found.
         return None
@@ -1337,8 +1347,8 @@ class ActionTrieMapping(ActionMapping):
             extension  = req_path[pos:]
         return path_elems, extension
 
-    _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'path': 3}
-    _URLPATH_PARAM_REXP  = re.compile(r'^\{(\w+)(?::(.*?))?\}$')
+    _URLPATH_PARAM_TYPES = {'int': 1, 'str': 2, 'date': 3, 'path': 4}
+    _URLPATH_PARAM_REXP  = ActionMapping.URLPATH_PARAMETER_REXP
 
     def _find_entries(self, path_elems, root_entries=None):
         if root_entries is None:
@@ -1370,7 +1380,7 @@ class ActionTrieMapping(ActionMapping):
         if not m:
             raise InvalidUrlpathParameterPatternError(
                     "%r: Invalid urlpath parameter patter." % (string,))
-        pname, ptype = m.groups()
+        pname, ptype, _ = m.groups()
         if not ptype:
             ptype = self._guess_param_type_of(pname)
         return pname, ptype
@@ -1428,7 +1438,8 @@ class ActionTrieMapping(ActionMapping):
         param_types = self._URLPATH_PARAM_TYPES
         key_int  = param_types['int']   # == 1
         key_str  = param_types['str']   # == 2
-        key_path = param_types['path']  # == 3
+        key_date = param_types['date']  # == 3
+        key_path = param_types['path']  # == 4
         args = []; add = args.append
         d = self._variable_entries
         path_elems, extension = self._split_path(req_path)  # ex: '/a/b.x' => (['a','b'], '.x')
@@ -1448,6 +1459,9 @@ class ActionTrieMapping(ActionMapping):
             elif key_str in d:
                 d = d[key_str]
                 add(s)
+            elif key_date in d:
+                d = d[key_date]
+                add(self.URLPATH_PARAMETER_TYPES['date'][-1](s))
             elif key_path in d:
                 for i, x in enumerate(path_elems):
                     if x is s:

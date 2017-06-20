@@ -765,6 +765,22 @@ class ActionRexpLazyMapping_Test(object):
             ok (fn).not_raise(k8.UnmappedActionClassError)
             ok (HelloAction.do_show.urlpath(456)) == "/api/hello/456"
 
+        @test("[!icpcf] converts data type of urlpath param values.")
+        def _(self):
+            class BlogAPI(k8.Action):
+                @on('GET', r'/entry/{code:int}')
+                def do_show(self, id):
+                    return "code=%r" % code
+                @on('GET', r'/{date:date}/comments/{comment_code:int}')
+                def do_comment(self, date, code):
+                    return "date=%r, code=%r" % (date, code)
+            mapping_list = [
+                (r'/blog', BlogAPI),
+            ]
+            am = k8.ActionRexpLazyMapping(mapping_list)
+            ok (am.lookup('/blog/entry/789')[2]) == {"code": 789}
+            ok (am.lookup('/blog/2010-03-01/comments/9')[2]) == {"date": date(2010, 3, 1), "comment_code": 9}
+
 
     with subject('#__iter__()'):
 
@@ -1028,6 +1044,22 @@ class ActionTrieMapping_Test(object):
         def _(self, am):
             ok (am.lookup('/api/zzzz')) == None
             ok (am.lookup('/api/news/123/456')) == None
+
+        @test("[!zvjdn] converts data type of urlpath param values.")
+        def _(self):
+            class BlogAPI(k8.Action):
+                @on('GET', r'/entry/{code:int}')
+                def do_show(self, id):
+                    return "code=%r" % code
+                @on('GET', r'/{date:date}/comments/{comment_code:int}')
+                def do_comment(self, date, code):
+                    return "date=%r, code=%r" % (date, code)
+            mapping_list = [
+                (r'/blog', BlogAPI),
+            ]
+            am = k8.ActionTrieMapping(mapping_list)
+            ok (am.lookup('/blog/entry/789')[2]) == [789]
+            ok (am.lookup('/blog/2010-03-01/comments/9')[2]) == [date(2010, 3, 1), 9]
 
 
     with subject('#__iter__()'):

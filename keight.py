@@ -671,6 +671,18 @@ class Action(BaseAction):
         if not self.resp.content_type:
             self.resp.content_type = self.guess_content_type() or self.DEFAULT_CONTENT_TYPE
 
+    ##
+
+    def redirect_to(self, location, status=302):
+        #; [!ev9nu] sets response status code as 302.
+        self.resp.status = 302
+        #; [!spfge] sets Location response header.
+        self.resp.add_header('Location', location)
+        #; [!k3gvm] returns html anchor tag.
+        #; [!uw09v] escapes location in anthor tag.
+        href = util.escape_html(location)
+        return '<a href="%s">%s</a>' % (href, href)
+
     def guess_content_type(self):
         #; [!ar80y] returns content-type related to suffix of request path.
         #; [!eeimv] returns None when request path has no suffix.

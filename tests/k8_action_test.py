@@ -226,6 +226,31 @@ class Action_TC(object):
             ok (action.resp.content_type) == u"text/comma-separated-values"
 
 
+    with subject('#redirect_to()'):
+
+        @test("[!ev9nu] sets response status code as 302.")
+        def _(self, action):
+            ok (action.resp.status) == 200
+            action.redirect_to("/top")
+            ok (action.resp.status) == 302
+
+        @test("[!spfge] sets Location response header.")
+        def _(self, action):
+            ok (action.resp.header('Location')) == None
+            action.redirect_to("/top")
+            ok (action.resp.header('Location')) == "/top"
+
+        @test("[!k3gvm] returns html anchor tag.")
+        def _(self, action):
+            actual = action.redirect_to("/top")
+            ok (actual) == '<a href="/top">/top</a>'
+
+        @test("[!uw09v] escapes location in anthor tag.")
+        def _(self, action):
+            actual = action.redirect_to('/top?x=1&y=<>"')
+            ok (actual) == '<a href="/top?x=1&amp;y=&lt;&gt;&quot;">/top?x=1&amp;y=&lt;&gt;&quot;</a>'
+
+
     with subject('#guess_content_type'):
 
         @test("[!ar80y] returns content-type related to suffix of request path.")

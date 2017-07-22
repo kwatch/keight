@@ -2040,5 +2040,4 @@ class StartResponse(object):
 
 wsgi.mock_env      = mock_env
 wsgi.StartResponse = StartResponse
-del mock_env
-del StartResponse
+del mock_env, StartResponse

@@ -673,7 +673,9 @@ class Action(BaseAction):
 
     ##
 
-    def redirect_to(self, location, status=302):
+    def redirect_to(self, location, status=302, flash=None):
+        #; [!xkrfk] sets flash message if provided.
+        # TODO
         #; [!ev9nu] sets response status code as 302.
         self.resp.status = 302
         #; [!spfge] sets Location response header.

@@ -849,6 +849,29 @@ class ActionTrieMapping_Test(object):
                 },
             }
 
+        @test("[!i1kzq] handles '/' at end of urlpath correctly.")
+        def _(self):
+            class BookCommentsAction(k8.Action):
+                @on('GET', r'')
+                def do_index(self, book_id):
+                    return {"book_id": book_id}
+            mapping_list = [
+                ('/books/{book_id}/comments', BookCommentsAction),
+            ]
+            am = k8.ActionTrieMapping(mapping_list)
+            ok (am._fixed_entries) == {}
+            ok (am._variable_entries) == {
+                'books': {
+                    1: {
+                        'comments': {
+                            None: (BookCommentsAction,
+                                   {"GET": BookCommentsAction.do_index},
+                                   ["book_id"], ""),
+                        }
+                    },
+                },
+            }
+
         @test("[!n9wrs] load classes if lazy=False.")
         def _(self, mapping_list):
             clear_modules("tmp1")

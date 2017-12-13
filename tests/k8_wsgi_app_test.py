@@ -178,6 +178,33 @@ class Application_Test(object):
             ]
 
 
+    with subject('#show_mapping()'):
+
+        @test("[!0b4pw] returns list string of urlpath, class and methods.")
+        def _(self, app):
+            ok (app.show_mapping()) == r"""
+- urlpath:  /
+  class:    k8_wsgi_app_test.WelcomeAction
+  methods:  {GET: do_welcome()}
+
+- urlpath:  /api/books
+  class:    k8_wsgi_app_test.BooksAction
+  methods:  {GET: do_index(), POST: do_create()}
+
+- urlpath:  /api/books/{id}
+  class:    k8_wsgi_app_test.BooksAction
+  methods:  {GET: do_show(), PUT: do_update(), DELETE: do_delete()}
+
+- urlpath:  /api/authors
+  class:    k8_wsgi_app_test.AuthorsAction
+  methods:  {GET: do_index(), POST: do_create()}
+
+- urlpath:  /api/authors/{id}
+  class:    k8_wsgi_app_test.AuthorsAction
+  methods:  {GET: do_show(), PUT: do_update(), DELETE: do_delete()}
+
+"""[1:]
+
     with subject('#__call__()'):
 
         @test("[!8lx2o] invokes action corresponding to request path and method.")

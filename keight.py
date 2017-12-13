@@ -1913,13 +1913,16 @@ class WSGIApplication(object):
         return iter(self._mapping)
 
     def show_mapping(self):
+        #; [!0b4pw] returns list string of urlpath, class and methods.
         req_methods = ActionMapping.REQUEST_METHODS + ['ANY']
         buf = []; add = buf.append
         for urlpath_pat, action_class, action_methods in self.each_mapping():
             lst = [ "%s: %s()" % (k, action_methods[k].__name__)
                       for k in req_methods if k in action_methods ]
+            mod_name = getattr(action_class, '__module__', None)
+            prefix = mod_name+"." if mod_name else ""
             add("- urlpath:  %s\n" % urlpath_pat)
-            add("  class:    %s\n" % action_class.__name__)
+            add("  class:    %s%s\n" % (prefix, action_class.__name__))
             add("  methods:  {%s}\n" % ", ".join(lst))
             add("\n")
         return "".join(buf)

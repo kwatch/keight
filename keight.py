@@ -1912,7 +1912,12 @@ class WSGIApplication(object):
         #; [!rfx5n] iterates urlpath pattern, action class and action methods.
         return iter(self._mapping)
 
-    def show_mapping(self):
+    def show_mapping(self, format=None):
+        if format is None:
+            format = ("- urlpath:  {urlpath}\n"
+                      "  class:    {class}\n"
+                      "  methods:  {{{methods}}}\n"
+                      "\n")
         #; [!0b4pw] returns list string of urlpath, class and methods.
         req_methods = ActionMapping.REQUEST_METHODS + ['ANY']
         buf = []; add = buf.append
@@ -1921,10 +1926,10 @@ class WSGIApplication(object):
                       for k in req_methods if k in action_methods ]
             mod_name = getattr(action_class, '__module__', None)
             prefix = mod_name+"." if mod_name else ""
-            add("- urlpath:  %s\n" % urlpath_pat)
-            add("  class:    %s%s\n" % (prefix, action_class.__name__))
-            add("  methods:  {%s}\n" % ", ".join(lst))
-            add("\n")
+            params = {"urlpath": urlpath_pat,
+                      "class": "%s%s" % (prefix, action_class.__name__),
+                      "methods": ", ".join(lst)}
+            add(format.format(**params))
         return "".join(buf)
 
     def __call__(self, env, start_response):

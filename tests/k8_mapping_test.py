@@ -1088,9 +1088,56 @@ class ActionTrieMapping_Test(object):
     with subject('#__iter__()'):
 
         @test("[!0sgfj] yields each urlpath pattern, action class, and action methods.")
-        @todo
+        def _(self, am):
+            class BooksAction(k8.Action):
+                @on('GET', r'')
+                def do_index(self): return "<p>index</p>"
+                @on('POST', r'')
+                def do_create(self): return "<p>create</p>"
+                @on('GET', r'/{id}')
+                def do_show(self, id): return "<p>show(%r)</p>" % id
+                @on('PUT', r'/{id}')
+                def do_update(self, id): return "<p>update(%r)</p>" % id
+            class BookCommentsAction(k8.Action):
+                @on('POST', r'')
+                def do_create(self, book_id): return "<p>create</p>"
+                @on('GET', r'/{comment_id:str}')
+                def do_show(self, book_id, comment_id): return "<p>show(%r)</p>" % comment_id
+            mapping_list = [
+                ('/api', [
+                    ('/books', BooksAction),
+                    ('/books/{book_id}/comments', BookCommentsAction),
+                 ]),
+            ]
+            am = k8.ActionTrieMapping(mapping_list)
+            entries = list(iter(am))
+            ba = BooksAction; bca = BookCommentsAction
+            ok (entries) == [
+                ('/api/books'   , BooksAction, {"GET": ba.do_index, "POST": ba.do_create}),
+                ('/api/books/{id}', BooksAction, {"GET": ba.do_show, "PUT": ba.do_update}),
+                ('/api/books/{book_id}/comments'   , BookCommentsAction, {"POST": bca.do_create}),
+                ('/api/books/{book_id}/comments/{comment_id:str}', BookCommentsAction, {"GET": bca.do_show}),
+            ]
+
+        @test("[!ye89c] supports lazy mode.")
         def _(self, am, name="tmp1"):
-            assert False
+            # 0 means lazy mode, and class is a string instead of class object.
+            d = am._variable_entries['api']['items']
+            ok (0).in_(d)
+            ok (1).not_in(d)
+            ok (d[0]) == ('tmp1.api.items.ItemsAction', '/api/items', [])
+            #
+            result = list(am.__iter__())
+            ok (0).not_in(d)
+            ok (1).in_(d)
+            ok (d[1]).is_a(dict)
+            import tmp1
+            cls = tmp1.api.items.ItemsAction
+            ok (d[1]) == {
+                None: (cls, {'GET': cls.do_show,
+                             'PUT': cls.do_update,
+                             'DELETE': cls.do_delete}, ['id'], ''),
+            }
 
 
 

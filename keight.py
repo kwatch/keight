@@ -1510,6 +1510,45 @@ class ActionTrieMapping(ActionMapping):
                 action_methods,    # ex: {'GET': do_show, 'PUT': do_update}
                 args)              # ex: [123]
 
+    def __iter__(self):
+        _d = self._URLPATH_PARAM_TYPES  # == {"int":1, "str":2, "date":3, "path":4}
+        ptypes = dict( (i, s) for s, i in _d.items() )
+                                        # == {1:"int", 2:"str", 3:"date", 4:"path"}
+        def _expand(full_upath, param_names, ptypes=ptypes):
+            def replace(m, params=param_names[:], ptypes=ptypes):
+                param = params.pop(0)
+                ptype = ptypes[int(m.group(1))]  # ex: 1->"int", 2->"str", ...
+                if ptype == self._guess_param_type_of(param):
+                    return "{%s}" % param
+                else:
+                    return "{%s:%s}" % (param, ptype)
+            return re.sub(r'\{(\d+)\}', replace, full_upath)
+        def fn(d, base, arr, fn, _expand=_expand):
+            #; [!ye89c] supports lazy mode.
+            if 0 in d:
+                self._change_temporary_registration_to_permanently(d)
+            #
+            for k, v in d.items():
+                if isinstance(v, basestring):
+                    v = self._load_action_class(v)
+                if k is None:
+                    assert isinstance(v, tuple)
+                    action_class, action_methods, param_names, expected_ext = v
+                    full_upath = _expand(base + expected_ext, param_names)
+                    arr.append((full_upath, action_class, action_methods))
+                elif isinstance(k, basestring):
+                    assert isinstance(v, dict)
+                    fn(v, "%s/%s" % (base, k), arr, fn)
+                elif isinstance(k, int):
+                    assert isinstance(v, dict)
+                    fn(v, "%s/{%s}" % (base, k), arr, fn)
+        #; [!0sgfj] yields each urlpath pattern, action class, and action methods.
+        arr = [ (upath, t[0], t[1])  # t[0]: action_class, t[1]: action_methods
+                    for upath, t in self._fixed_entries.items() ]
+        fn(self._variable_entries, "", arr, fn)
+        arr.sort(key=lambda t: re.sub(r'\{.*?\}', '', t[0]))
+        return arr.__iter__()
+
 
 class ActionTrieLazyMapping(ActionTrieMapping):
 

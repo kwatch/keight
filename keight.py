@@ -1743,7 +1743,7 @@ class WSGIResponse(object):
         self.status         = 200
         self.content_type   = None
         self.content_length = None
-        self._header_list   = [None, None]  # ex: [('Content-Type','text/html'), ('Content-Lenght','99')]
+        self._header_list   = [None, None]  # ex: [('Content-Type','text/html'), ('Content-Length','99')]
 
     def header(self, name):
         #; [!u5pqv] returns header value.

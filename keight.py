@@ -1428,7 +1428,12 @@ class ActionTrieMapping(ActionMapping):
             if '{' not in full_urlpath:
                 self._fixed_entries[full_urlpath] = (action_class, action_methods, ())
             else:
-                path_elems, extension = self._split_path(urlpath)
+                #; [!i1kzq] handles '/' at end of urlpath correctly.
+                if urlpath:
+                    path_elems, extension = self._split_path(urlpath)
+                else:
+                    path_elems, extension = [], ""
+                #
                 leaf_entries, pnames2 = self._find_entries(path_elems, entries)
                 leaf_entries[None] = (action_class, action_methods, pnames + pnames2, extension)
             #; [!3zjhc] sets actual 'urlpath()' to each action functions.
@@ -1738,7 +1743,7 @@ class WSGIResponse(object):
         self.status         = 200
         self.content_type   = None
         self.content_length = None
-        self._header_list   = [None, None]  # ex: [('Content-Type','text/html'), ('Content-Lenght','99')]
+        self._header_list   = [None, None]  # ex: [('Content-Type','text/html'), ('Content-Length','99')]
 
     def header(self, name):
         #; [!u5pqv] returns header value.

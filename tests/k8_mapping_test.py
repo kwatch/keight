@@ -1084,6 +1084,27 @@ class ActionTrieMapping_Test(object):
             ok (am.lookup('/blog/entry/789')[2]) == [789]
             ok (am.lookup('/blog/2010-03-01/comments/9')[2]) == [date(2010, 3, 1), 9]
 
+        @test("[!cn5va] can handle 'path' type correctly.")
+        def _(self):
+            class StaticAction(k8.Action):
+                @on('GET', r'/{path:path}')
+                def do_static(self, path):
+                    return {"path": path}
+            mapping_list = [
+                (r'/static', StaticAction),
+            ]
+            am = k8.ActionTrieMapping(mapping_list)
+            #
+            t = am.lookup('/static/js/jquery')
+            ok (t) == (StaticAction,
+                       {"GET": StaticAction.do_static},
+                       ["js/jquery"])
+            #
+            t = am.lookup('/static/js/jquery.js')
+            ok (t) == (StaticAction,
+                       {"GET": StaticAction.do_static},
+                       ["js/jquery.js"])
+
 
     with subject('#__iter__()'):
 

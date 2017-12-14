@@ -1462,6 +1462,8 @@ class ActionTrieMapping(ActionMapping):
         args = []; add = args.append
         d = self._variable_entries
         path_elems, extension = self._split_path(req_path)  # ex: '/a/b.x' => (['a','b'], '.x')
+        assert extension is not None
+        check_ext = True
         for s in path_elems:
             #; [!05a7a] loads action classes dinamically if lazy=True.
             if lazy and 0 in d:         # if temporary key exists
@@ -1482,10 +1484,13 @@ class ActionTrieMapping(ActionMapping):
                 d = d[key_date]
                 add(self.URLPATH_PARAMETER_TYPES['date'][-1](s))
             elif key_path in d:
+                d = d[key_path]
+                #; [!cn5va] can handle 'path' type correctly.
                 for i, x in enumerate(path_elems):
                     if x is s:
                         break
-                add("/".join(path_elems[i+1:]))
+                add("/".join(path_elems[i:]) + extension)
+                check_ext = False
                 break
             else:
                 return None    # not found
@@ -1501,8 +1506,9 @@ class ActionTrieMapping(ActionMapping):
         if not t:
             return None        # not found
         action_class, action_methods, param_names, expected_ext = t
-        if expected_ext != extension and expected_ext != '.*':
-            return None        # not found
+        if check_ext:   # skip ext checking when 'path'-type param exists
+            if expected_ext != extension and expected_ext != '.*':
+                return None    # not found
         #
         #; [!u95qz] returns action class, action methods and urlpath arguments.
         #pargs = { pname: arg for pname, arg in zip(param_names, args) }

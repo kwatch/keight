@@ -1482,10 +1482,12 @@ class ActionTrieMapping(ActionMapping):
                 d = d[key_date]
                 add(self.URLPATH_PARAMETER_TYPES['date'][-1](s))
             elif key_path in d:
+                d = d[key_path]
+                #; [!cn5va] can handle 'path' type correctly.
                 for i, x in enumerate(path_elems):
                     if x is s:
                         break
-                add("/".join(path_elems[i+1:]))
+                add("/".join(path_elems[i:]))
                 break
             else:
                 return None    # not found

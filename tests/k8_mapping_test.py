@@ -1094,10 +1094,16 @@ class ActionTrieMapping_Test(object):
                 (r'/static', StaticAction),
             ]
             am = k8.ActionTrieMapping(mapping_list)
+            #
             t = am.lookup('/static/js/jquery')
             ok (t) == (StaticAction,
                        {"GET": StaticAction.do_static},
                        ["js/jquery"])
+            #
+            t = am.lookup('/static/js/jquery.js')
+            ok (t) == (StaticAction,
+                       {"GET": StaticAction.do_static},
+                       ["js/jquery.js"])
 
 
     with subject('#__iter__()'):

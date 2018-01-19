@@ -839,7 +839,7 @@ module K8
       #; [!apwh4] else...
       else
         #; [!wmgnr] raises K8::UnknownContentError.
-        raise UnknownContentError.new("Unknown content: class={content.class}, content=#{content.inspect}")
+        raise UnknownContentError.new("Unknown content: class=#{content.class}, content=#{content.inspect}")
       end
     end
 

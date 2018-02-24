@@ -1469,7 +1469,8 @@ module K8
       d = @params_form
       return d if d
       #; [!uq46o] raises 400 error when payload is not form data.
-      self.content_type == 'application/x-www-form-urlencoded'  or
+      #; [!dqrsw] can handle form data when content type contains charset.
+      (self.content_type || '') =~ /\Aapplication\/x-www-form-urlencoded(?:;|\z)/  or
         raise HttpException.new(400, "expected form data, but Content-Type header is #{self.content_type.inspect}.")
       #; [!puxlr] raises 400 error when content length is too large (> 10MB).
       clen = get_content_length(max_content_length || MAX_FORM_SIZE)

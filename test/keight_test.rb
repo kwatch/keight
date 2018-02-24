@@ -844,6 +844,15 @@ Oktest.scope do
         ok {pr}.raise?(K8::HttpException, /^expected form data, but Content-Type header is "multipart\/form-data;boundary=.*".$/)
       end
 
+      spec "[!dqrsw] can handle form data when content type contains charset." do
+        headers = {"Content-Type"=>"application\/x-www-form-urlencoded; charset=utf-8"}
+        env = new_env("POST", "/", form: "x=1", headers: headers)
+        req = K8::RackRequest.new(env)
+        pr = proc { req.params_form }
+        ok {pr}.NOT.raise?(Exception)
+        ok {req.params_form} == {"x"=>"1"}
+      end
+
       spec "[!puxlr] raises 400 error when content length is too large (> 10MB)." do
         env = new_env("POST", "/", form: "x=1")
         env['CONTENT_LENGTH'] = (10*1024*1024 + 1).to_s

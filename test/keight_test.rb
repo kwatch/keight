@@ -1569,8 +1569,16 @@ Oktest.scope do
       spec "[!k3gvm] returns html anchor tag." do
         |action_obj|
         action_obj.instance_exec(self) do |_|
-          ret = redirect_to '/top?x=1&y=2'
-          _.ok {ret} == '<a href="/top?x=1&amp;y=2">/top?x=1&amp;y=2</a>'
+          ret = redirect_to '/top'
+          _.ok {ret} == '<a href="/top">/top</a>'
+        end
+      end
+
+      spec "[!uw09v] escapes location in anchor tag." do
+        |action_obj|
+        action_obj.instance_exec(self) do |_|
+          ret = redirect_to '/top?x=1&y=<>"'
+          _.ok {ret} == '<a href="/top?x=1&amp;y=&lt;&gt;&quot;">/top?x=1&amp;y=&lt;&gt;&quot;</a>'
         end
       end
 

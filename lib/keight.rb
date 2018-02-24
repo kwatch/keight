@@ -871,6 +871,7 @@ module K8
       #; [!spfge] sets Location response header.
       @resp.headers['Location'] = location
       #; [!k3gvm] returns html anchor tag.
+      #; [!uw09v] escapes location in anchor tag.
       href = Util.h(location)
       return "<a href=\"#{href}\">#{href}</a>"
     end
